@@ -1,5 +1,6 @@
 const db = require('../config/db');
 
+const { responderError } = require('../utils/errores');
 // Restringe las lesiones visibles según el rol: el jugador ve las propias,
 // el entrenador las de sus deportistas y el head coach las de sus entrenadores.
 function filtroPorRol(usuario, params) {
@@ -29,7 +30,7 @@ exports.getAll = async (req, res) => {
     const { rows } = await db.query(query, params);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -46,7 +47,7 @@ exports.getOne = async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Lesión no encontrada' });
     res.json(rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -60,7 +61,7 @@ exports.create = async (req, res) => {
     );
     res.status(201).json({ id: rows[0].id, jugador_id, tipo, descripcion, fecha_inicio, fecha_fin });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -74,7 +75,7 @@ exports.update = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Lesión no encontrada' });
     res.json({ message: 'Lesión actualizada correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -84,6 +85,6 @@ exports.remove = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Lesión no encontrada' });
     res.json({ message: 'Lesión eliminada correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };

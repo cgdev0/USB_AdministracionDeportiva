@@ -1,6 +1,6 @@
 # Catálogo de casos de prueba
 
-Generado automáticamente por `npm run test:reporte` el 2026-10-10 (versión v1.3.1). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
+Generado automáticamente por `npm run test:reporte` el 2026-10-10 (versión v1.4). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
 
 Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 
@@ -64,14 +64,21 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-SEG-003 | Nombres de columna en el cuerpo no se inyectan (lista blanca) | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
 | CP-SEG-004 | Campos obligatorios faltantes devuelven 400 | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
 | CP-SEG-005 | Recurso inexistente devuelve 404 | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
-| CP-SEG-006 | Identificador no numérico en la URL | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ⚠ Falla conocida (DEF-015) |
-| CP-SEG-007 | Filtro de deporte no numérico | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ⚠ Falla conocida (DEF-015) |
-| CP-SEG-008 | Fecha con formato inválido | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ⚠ Falla conocida (DEF-016) |
-| CP-SEG-009 | Tipo de partido fuera de la lista (liga o amistoso) | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ⚠ Falla conocida (DEF-016) |
-| CP-SEG-010 | Referencia a un jugador inexistente | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ⚠ Falla conocida (DEF-016) |
-| CP-SEG-011 | Valores numéricos imposibles (negativos) | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ⚠ Falla conocida (DEF-017) |
+| CP-SEG-006 | Identificador no numérico en la URL | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
+| CP-SEG-007 | Filtro de deporte no numérico | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
+| CP-SEG-008 | Fecha con formato inválido | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
+| CP-SEG-009 | Tipo de partido fuera de la lista (liga o amistoso) | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
+| CP-SEG-010 | Referencia a un jugador inexistente | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
+| CP-SEG-011 | Valores numéricos imposibles (negativos) | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
 | CP-SEG-012 | Correo de usuario repetido | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
-| CP-SEG-013 | Un error interno no expone detalles de la base de datos | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/robustez.test.js` | — | ⚠ Falla conocida (DEF-018) |
+| CP-SEG-013 | Un error interno no expone detalles de la base de datos | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
+| CP-SEG-014 | Las contraseñas nuevas se guardan con scrypt y sal propia | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
+| CP-SEG-015 | Un usuario con hash antiguo entra y su hash se actualiza a scrypt | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
+| CP-SEG-016 | Cinco intentos fallidos bloquean temporalmente el inicio de sesión | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
+| CP-SEG-017 | Un cuerpo JSON mal formado devuelve 400 con mensaje | RNF-03 | Robustez | Fiabilidad · Tolerancia a fallos | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
+| CP-SEG-018 | La API envía cabeceras de seguridad y no revela la tecnología | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
+| CP-SEG-019 | El código no contiene contraseñas ni secretos por defecto | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
+| CP-SEG-020 | Un token firmado con el secreto por defecto antiguo es rechazado | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
 | CP-UI-COM-001 | Deportistas y lesiones se ven bien en celular y computador | RNF-05 | Compatibilidad | Portabilidad · Adaptabilidad | `pruebas/ui/mediciones.spec.js` | chromium, firefox, webkit | ✔ Aprobado |
 | CP-UI-DOR-001 | Cambiar el dorsal con un clic en la tabla (celular) | RF-09 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-DOR-002 | Cambiar el dorsal con un clic en la tabla (pc) | RF-09 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
@@ -100,3 +107,8 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-UNI-007 | Sin datos no falla y devuelve valores vacíos | RF-17 | Unitaria | Funcionalidad · Exactitud | `pruebas/unitarias/calculos.test.js` | — | ✔ Aprobado |
 | CP-UNI-008 | Formato "#dorsal nombre" y orden por dorsal | RF-09 | Unitaria | Funcionalidad · Adecuación | `pruebas/unitarias/calculos.test.js` | — | ✔ Aprobado |
 | CP-UNI-009 | Fechas en español sin desfase de zona horaria | RF-18 | Unitaria | Funcionalidad · Adecuación | `pruebas/unitarias/calculos.test.js` | — | ✔ Aprobado |
+| CP-UNI-010 | scrypt verifica la clave correcta y rechaza la incorrecta | RNF-01 | Unitaria | Funcionalidad · Seguridad de acceso | `pruebas/unitarias/seguridad.test.js` | — | ✔ Aprobado |
+| CP-UNI-011 | Un hash antiguo (HMAC-SHA256) es válido y pide actualizarse | RNF-01 | Unitaria | Funcionalidad · Seguridad de acceso | `pruebas/unitarias/seguridad.test.js` | — | ✔ Aprobado |
+| CP-UNI-012 | Las claves aleatorias iniciales son distintas y de largo suficiente | RNF-01 | Unitaria | Funcionalidad · Seguridad de acceso | `pruebas/unitarias/seguridad.test.js` | — | ✔ Aprobado |
+| CP-UNI-013 | En producción el servidor no arranca sin secretos JWT válidos | RNF-01 | Unitaria | Funcionalidad · Seguridad de acceso | `pruebas/unitarias/seguridad.test.js` | — | ✔ Aprobado |
+| CP-UNI-014 | En desarrollo, sin secretos se usa uno temporal aleatorio y se avisa | RNF-01 | Unitaria | Funcionalidad · Seguridad de acceso | `pruebas/unitarias/seguridad.test.js` | — | ✔ Aprobado |

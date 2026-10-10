@@ -28,12 +28,13 @@ const MODULOS = {
 function clasificar(id) {
   const reglas = [
     [/^CP-UNI-00[1-7]/, 'Unitaria', 'Funcionalidad · Exactitud'],
+    [/^CP-UNI-01\d/, 'Unitaria', 'Funcionalidad · Seguridad de acceso'],
     [/^CP-UNI/, 'Unitaria', 'Funcionalidad · Adecuación'],
     [/^CP-(AUT|PER)/, 'Integración', 'Funcionalidad · Seguridad de acceso'],
     [/^CP-MOD-01[23]/, 'Integración', 'Funcionalidad · Exactitud'],
     [/^CP-(MOD|DOR|INI)/, 'Integración', 'Funcionalidad · Adecuación'],
     [/^CP-CSV/, 'Integración', 'Funcionalidad · Interoperabilidad'],
-    [/^CP-SEG-(00[1-3]|013)/, 'Seguridad', 'Funcionalidad · Seguridad de acceso'],
+    [/^CP-SEG-(00[1-3]|01[3-689]|020)/, 'Seguridad', 'Funcionalidad · Seguridad de acceso'],
     [/^CP-SEG/, 'Robustez', 'Fiabilidad · Tolerancia a fallos'],
     [/^CP-MIG/, 'Migración', 'Portabilidad · Instalabilidad y reemplazo'],
     [/^CP-UI-REC/, 'Sistema', 'Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad'],
@@ -153,7 +154,7 @@ function calcular(casos, defs) {
   const recorrido = fs.existsSync(MET) ? fs.readdirSync(MET).filter(f => f.startsWith('recorrido-')).flatMap(f => leerJSON(path.join(MET, f), [])) : [];
   const negados = recorrido.filter(r => !r.permitido);
   const acceso = con(/^CP-(PER|AUT-00[67])/);
-  const robustez = con(/^CP-SEG-(00[4-9]|01[0-2])/);
+  const robustez = con(/^CP-SEG-(00[4-9]|01[0-27])/);
   const inyeccion = con(/^CP-SEG-00[1-3]/);
   const navegadores = ['chromium', 'firefox', 'webkit'].filter(n => casos.some(c => c.navegadores?.includes(n)) &&
     casos.filter(c => c.navegadores?.includes(n)).every(c => c.estado !== 'fallido'));

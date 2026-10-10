@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('../config/secretos');
 
 const PERMISOS = {
   administrador: ['*'],
@@ -22,8 +23,7 @@ exports.verificarToken = (req, res, next) => {
   }
   try {
     const token = auth.split(' ')[1];
-    const secret = process.env.JWT_SECRET || 'dtdeportivo_jwt_default_secret_key';
-    req.usuario = jwt.verify(token, secret);
+    req.usuario = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     next();
   } catch {
     return res.status(401).json({ error: 'Token inválido o expirado' });

@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 
+const { responderError } = require('../utils/errores');
 const calculateAnthropometry = (data, genero = 'masculino') => {
   const {
     peso, estatura,
@@ -137,7 +138,7 @@ const getAntropometriaByJugador = async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -159,7 +160,7 @@ const createAntropometria = async (req, res) => {
     );
     res.status(201).json({ id: rows[0].id, ...fields });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -181,7 +182,7 @@ const updateAntropometria = async (req, res) => {
     );
     res.json({ message: 'Registro actualizado correctamente', ...fields });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -190,7 +191,7 @@ const deleteAntropometria = async (req, res) => {
     await pool.query('DELETE FROM antropometria WHERE id = $1', [req.params.id]);
     res.json({ message: 'Registro eliminado correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 

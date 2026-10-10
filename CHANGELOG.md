@@ -3,6 +3,35 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v1.4 — Seguridad
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.4`
+
+Corrige los 7 defectos de seguridad y robustez de la línea base (DEF-015 a DEF-021).
+
+Contraseñas y sesiones
+- Contraseñas con hash `scrypt` y sal propia (antes, una sola ronda de HMAC-SHA256). Los usuarios existentes no tienen que hacer nada: su hash se actualiza la primera vez que inician sesión.
+- Secretos JWT sin valores por defecto en el código: en producción el servidor no arranca si faltan, son cortos o son iguales entre sí. Los tokens deben estar firmados con HS256.
+- Tras 5 intentos fallidos para la misma cuenta, el inicio de sesión se bloquea 15 minutos.
+- Un correo inexistente tarda lo mismo en responder que uno existente (no revela qué cuentas hay).
+
+Datos de ejemplo sin contraseñas en el código
+- `npm run seed` y `npm run demo` asignan una clave aleatoria (se muestra una sola vez) o la de `SEED_CLAVE_INICIAL`, y ya no sobrescriben usuarios existentes.
+- Eliminado `seed_cloudsql.js` (obsoleto desde v1.2 y con contraseñas reales).
+
+Errores claros y sin detalles internos
+- Identificadores, filtros, fechas, valores de lista y referencias inválidas responden 400 con un mensaje para el usuario (antes, error 500).
+- Los errores inesperados muestran un mensaje genérico; el detalle queda solo en la consola del servidor.
+- Rangos válidos en la base (migración `004_valores_validos.sql`): edad, peso, altura, goles, asistencias, minutos y medidas no pueden ser negativos.
+- Un cuerpo JSON mal formado responde 400.
+
+Otros
+- Cabeceras de seguridad (`nosniff`, `X-Frame-Options`, `Referrer-Policy`) y sin `X-Powered-By`.
+- CORS limitado: mismo origen en producción, o los dominios de `FRONTEND_URL`.
+- La configuración de la API está en un solo lugar (`api/index.js`); `server.js` y `backend/server.js` la reutilizan.
+
+Pruebas: 106 casos (12 nuevos), 100 % aprobados. Informe: `docs/calidad/informes/v1.4.md`.
+
 ## v1.3.1 — Marco de calidad y pruebas
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.3.1`

@@ -59,29 +59,29 @@ test('CP-SEG-005 [RNF-03] Recurso inexistente devuelve 404', async () => {
   }
 });
 
-// ── Entradas inválidas que hoy terminan en error 500 (defectos registrados) ──
-test('CP-SEG-006 [RNF-03] Identificador no numérico en la URL', { todo: 'DEF-015' }, async () => {
+// ── Entradas inválidas que hasta v1.3 terminaban en error 500 (DEF-015 a DEF-018, corregidos en v1.4) ──
+test('CP-SEG-006 [RNF-03] Identificador no numérico en la URL', async () => {
   rechaza(await llamar('GET', '/api/jugadores/abc', A), 'GET /api/jugadores/abc');
 });
 
-test('CP-SEG-007 [RNF-03] Filtro de deporte no numérico', { todo: 'DEF-015' }, async () => {
+test('CP-SEG-007 [RNF-03] Filtro de deporte no numérico', async () => {
   rechaza(await llamar('GET', '/api/jugadores?disciplina_id=1%20OR%201%3D1', A), 'disciplina_id no numérico');
 });
 
-test('CP-SEG-008 [RNF-03] Fecha con formato inválido', { todo: 'DEF-016' }, async () => {
+test('CP-SEG-008 [RNF-03] Fecha con formato inválido', async () => {
   rechaza(await llamar('POST', '/api/entrenamientos', A, { fecha: 'mañana', tipo: 'ZZ' }), 'fecha inválida');
 });
 
-test('CP-SEG-009 [RNF-03] Tipo de partido fuera de la lista (liga o amistoso)', { todo: 'DEF-016' }, async () => {
+test('CP-SEG-009 [RNF-03] Tipo de partido fuera de la lista (liga o amistoso)', async () => {
   rechaza(await llamar('POST', '/api/partidos', A, { fecha: '2026-11-01', rival: 'ZZ', tipo: 'final' }), 'tipo de partido');
 });
 
-test('CP-SEG-010 [RNF-03] Referencia a un jugador inexistente', { todo: 'DEF-016' }, async () => {
+test('CP-SEG-010 [RNF-03] Referencia a un jugador inexistente', async () => {
   rechaza(await llamar('POST', '/api/lesiones', A, { jugador_id: 999999, fecha_inicio: '2026-10-01' }), 'lesión de jugador inexistente');
   rechaza(await llamar('POST', '/api/asistencia', A, { jugador_id: 999999, entrenamiento_id: 1 }), 'asistencia de jugador inexistente');
 });
 
-test('CP-SEG-011 [RNF-03] Valores numéricos imposibles (negativos)', { todo: 'DEF-017' }, async () => {
+test('CP-SEG-011 [RNF-03] Valores numéricos imposibles (negativos)', async () => {
   const { rows: [j] } = await sql('SELECT id FROM jugadores LIMIT 1');
   rechaza(await llamar('POST', '/api/estadisticas', A, { jugador_id: j.id, goles: -5 }), 'goles negativos');
   rechaza(await llamar('POST', '/api/jugadores', A, { nombre: 'ZZ robustez', edad: -3, peso: -70 }), 'edad y peso negativos');
@@ -91,7 +91,7 @@ test('CP-SEG-012 [RNF-03] Correo de usuario repetido', async () => {
   rechaza(await llamar('POST', '/api/usuarios', A, { nombre: 'Repetido', email: 'salud@dtdeportivo.com', password: 'Prueba123!', rol: 'jugador' }), 'correo repetido');
 });
 
-test('CP-SEG-013 [RNF-01] Un error interno no expone detalles de la base de datos', { todo: 'DEF-018' }, async () => {
+test('CP-SEG-013 [RNF-01] Un error interno no expone detalles de la base de datos', async () => {
   const r = await llamar('GET', '/api/jugadores/abc', A);
   const mensaje = JSON.stringify(r.datos || {});
   assert.ok(!/sintaxis|relación|viola|restricción|llave foránea|syntax|constraint|relation/i.test(mensaje),

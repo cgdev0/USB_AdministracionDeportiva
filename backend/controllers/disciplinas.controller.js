@@ -1,5 +1,6 @@
 const db = require('../config/db');
 
+const { responderError } = require('../utils/errores');
 exports.getAll = async (_req, res) => {
   try {
     const { rows } = await db.query(`
@@ -11,7 +12,7 @@ exports.getAll = async (_req, res) => {
     `);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -25,7 +26,7 @@ exports.create = async (req, res) => {
     );
     res.status(201).json(rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -38,6 +39,6 @@ exports.remove = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Disciplina no encontrada' });
     res.json({ message: 'Disciplina eliminada correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };

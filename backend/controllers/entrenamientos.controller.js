@@ -1,11 +1,12 @@
 const db = require('../config/db');
 
+const { responderError } = require('../utils/errores');
 exports.getAll = async (_req, res) => {
   try {
     const { rows } = await db.query('SELECT * FROM entrenamientos ORDER BY fecha DESC');
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -15,7 +16,7 @@ exports.getOne = async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Entrenamiento no encontrado' });
     res.json(rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -29,7 +30,7 @@ exports.create = async (req, res) => {
     );
     res.status(201).json({ id: rows[0].id, fecha, tipo, descripcion });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -43,7 +44,7 @@ exports.update = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Entrenamiento no encontrado' });
     res.json({ message: 'Entrenamiento actualizado correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -53,6 +54,6 @@ exports.remove = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Entrenamiento no encontrado' });
     res.json({ message: 'Entrenamiento eliminado correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };

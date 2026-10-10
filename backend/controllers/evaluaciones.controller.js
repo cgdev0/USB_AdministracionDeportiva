@@ -1,5 +1,6 @@
 const db = require('../config/db');
 
+const { responderError } = require('../utils/errores');
 exports.getAll = async (_req, res) => {
   try {
     const { rows } = await db.query(`
@@ -10,7 +11,7 @@ exports.getAll = async (_req, res) => {
     `);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -62,7 +63,7 @@ exports.create = async (req, res) => {
     );
     res.status(201).json({ id: rows[0].id, ...fields });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -71,6 +72,6 @@ exports.remove = async (req, res) => {
     await db.query('DELETE FROM evaluaciones_rugby WHERE id = $1', [req.params.id]);
     res.json({ message: 'Evaluación eliminada' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };

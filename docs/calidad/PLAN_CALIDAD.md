@@ -57,9 +57,9 @@ Así no hay que reconstruir al final qué se probó en cada versión, y las evid
 | 1 | Características de calidad | `01_caracteristicas.md` | Hecho |
 | 2 | Métricas e indicadores | `02_metricas.md` | Hecho (26 métricas, índice global con meta ≥ 85) |
 | 3 | Plan de pruebas | `03_plan_de_pruebas.md` | Hecho (PP-AD-01) |
-| 4 | Casos de prueba | `casos/catalogo.md` (automáticos, generado) y `casos/manuales.md` | 94 automáticos y 7 manuales pendientes de ejecutar |
-| 5 | Informe de ejecución | `informes/` | Línea base v1.3.1: 92,6 % de aprobación, índice 67 |
-| 6 | Repositorio y tableros | esta carpeta, `defectos.md`, GitHub Projects | Carpeta y registro hechos; tablero por crear |
+| 4 | Casos de prueba | `casos/catalogo.md` (automáticos, generado) y `casos/manuales.md` | 106 automáticos y 7 manuales pendientes de ejecutar |
+| 5 | Informe de ejecución | `informes/` | v1.3.1 (línea base): 92,6 % de aprobación, índice 67 · v1.4: 100 %, índice 72 |
+| 6 | Repositorio y tableros | esta carpeta, `defectos.md`, [tablero de GitHub Projects](https://github.com/users/cgdev0/projects/1) | Hecho: cada defecto y prueba manual es un issue en el tablero |
 
 Las pruebas que antes vivían fuera del repositorio ya están en `pruebas/` (ver `pruebas/README.md`). Cualquier integrante puede repetirlas con `npm test`.
 

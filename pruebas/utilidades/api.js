@@ -52,6 +52,14 @@ async function llamarFormulario(ruta, token, formulario) {
   return { status: res.status, datos };
 }
 
+// Petición sin procesar: cuerpo tal cual (por ejemplo, JSON mal formado) y acceso a las cabeceras
+async function llamarCrudo(metodo, ruta, { headers = {}, body } = {}) {
+  const res = await fetch(base + ruta, { method: metodo, headers, body });
+  let datos = null;
+  try { datos = await res.json(); } catch { /* sin cuerpo JSON */ }
+  return { status: res.status, datos, headers: res.headers };
+}
+
 async function token(rol) {
   const [email, password] = CUENTAS[rol];
   const r = await llamar('POST', '/api/auth/login', null, { email, password });
@@ -62,4 +70,4 @@ async function token(rol) {
 // Consulta directa a la base de pruebas (para verificar efectos y limpiar)
 const sql = (texto, params) => pool.query(texto, params);
 
-module.exports = { iniciar, cerrar, llamar, llamarFormulario, token, sql, CUENTAS };
+module.exports = { iniciar, cerrar, llamar, llamarFormulario, llamarCrudo, token, sql, CUENTAS };

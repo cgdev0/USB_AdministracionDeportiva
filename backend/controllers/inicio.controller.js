@@ -1,5 +1,6 @@
 const db = require('../config/db');
 
+const { responderError } = require('../utils/errores');
 // Restringe los jugadores visibles según el rol (mismas reglas que /api/jugadores)
 // y el deporte elegido. Devuelve condiciones SQL sobre el alias `j`.
 function alcanceJugadores(usuario, disciplinaId, params) {
@@ -151,6 +152,6 @@ exports.getInicio = async (req, res) => {
 
     res.json({ proximo_partido: proximo || null, plantel, resumen, revisar, semana, asistencia, anotadores });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
