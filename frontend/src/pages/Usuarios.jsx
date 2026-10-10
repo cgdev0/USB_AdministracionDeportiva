@@ -6,15 +6,17 @@ import toast from 'react-hot-toast'
 import ConfirmModal from '../components/ConfirmModal'
 import Modal from '../components/Modal'
 
-const ROLES = ['administrador', 'entrenador', 'personal_salud', 'jugador']
+const ROLES = ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador']
 const ROLE_LABELS = {
   administrador: 'Administrador',
+  head_coach: 'Head Coach',
   entrenador: 'Entrenador',
   personal_salud: 'Personal Salud',
   jugador: 'Jugador',
 }
 const ROLE_COLORS = {
   administrador: '#e74c3c',
+  head_coach: '#8e44ad',
   entrenador: '#2ecc71',
   personal_salud: '#3498db',
   jugador: '#f39c12',
@@ -30,7 +32,7 @@ export default function Usuarios() {
   const [filtroRol, setFiltroRol] = useState('todos')
   const csvRef = useRef()
 
-  const [form, setForm] = useState({ nombre: '', email: '', password: '', rol: 'jugador' })
+  const [form, setForm] = useState({ nombre: '', email: '', password: '', rol: 'jugador', head_coach_id: '' })
   const [csvResultado, setCsvResultado] = useState(null)
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, usuario: null, loading: false })
   const [resetModal, setResetModal] = useState({ isOpen: false, usuario: null, newPassword: '', loading: false })
@@ -51,13 +53,13 @@ export default function Usuarios() {
 
   const abrirCrear = () => {
     setEditando(null)
-    setForm({ nombre: '', email: '', password: '', rol: 'jugador' })
+    setForm({ nombre: '', email: '', password: '', rol: 'jugador', head_coach_id: '' })
     setModalOpen(true)
   }
 
   const abrirEditar = (u) => {
     setEditando(u)
-    setForm({ nombre: u.nombre, email: u.email, password: '', rol: u.rol })
+    setForm({ nombre: u.nombre, email: u.email, password: '', rol: u.rol, head_coach_id: u.head_coach_id || '' })
     setModalOpen(true)
   }
 
@@ -65,7 +67,7 @@ export default function Usuarios() {
     e.preventDefault()
     try {
       if (editando) {
-        await api.put(`/usuarios/${editando.id}`, { nombre: form.nombre, email: form.email, rol: form.rol, activo: editando.activo })
+        await api.put(`/usuarios/${editando.id}`, { nombre: form.nombre, email: form.email, rol: form.rol, head_coach_id: form.head_coach_id || null, activo: editando.activo })
         toast.success('Usuario actualizado')
       } else {
         await api.post('/usuarios', form)
@@ -269,6 +271,7 @@ export default function Usuarios() {
                   ))}
                 </select>
               </div>
+              {form.rol === 'entrenador' && <div className="form-group"><label>Head Coach asociado (opcional)</label><select value={form.head_coach_id} onChange={e => setForm(f => ({...f, head_coach_id:e.target.value}))}><option value="">Sin asociación</option>{usuarios.filter(u=>u.rol==='head_coach' && (!editando || u.id!==editando.id)).map(u=><option key={u.id} value={u.id}>{u.nombre}</option>)}</select></div>}
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setModalOpen(false)}>Cancelar</button>
                 <button type="submit" className="btn-primary">{editando ? 'Guardar' : 'Crear'}</button>

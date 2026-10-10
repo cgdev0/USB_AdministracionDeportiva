@@ -40,7 +40,9 @@ api.interceptors.response.use(
       }
     }
     const msg = error.response?.data?.error || error.message || 'Error de conexión'
-    return Promise.reject(new Error(msg))
+    const err = new Error(msg)
+    err.status = error.response?.status
+    return Promise.reject(err)
   }
 )
 

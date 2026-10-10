@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
 import { formatImageUrl } from '../utils/image'
 
-const EMPTY = { nombre: '', edad: '', posicion: '', peso: '', altura: '', equipo_id: '', disciplina_id: '' }
+const EMPTY = { nombre: '', edad: '', posicion: '', peso: '', altura: '', equipo_id: '', disciplina_id: '', entrenador_id: '' }
 
 // Sugerencias de posiciones comunes según el deporte
 const POSICIONES_POR_DEPORTE = {
@@ -38,6 +38,7 @@ export default function Jugadores() {
 
   const [jugadores, setJugadores]         = useState([])
   const [equipos, setEquipos]             = useState([])
+  const [entrenadores, setEntrenadores]   = useState([])
   
   // Nuevo deporte modal
   const [nuevoDeporteNombre, setNuevoDeporteNombre] = useState('')
@@ -45,6 +46,8 @@ export default function Jugadores() {
 
   // Búsqueda y filtrado
   const [searchTerm, setSearchTerm]       = useState('')
+  const [mostrarFiltros, setMostrarFiltros] = useState(false)
+  const [filtros, setFiltros] = useState({ edadMin:'', edadMax:'', posicion:'', entrenador:'' })
 
   // Modales
   const [modal, setModal]                 = useState(false)
@@ -65,12 +68,10 @@ export default function Jugadores() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [jRes, eRes] = await Promise.all([
-        api.get('/jugadores'),
-        api.get('/equipos'),
-      ])
+      const [jRes, eRes] = await Promise.all([api.get('/jugadores'), api.get('/equipos')])
       setJugadores(jRes.data)
       setEquipos(eRes.data)
+      if (usuario?.rol === 'administrador') { try { const uRes = await api.get('/usuarios'); setEntrenadores(uRes.data.filter(u=>u.rol==='entrenador')) } catch {} }
     } catch (e) {
       toast.error(e.message)
     } finally {
@@ -100,6 +101,10 @@ export default function Jugadores() {
       const matchEquipo = j.equipo_nombre?.toLowerCase().includes(term)
       return matchNombre || matchPos || matchEquipo
     }
+    if (filtros.edadMin !== '' && Number(j.edad || 0) < Number(filtros.edadMin)) return false
+    if (filtros.edadMax !== '' && Number(j.edad || 0) > Number(filtros.edadMax)) return false
+    if (filtros.posicion && !j.posicion?.toLowerCase().includes(filtros.posicion.toLowerCase())) return false
+    if (filtros.entrenador && String(j.entrenador_id || '') !== String(filtros.entrenador)) return false
     return true
   })
 
@@ -143,6 +148,7 @@ export default function Jugadores() {
       altura: j.altura ?? '',
       equipo_id: j.equipo_id ?? '',
       disciplina_id: j.disciplina_id ?? (selectedSportId !== 'todos' ? selectedSportId : ''),
+      entrenador_id: j.entrenador_id ?? '',
     })
     setModoAsociacion(j.disciplina_id ? 'disciplina' : (j.equipo_id ? 'equipo' : 'disciplina'))
     setEditId(j.id)
@@ -386,6 +392,19 @@ export default function Jugadores() {
         </div>
       </div>
 
+      <div style={{display:'flex',justifyContent:'flex-end',margin:'10px 0'}}>
+        <button className="btn btn-secondary" onClick={()=>setMostrarFiltros(v=>!v)}><Filter size={15}/> {mostrarFiltros?'Ocultar filtros':'Filtros avanzados'}</button>
+      </div>
+      {mostrarFiltros && <div className="card" style={{padding:16,marginBottom:16}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12}}>
+          <label>Edad mínima<input type="number" min="0" value={filtros.edadMin} onChange={e=>setFiltros({...filtros,edadMin:e.target.value})} style={{display:'block',width:'100%',padding:8,marginTop:4}}/></label>
+          <label>Edad máxima<input type="number" min="0" value={filtros.edadMax} onChange={e=>setFiltros({...filtros,edadMax:e.target.value})} style={{display:'block',width:'100%',padding:8,marginTop:4}}/></label>
+          <label>Posición<input value={filtros.posicion} onChange={e=>setFiltros({...filtros,posicion:e.target.value})} placeholder="Ej. delantero" style={{display:'block',width:'100%',padding:8,marginTop:4}}/></label>
+          {['administrador','personal_salud','head_coach'].includes(usuario?.rol)&&<label>Entrenador<select value={filtros.entrenador} onChange={e=>setFiltros({...filtros,entrenador:e.target.value})} style={{display:'block',width:'100%',padding:8,marginTop:4}}><option value="">Todos</option>{[...new Map(jugadores.filter(j=>j.entrenador_id).map(j=>[j.entrenador_id,{id:j.entrenador_id,nombre:j.entrenador_nombre}])).values()].map(x=><option key={x.id} value={x.id}>{x.nombre||`Entrenador ${x.id}`}</option>)}</select></label>}
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:12}}><small style={{color:'var(--text-muted)'}}>Filtros activos: {Object.values(filtros).filter(Boolean).length}</small><button className="btn btn-ghost" onClick={()=>setFiltros({edadMin:'',edadMax:'',posicion:'',entrenador:''})}>Limpiar filtros</button></div>
+      </div>}
+
       {/* Tabla de Jugadores */}
       <div className="card" style={{ padding: 0 }}>
         {loading ? (
@@ -423,6 +442,7 @@ export default function Jugadores() {
                   <th>Posición</th>
                   <th>Deporte / Disciplina</th>
                   <th>Equipo</th>
+                  <th>Entrenador</th>
                   <th>Peso (kg)</th>
                   <th>Altura (m)</th>
                   <th>Acciones</th>
@@ -482,6 +502,7 @@ export default function Jugadores() {
                         <span style={{ color: 'var(--text-muted)' }}>—</span>
                       )}
                     </td>
+                    <td>{j.entrenador_nombre || '—'}</td>
                     <td>{j.peso ? `${j.peso} kg` : '—'}</td>
                     <td>{j.altura ? `${j.altura} m` : '—'}</td>
                     <td>
@@ -752,6 +773,8 @@ export default function Jugadores() {
                 ))}
               </select>
             </div>
+
+            {usuario?.rol === 'administrador' && <div className="form-group"><label>Entrenador asignado</label><select name="entrenador_id" value={form.entrenador_id} onChange={handleChange}><option value="">Sin asignar</option>{entrenadores.map(t=><option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div>}
 
             <div className="form-group">
               <label>Peso corporal (kg)</label>

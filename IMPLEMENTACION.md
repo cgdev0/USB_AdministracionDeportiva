@@ -1,172 +1,92 @@
-# IMPLEMENTACION.md — Hoja de Ruta y Estado de Funcionalidades DTdeportivo
+# IMPLEMENTACION.md — Estado del frontend y hoja de ruta DTdeportivo
 
-Este archivo describe las funcionalidades implementadas recientemente y las tareas pendientes aprobadas para próximas sesiones.
+## 1. Base revisada
 
----
+Esta documentación se actualiza sobre la versión `DTdeportivo_roles_personalizados_v2(2).zip`. Se describen los módulos que están presentes en el frontend y se separa la existencia de una pantalla de la verificación de su funcionamiento integral.
 
-## Funcionalidades Recientemente Implementadas
+## 2. Módulos presentes en el frontend
 
-### ✅ Cálculo Automático de Composición Corporal & ISAK en Antropometría
-- **Motor de cálculo en cliente (`frontend/src/utils/anthropometry.js`)**:
-  - `% Grasa Corporal`: fórmulas de Yuhasz (6 pliegues adaptada para atletas por género) y Faulkner (4 pliegues).
-  - `Masa Muscular Esquelética (kg)`: modelo de fraccionamiento de 4 componentes de Matiegka.
-  - `Masa Mineral Ósea (kg)`: ecuación de Rocha basada en diámetros de húmero y fémur.
-  - `Somatotipo Heath-Carter`: Endomorfia, Mesomorfia, Ectomorfia y coordenadas $(X, Y)$ para la Somatocarta.
-- **Frontend Interactivo**:
-  - Tarjeta de cálculo en vivo en el modal de evaluación.
-  - Modo autocompletar activable / desactivable con botón de recálculo instantáneo.
-- **Backend & Sincronización**:
-  - Cálculo automático en `antropometria.controller.js` con detección automática del género del jugador.
-- **Despliegue Vercel**:
-  - Configuración optimizada en `vercel.json` con preset `vite` y redirecciones SPA / API serverless.
+| Módulo | Archivo |
+|---|---|
+| Inicio / Dashboard | `frontend/src/pages/Dashboard.jsx` |
+| Equipos | `frontend/src/pages/Equipos.jsx` |
+| Deportistas | `frontend/src/pages/Jugadores.jsx` |
+| Entrenamientos | `frontend/src/pages/Entrenamientos.jsx` |
+| Asistencia | `frontend/src/pages/Asistencia.jsx` |
+| Lesiones | `frontend/src/pages/Lesiones.jsx` |
+| Salud y controles | `frontend/src/pages/Salud.jsx` |
+| Evaluaciones | `frontend/src/pages/Evaluaciones.jsx` |
+| Partidos | `frontend/src/pages/Partidos.jsx` |
+| Estadísticas | `frontend/src/pages/EstadisticasJugador.jsx` |
+| Antropometría | `frontend/src/pages/Antropometria.jsx` |
+| Usuarios | `frontend/src/pages/Usuarios.jsx` |
+| Panel Head Coach | `frontend/src/pages/HeadCoach.jsx` |
 
----
+El contexto de autenticación está en `frontend/src/context/AuthContext.jsx`, el menú por rol en `frontend/src/components/Navbar.jsx` y las rutas en `frontend/src/App.jsx`.
 
-## Funcionalidades Pendientes
+## 3. Roles contemplados
 
-## Punto 2 — Rol Head Coach
+El código del frontend reconoce los roles `administrador`, `head_coach`, `entrenador`, `personal_salud` y `jugador`. `Navbar.jsx` filtra los elementos del menú por rol y `App.jsx` utiliza rutas protegidas; no obstante, las listas de acceso del menú y las rutas no son completamente equivalentes en todos los módulos. Deben unificarse y probarse antes de considerar el control de acceso terminado.
 
-### Descripción
-Nuevo rol `head_coach` con perfil individual propio (página `/head-coach`). Puede ver datos de todos los equipos y entrenadores que tenga asociados. No recibe acceso modular individual sino una vista consolidada propia.
+En desarrollo, `AuthContext.jsx` contiene cuentas de demostración. Los tokens `demo:*` simulan la sesión en el frontend y **no constituyen prueba de autorización válida en la API**. No deben utilizarse como autenticación de producción.
 
-### Cambios en base de datos
+## 4. Estado de avance
 
-```sql
--- Agregar head_coach_id a la tabla usuarios (FK hacia sí misma)
-ALTER TABLE usuarios ADD COLUMN head_coach_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL;
+### Identificado en el código
+- Páginas React para los módulos listados en la sección 2.
+- Menú lateral que muestra opciones según el rol.
+- Ruta específica `/head-coach`.
+- Contexto de autenticación con roles y modo demo de desarrollo.
+- Formularios y llamadas al cliente HTTP en distintos módulos.
+- Código de cálculo antropométrico en `frontend/src/utils/anthropometry.js`.
 
--- El head_coach_id se asigna en el perfil del entrenador (no es obligatorio)
-```
+### Pendiente de validar
+- Que cada formulario guarde correctamente a través del backend.
+- Que los datos permanezcan después de recargar o reiniciar la aplicación.
+- Que los endpoints comprueben el rol y la propiedad/asignación del registro.
+- Que un jugador solamente consulte su propia antropometría, salud, asistencia, evaluaciones y estadísticas cuando corresponda.
+- Que las cuentas creadas desde Usuarios se vinculen correctamente con el perfil deportivo del jugador.
+- Que el entrenador vea únicamente los deportistas que tiene asignados.
+- Que el Head Coach vea solamente la información de los entrenadores asociados.
+- Que el personal de salud tenga acceso a la información clínica necesaria y que otros roles no puedan consultar datos clínicos restringidos.
+- Que la aplicación compile con `npm run build` y pase pruebas funcionales.
 
-### Cambios en backend
+## 5. Prioridades recomendadas
 
-1. **`backend/middleware/auth.js`** — Agregar `'head_coach'` a las listas de roles válidos donde corresponda.
-2. **`backend/controllers/usuarios.controller.js`**:
-   - Permitir crear `head_coach` solo por `administrador`.
-   - Al listar entrenadores, incluir el campo `head_coach_id` / `head_coach_nombre`.
-3. **`backend/routes/usuarios.routes.js`** — Agregar `head_coach` a los roles permitidos en los endpoints de creación.
-4. **Nuevo controlador `backend/controllers/headcoach.controller.js`**:
-   - `GET /api/head-coach/resumen` → devuelve todos los equipos y entrenadores asociados al `head_coach` autenticado.
-   - `GET /api/head-coach/entrenadores` → lista entrenadores cuyo `head_coach_id` coincide con el usuario autenticado.
-   - `GET /api/head-coach/jugadores` → lista jugadores de los equipos de esos entrenadores.
-5. **Nueva ruta `backend/routes/headcoach.routes.js`** — protegida con `autorizar('head_coach', 'administrador')`.
-6. **`backend/server.js`** — registrar la nueva ruta `/api/head-coach`.
+1. **Acceso y privacidad:** comparar las reglas del menú, las rutas de `App.jsx`, los middleware y los controladores backend.
+2. **Cuenta de jugador:** comprobar la relación entre `usuarios.jugador_id` y el perfil deportivo.
+3. **Antropometría:** limitar la consulta a los registros propios para el rol `jugador`, tanto en frontend como en backend.
+4. **Asignación deportiva:** verificar filtros de entrenador y Head Coach en jugadores, entrenamientos, partidos, asistencia y estadísticas.
+5. **Salud:** revisar permisos de historia clínica, lesiones, controles y notificaciones.
+6. **Persistencia:** probar crear/leer/editar/eliminar según corresponda y confirmar el resultado tras recargar.
+7. **Regresión:** ejecutar `npm run build` y probar cada rol en una sesión separada.
 
-### Cambios en frontend
+## 6. Matriz de pruebas funcionales
 
-1. **`frontend/src/App.jsx`** — Agregar ruta `/head-coach` protegida con rol `head_coach`.
-2. **`frontend/src/components/Navbar.jsx`** — Agregar ítem "Mi Panel" para `head_coach`, ocultar rutas de gestión individuales.
-3. **Nueva página `frontend/src/pages/HeadCoach.jsx`**:
-   - Sección: mis entrenadores (tabla con nombre, equipo asignado).
-   - Sección: todos mis jugadores (tabla con equipo, entrenador, posición).
-   - Sección: resumen estadístico (número de equipos, jugadores, próximos partidos).
-4. **`frontend/src/context/AuthContext.jsx`** — Incluir `head_coach` en los flujos de `tienePermiso`.
-
-### Tabla de permisos actualizada
-
-| Módulo | Admin | Head Coach | Entrenador | Personal Salud | Jugador |
-|---|:---:|:---:|:---:|:---:|:---:|
-| Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Mi Panel HC | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Jugadores | ✅ | 👁️ sus equipos | 👁️ su equipo | 👁️ | 👁️ propio |
-| Entrenamientos | ✅ | 👁️ | ✅ | ❌ | 👁️ |
-| Lesiones | ✅ | 👁️ | 👁️ | ✅ | 👁️ propio |
-| Usuarios | ✅ | ❌ | ✅ parcial | ❌ | ❌ |
-
----
-
-## Punto 3 — Restricción de visibilidad del Entrenador
-
-### Descripción
-Un entrenador solo puede ver y gestionar jugadores y datos de **su propio equipo**. Opcionalmente puede tener un `head_coach` asignado (no obligatorio).
-
-### Cambios en base de datos
-
-```sql
--- Ya cubierto en Punto 2: head_coach_id en usuarios
--- No se requieren migraciones adicionales para este punto
-```
-
-### Cambios en backend
-
-1. **`backend/controllers/jugadores.controller.js`**:
-   - En `GET /api/jugadores`: si el rol es `entrenador`, filtrar por `entrenador_id = req.usuario.id` (ver Punto 4).
-   - En `POST /api/jugadores`: asignar automáticamente `entrenador_id = req.usuario.id` si el creador es entrenador.
-2. **`backend/controllers/entrenamientos.controller.js`** — Filtrar por entrenador cuando el rol sea `entrenador`.
-3. **`backend/controllers/partidos.controller.js`** — Ídem.
-4. **`backend/controllers/estadisticas.controller.js`** — Filtrar por equipo del entrenador.
-
----
-
-## Punto 4 — Columna Entrenador en Jugadores
-
-### Descripción
-Agregar el campo `entrenador_id` en la tabla `jugadores` para asociar cada jugador a un entrenador específico. Esto también sirve de filtro cuando existe un `head_coach`.
-
-### Cambios en base de datos
-
-```sql
-ALTER TABLE jugadores ADD COLUMN entrenador_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL;
-```
-
-### Cambios en backend
-
-1. **`backend/controllers/jugadores.controller.js`**:
-   - Incluir `entrenador_id` / `entrenador_nombre` en SELECT (JOIN con `usuarios`).
-   - Permitir asignar o cambiar `entrenador_id` en POST/PUT.
-2. **`backend/controllers/headcoach.controller.js`** — Usar `entrenador_id` para las consultas agregadas del head_coach.
-
-### Cambios en frontend
-
-1. **`frontend/src/pages/Jugadores.jsx`**:
-   - Agregar columna "Entrenador" en la tabla de jugadores.
-   - En formulario de edición: selector de entrenador (solo visible para `administrador` y `head_coach`).
-   - Mostrar `entrenador_nombre` en la tarjeta/fila del jugador.
-
----
-
-## Punto 5 — Panel de Filtros en Jugadores
-
-### Descripción
-Sección colapsable de filtros en la página Jugadores para filtrar/ocultar por múltiples criterios.
-
-### Filtros a implementar
-
-| Filtro | Tipo | Descripción |
+| Prueba | Resultado esperado | Estado |
 |---|---|---|
-| Equipo / Disciplina | Select | Filtrar por equipo registrado o disciplina individual |
-| Edad | Rango (min–max) | Calculada a partir de `fecha_nacimiento` |
-| Posición | Select/texto | Campo `posicion` de la tabla jugadores |
-| Entrenador | Select | Lista de entrenadores disponibles (según rol del usuario) |
+| Iniciar sesión por rol | Se identifica el rol correcto | Pendiente de prueba |
+| Abrir una ruta no autorizada | Acceso denegado o redirección | Pendiente de prueba |
+| Jugador consulta antropometría | Solo aparecen datos propios | Pendiente de prueba |
+| Jugador intenta cambiar el ID consultado | Backend rechaza la petición ajena | Pendiente de prueba |
+| Administrador crea cuenta de jugador | Cuenta vinculada al perfil deportivo correcto | Pendiente de prueba |
+| Entrenador consulta jugadores | Solo ve deportistas asignados | Pendiente de prueba |
+| Personal de salud consulta historia clínica | Acceso permitido según autorización | Pendiente de prueba |
+| Crear un registro y recargar | El registro sigue disponible si se guardó correctamente | Pendiente de prueba |
+| Compilar frontend | `npm run build` termina sin errores | Pendiente de prueba |
 
-### Cambios en frontend solamente
+## 7. Base de datos y despliegue
 
-1. **`frontend/src/pages/Jugadores.jsx`**:
-   - Agregar botón "Filtros" (toggle show/hide panel).
-   - Componente de filtros con los 4 selectores descritos.
-   - Filtrado en frontend (sobre el array de jugadores ya cargado) — no requiere cambios en la API por ahora.
-   - Indicador de filtros activos (badge con número de filtros aplicados).
-   - Botón "Limpiar filtros".
+El repositorio incluye configuración de Firebase/Firestore y configuración de servidor. Antes de realizar migraciones, se debe identificar qué almacenamiento está activo en la instalación. Una migración SQL no actualiza automáticamente colecciones de Firestore. No ejecutar migraciones en producción sin respaldo.
 
-### Opcionalmente (si el volumen de datos es grande)
+Las cuentas demo del frontend sirven únicamente para revisar la interfaz en modo desarrollo. Para comprobar persistencia y seguridad se requieren cuentas y datos de prueba conectados al backend y al almacenamiento realmente utilizado.
 
-- Pasar filtros como query params al endpoint `GET /api/jugadores` y filtrar en el backend.
-- Agregar índices en `equipo_id`, `entrenador_id`, `posicion` en la tabla `jugadores`.
+## 8. Criterio para declarar una función terminada
 
----
-
-## Orden de implementación sugerido
-
-1. **Punto 4** primero → migración DB + columna entrenador_id
-2. **Punto 3** después → lógica de restricción en backend
-3. **Punto 2** después → rol head_coach completo
-4. **Punto 5** al final → solo frontend, independiente
-
----
-
-## Notas de implementación
-
-- Al agregar `head_coach` como rol, actualizar también: `backend/config/seed.js` (agregar usuario de prueba), `README.md` (tabla de roles, credenciales de prueba).
-- Las migraciones SQL (`ALTER TABLE`) se deben ejecutar en la consola SQL de Neon antes de desplegar el código nuevo.
-- No usar bcrypt — mantener el hashing con `crypto` (SHA-256 HMAC + salt) ya implementado.
-- El CSV de carga masiva deberá soportar el rol `head_coach` una vez implementado el Punto 2.
+Una función se considerará terminada cuando:
+1. La interfaz permita realizar la operación prevista.
+2. La API valide autenticación, rol y propiedad/asignación del registro.
+3. La operación guarde o consulte el dato esperado.
+4. El resultado se compruebe después de recargar.
+5. Se prueben tanto el acceso permitido como el intento de acceso no autorizado.
+6. Se actualice esta documentación con el resultado de las pruebas reales.

@@ -8,8 +8,8 @@ function hashPassword(pwd, salt)  { return crypto.createHmac('sha256', salt).upd
 exports.getAll = async (_req, res) => {
   try {
     const { rows } = await db.query(
-      `SELECT id, nombre, email, rol, jugador_id, activo, primer_login, created_at
-       FROM usuarios ORDER BY created_at DESC`
+      `SELECT u.id, u.nombre, u.email, u.rol, u.jugador_id, u.head_coach_id, hc.nombre AS head_coach_nombre, u.activo, u.primer_login, u.created_at
+       FROM usuarios u LEFT JOIN usuarios hc ON hc.id=u.head_coach_id ORDER BY u.created_at DESC`
     );
     res.json(rows);
   } catch (err) {
@@ -19,11 +19,11 @@ exports.getAll = async (_req, res) => {
 
 // POST /api/usuarios
 exports.create = async (req, res) => {
-  const { nombre, email, password, rol, jugador_id } = req.body;
+  const { nombre, email, password, rol, jugador_id, head_coach_id } = req.body;
   if (!nombre || !email || !password || !rol)
     return res.status(400).json({ error: 'nombre, email, password y rol son obligatorios' });
 
-  const rolesPermitidos = ['administrador', 'entrenador', 'personal_salud', 'jugador'];
+  const rolesPermitidos = ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador'];
   if (!rolesPermitidos.includes(rol))
     return res.status(400).json({ error: 'Rol inválido' });
 
@@ -35,9 +35,9 @@ exports.create = async (req, res) => {
     const salt = generateSalt();
     const hash = hashPassword(password, salt);
     const { rows } = await db.query(
-      `INSERT INTO usuarios (nombre, email, password_hash, salt, rol, jugador_id)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-      [nombre, email.toLowerCase().trim(), hash, salt, rol, jugador_id || null]
+      `INSERT INTO usuarios (nombre, email, password_hash, salt, rol, jugador_id, head_coach_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [nombre, email.toLowerCase().trim(), hash, salt, rol, jugador_id || null, head_coach_id || null]
     );
     res.status(201).json({ id: rows[0].id, nombre, email, rol, activo: true, primer_login: true });
   } catch (err) {
@@ -48,11 +48,13 @@ exports.create = async (req, res) => {
 
 // PUT /api/usuarios/:id
 exports.update = async (req, res) => {
-  const { nombre, email, rol, jugador_id, activo } = req.body;
+  const { nombre, email, rol, jugador_id, head_coach_id, activo } = req.body;
+  const rolesPermitidos = ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador'];
+  if (!rolesPermitidos.includes(rol)) return res.status(400).json({ error: 'Rol inválido' });
   try {
     const { rowCount } = await db.query(
-      `UPDATE usuarios SET nombre=$1, email=$2, rol=$3, jugador_id=$4, activo=$5 WHERE id=$6`,
-      [nombre, email?.toLowerCase().trim(), rol, jugador_id || null, activo ?? true, req.params.id]
+      `UPDATE usuarios SET nombre=$1, email=$2, rol=$3, jugador_id=$4, head_coach_id=$5, activo=$6 WHERE id=$7`,
+      [nombre, email?.toLowerCase().trim(), rol, jugador_id || null, head_coach_id || null, activo ?? true, req.params.id]
     );
     if (rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json({ message: 'Usuario actualizado correctamente' });
@@ -105,7 +107,7 @@ exports.createFromCSV = async (req, res) => {
       trim: true,
     });
 
-    const rolesValidos = ['administrador', 'entrenador', 'personal_salud', 'jugador'];
+    const rolesValidos = ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador'];
     const resultados = { creados: 0, errores: [] };
 
     for (const [i, row] of records.entries()) {

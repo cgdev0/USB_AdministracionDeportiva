@@ -15,6 +15,8 @@ import Partidos from './pages/Partidos'
 import EstadisticasJugador from './pages/EstadisticasJugador'
 import Antropometria from './pages/Antropometria'
 import Usuarios from './pages/Usuarios'
+import HeadCoach from './pages/HeadCoach'
+import Salud from './pages/Salud'
 
 function AppLayout({ children }) {
   return (
@@ -92,6 +94,10 @@ export default function App() {
               <AppLayout><Antropometria /></AppLayout>
             </ProtectedRoute>
           } />
+
+          <Route path="/head-coach" element={<ProtectedRoute roles={['head_coach']}><AppLayout><HeadCoach /></AppLayout></ProtectedRoute>} />
+
+          <Route path="/salud" element={<ProtectedRoute roles={['administrador','personal_salud','jugador']}><AppLayout><Salud /></AppLayout></ProtectedRoute>} />
 
           <Route path="/usuarios" element={
             <ProtectedRoute roles={['administrador']}>
