@@ -37,7 +37,7 @@ exports.getSummary = async (req, res) => {
     );
 
     let topQuery = `
-      SELECT j.nombre, j.disciplina_id, d.nombre AS disciplina_nombre,
+      SELECT j.nombre, j.dorsal, j.disciplina_id, d.nombre AS disciplina_nombre,
              SUM(es.goles) AS total_anotaciones, SUM(es.asistencias) AS total_asistencias
       FROM estadisticas_jugador es
       JOIN jugadores j ON es.jugador_id = j.id
@@ -49,7 +49,7 @@ exports.getSummary = async (req, res) => {
       topParams = [filterSport];
     }
     topQuery += `
-      GROUP BY es.jugador_id, j.nombre, j.disciplina_id, d.nombre
+      GROUP BY es.jugador_id, j.nombre, j.dorsal, j.disciplina_id, d.nombre
       ORDER BY total_anotaciones DESC, total_asistencias DESC
       LIMIT 5
     `;

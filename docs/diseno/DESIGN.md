@@ -88,6 +88,10 @@ Header blanco compacto (logo + nombre del sistema + foto), franja, contenido en 
 | Bajo contraste en pestañas inactivas | Contraste AA en todo. |
 | Página fija de escritorio | Diseño responsive verificado a 390 px y 1440 px. |
 
+## Ideas para más adelante
+
+- **Fotos reales de fondo con desenfoque** (jugadores, canchas o sedes de entrenamiento de la sede Cúcuta) en el banner del próximo partido y en el login, con una capa verde noche `#00470A` encima para mantener el contraste del texto blanco. Requiere fotos propias o con permiso de uso; nada de fotos de stock.
+
 ## 6. Historial de decisiones
 
 | Versión | Dirección | Resultado |

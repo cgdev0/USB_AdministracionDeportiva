@@ -21,7 +21,7 @@ function filtroPorRol(usuario, params) {
 exports.getAll = async (req, res) => {
   try {
     if (req.usuario?.rol === 'jugador' && !req.usuario.jugador_id) return res.json([]);
-    let query = `SELECT l.*, j.nombre AS jugador_nombre FROM lesiones l JOIN jugadores j ON l.jugador_id = j.id`;
+    let query = `SELECT l.*, j.nombre AS jugador_nombre, j.dorsal AS jugador_dorsal FROM lesiones l JOIN jugadores j ON l.jugador_id = j.id`;
     const params = [];
     const filtro = filtroPorRol(req.usuario, params);
     if (filtro) query += ` WHERE ${filtro}`;
@@ -39,7 +39,7 @@ exports.getOne = async (req, res) => {
       return res.status(404).json({ error: 'Lesión no encontrada' });
     }
     const params = [req.params.id];
-    let query = `SELECT l.*, j.nombre AS jugador_nombre FROM lesiones l JOIN jugadores j ON l.jugador_id = j.id WHERE l.id = $1`;
+    let query = `SELECT l.*, j.nombre AS jugador_nombre, j.dorsal AS jugador_dorsal FROM lesiones l JOIN jugadores j ON l.jugador_id = j.id WHERE l.id = $1`;
     const filtro = filtroPorRol(req.usuario, params);
     if (filtro) query += ` AND ${filtro}`;
     const { rows } = await db.query(query, params);

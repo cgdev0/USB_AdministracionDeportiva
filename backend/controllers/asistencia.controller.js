@@ -4,7 +4,7 @@ exports.getAll = async (req, res) => {
   try {
     const { entrenamiento_id } = req.query;
     let query = `
-      SELECT ae.*, j.nombre AS jugador_nombre, e.tipo AS entrenamiento_tipo, e.fecha
+      SELECT ae.*, j.nombre AS jugador_nombre, j.dorsal AS jugador_dorsal, e.tipo AS entrenamiento_tipo, e.fecha
       FROM asistencia_entrenamiento ae
       JOIN jugadores j ON ae.jugador_id = j.id
       JOIN entrenamientos e ON ae.entrenamiento_id = e.id

@@ -3,7 +3,7 @@ const db = require('../config/db');
 exports.getAll = async (_req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT e.*, j.nombre as jugador_nombre
+      SELECT e.*, j.nombre AS jugador_nombre, j.dorsal AS jugador_dorsal
       FROM evaluaciones_rugby e
       JOIN jugadores j ON e.jugador_id = j.id
       ORDER BY e.fecha DESC
