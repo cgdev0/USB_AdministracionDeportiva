@@ -1,12 +1,30 @@
 const db = require('../config/db');
 
+// Restringe las lesiones visibles según el rol: el jugador ve las propias,
+// el entrenador las de sus deportistas y el head coach las de sus entrenadores.
+function filtroPorRol(usuario, params) {
+  if (usuario?.rol === 'jugador') {
+    params.push(usuario.jugador_id);
+    return `l.jugador_id = $${params.length}`;
+  }
+  if (usuario?.rol === 'entrenador') {
+    params.push(usuario.id);
+    return `j.entrenador_id = $${params.length}`;
+  }
+  if (usuario?.rol === 'head_coach') {
+    params.push(usuario.id);
+    return `j.entrenador_id IN (SELECT id FROM usuarios WHERE head_coach_id = $${params.length})`;
+  }
+  return null;
+}
+
 exports.getAll = async (req, res) => {
   try {
+    if (req.usuario?.rol === 'jugador' && !req.usuario.jugador_id) return res.json([]);
     let query = `SELECT l.*, j.nombre AS jugador_nombre FROM lesiones l JOIN jugadores j ON l.jugador_id = j.id`;
     const params = [];
-    if (req.usuario?.rol === 'jugador') { params.push(req.usuario.jugador_id); query += ` WHERE l.jugador_id = $1`; }
-    else if (req.usuario?.rol === 'entrenador') { params.push(req.usuario.id); query += ` WHERE j.entrenador_id = $1`; }
-    else if (req.usuario?.rol === 'head_coach') { params.push(req.usuario.id); query += ` WHERE j.entrenador_id IN (SELECT id FROM usuarios WHERE head_coach_id=$1)`; }
+    const filtro = filtroPorRol(req.usuario, params);
+    if (filtro) query += ` WHERE ${filtro}`;
     query += ' ORDER BY l.fecha_inicio DESC';
     const { rows } = await db.query(query, params);
     res.json(rows);
@@ -17,7 +35,14 @@ exports.getAll = async (req, res) => {
 
 exports.getOne = async (req, res) => {
   try {
-    const { rows } = await db.query('SELECT * FROM lesiones WHERE id = $1', [req.params.id]);
+    if (req.usuario?.rol === 'jugador' && !req.usuario.jugador_id) {
+      return res.status(404).json({ error: 'Lesión no encontrada' });
+    }
+    const params = [req.params.id];
+    let query = `SELECT l.*, j.nombre AS jugador_nombre FROM lesiones l JOIN jugadores j ON l.jugador_id = j.id WHERE l.id = $1`;
+    const filtro = filtroPorRol(req.usuario, params);
+    if (filtro) query += ` AND ${filtro}`;
+    const { rows } = await db.query(query, params);
     if (!rows.length) return res.status(404).json({ error: 'Lesión no encontrada' });
     res.json(rows[0]);
   } catch (err) {

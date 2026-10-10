@@ -43,22 +43,6 @@ export function AuthProvider({ children }) {
   }, [logout])
 
   const login = async (email, password) => {
-    // En desarrollo local, las cuentas demo se resuelven antes de llamar a la API,
-    // porque el backend puede no estar levantado todavía.
-    if (import.meta.env.DEV) {
-      const term = String(email || '').trim().toLowerCase()
-      const demoUser = DEMO_USERS.find(u =>
-        (u.email.toLowerCase() === term || u.email.split('@')[0] === term) && u.password === password
-      )
-      if (demoUser) {
-        localStorage.setItem('access_token', `demo:${demoUser.id}`)
-        localStorage.removeItem('refresh_token')
-        const usuarioDemo = { id: demoUser.id, nombre: demoUser.nombre, email: demoUser.email, rol: demoUser.rol, jugador_id: demoUser.jugador_id, modo_demo: true }
-        setUsuario(usuarioDemo)
-        return usuarioDemo
-      }
-    }
-
     try {
       const { data } = await api.post('/auth/login', { email, password })
       localStorage.setItem('access_token', data.access_token)
@@ -67,17 +51,20 @@ export function AuthProvider({ children }) {
       return data.usuario
     } catch (error) {
       // Fallback exclusivo de Vite en desarrollo, para poder revisar cada rol
-      // mientras el backend/base de datos todavía no están conectados.
-      if (import.meta.env.DEV) {
+      // solo cuando el backend no responde (sin respuesta o error 5xx).
+      // Un 401 (credenciales inválidas) nunca abre una sesión demo.
+      const backendCaido = !error.status || error.status >= 500
+      if (import.meta.env.DEV && backendCaido) {
         const term = String(email || '').trim().toLowerCase()
         const demoUser = DEMO_USERS.find(u =>
           (u.email.toLowerCase() === term || u.email.split('@')[0] === term) && u.password === password
         )
         if (demoUser) {
+          const usuarioDemo = { id: demoUser.id, nombre: demoUser.nombre, email: demoUser.email, rol: demoUser.rol, jugador_id: demoUser.jugador_id, modo_demo: true }
           localStorage.setItem('access_token', `demo:${demoUser.id}`)
           localStorage.removeItem('refresh_token')
-          setUsuario({ id: demoUser.id, nombre: demoUser.nombre, email: demoUser.email, rol: demoUser.rol, jugador_id: demoUser.jugador_id, modo_demo: true })
-          return { id: demoUser.id, nombre: demoUser.nombre, email: demoUser.email, rol: demoUser.rol, jugador_id: demoUser.jugador_id, modo_demo: true }
+          setUsuario(usuarioDemo)
+          return usuarioDemo
         }
       }
       throw error

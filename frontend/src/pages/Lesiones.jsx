@@ -12,7 +12,7 @@ const EMPTY = { jugador_id: '', tipo: '', descripcion: '', fecha_inicio: '', fec
 
 export default function Lesiones() {
   const { tienePermiso } = useAuth()
-  const puedeEditar = tienePermiso(['administrador', 'entrenador', 'personal_salud'])
+  const puedeEditar = tienePermiso(['administrador', 'personal_salud'])
   const { selectedSportId, selectedSport } = useDeporte()
 
   const [lesiones, setLesiones]   = useState([])

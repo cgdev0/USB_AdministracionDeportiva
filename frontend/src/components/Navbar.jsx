@@ -15,7 +15,7 @@ const TODOS_LOS_ITEMS = [
   { to: '/jugadores',      icon: Users,            label: 'Deportistas',     roles: ['administrador','head_coach','entrenador','personal_salud'] },
   { to: '/entrenamientos', icon: Dumbbell,         label: 'Entrenamientos',  roles: ['administrador','head_coach','entrenador','jugador'] },
   { to: '/asistencia',     icon: CalendarCheck2,   label: 'Asistencia',      roles: ['administrador','head_coach','entrenador','jugador'] },
-  { to: '/lesiones',       icon: HeartPulse,       label: 'Lesiones',        roles: ['administrador','personal_salud'] },
+  { to: '/lesiones',       icon: HeartPulse,       label: 'Lesiones',        roles: ['administrador','head_coach','entrenador','personal_salud','jugador'] },
   { to: '/salud',          icon: Stethoscope,      label: 'Salud y controles',roles: ['administrador','personal_salud','jugador'] },
   { to: '/evaluaciones',   icon: ClipboardList,    label: 'Evaluaciones',    roles: ['administrador','head_coach','entrenador','personal_salud','jugador'] },
   { to: '/partidos',       icon: Trophy,           label: 'Partidos',        roles: ['administrador','head_coach','entrenador','jugador'] },
