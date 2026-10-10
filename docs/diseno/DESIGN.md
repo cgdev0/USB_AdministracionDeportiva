@@ -1,25 +1,32 @@
 # Sistema de diseño — Administración Deportiva
 
-Borrador v1.3. Autor: Carlos Gamboa. Estado: **en revisión** (no aplicar al código hasta aprobarlo).
+Borrador v1.3, versión 2. Autor: Carlos Gamboa. Estado: **en revisión** (no aplicar al código hasta aprobarlo).
 
-Prototipo: `docs/diseno/prototipo/login.html` y `dashboard.html` (abrir en el navegador). Capturas en `docs/diseno/capturas/`.
+Prototipo: `docs/diseno/prototipo/login.html` y `dashboard.html` (abrir en el navegador; `login.html?error` muestra el estado de error). Capturas en `docs/diseno/capturas/`.
 
 ## 1. El encargo
 
 | | |
 |---|---|
 | **Qué es** | Herramienta interna para gestionar los equipos deportivos de la Universidad Simón Bolívar, sede Cúcuta: plantel, entrenamientos, asistencia, partidos, salud y antropometría. |
-| **Quién la usa** | Entrenadores, fisioterapeutas/personal de salud y jugadores **desde el celular**, muchas veces en la cancha y al sol. Administradores y head coach **desde el computador**. |
-| **Su trabajo principal** | Responder rápido "¿quién está disponible, qué toca hoy y qué hay que revisar?" y registrar datos sin fricción. |
-| **Debe sentirse** | De la familia Unisimón, pero claramente mejor hecha que los portales actuales. Seria, clara, deportiva sin disfrazarse. |
+| **Quién la usa** | Entrenadores, personal de salud y jugadores **desde el celular**; administradores y head coach **desde el computador**. |
+| **Regla principal** | **Debe verse como parte de las plataformas oficiales de Unisimón** (portal estudiantil y unisimon.edu.co): misma tipografía, mismos verdes, misma estructura. Solo se moderniza lo que hoy funciona mal. |
 
-## 2. Fuentes de identidad (reales, no inventadas)
+## 2. De dónde sale cada decisión
 
-- **Monograma U** con la firma "Simón Bolívar": letra de bloque tipo *varsity* con doble contorno. Verde oficial del archivo: `#09843B`.
-- **Franja de marca** del portal estudiantil: línea dorada sobre un degradado verde → verde azulado → azul.
-- Plataformas de la universidad en modo claro, fondo blanco o gris muy claro.
+Medido directamente en las plataformas (CSS publicado y capturas por píxel):
 
-Capturas de referencia guardadas fuera del repositorio (contienen datos personales).
+| Elemento | Origen |
+|---|---|
+| Tipografía **Roboto** | Fuente cargada por unisimon.edu.co (`fonts.googleapis.com/css?family=Roboto`). El portal usa la fuente por defecto de Bootstrap, que se ve igual de sobria. |
+| Íconos **Font Awesome** | Los usan el portal (FA 5) y el sitio web (FA 6). |
+| Verdes `#088732`, `#218D45`, `#148E40` | Encabezados de panel, botones y títulos del portal. |
+| Verde noche `#00470A` | Banner/carrusel del portal. |
+| Franja naranja + banda verde segmentada | Debajo del header del portal. |
+| Naranja `#F0AD4E` | Botón destacado del portal ("Actualizar datos"). |
+| Alertas y estados | Paleta Bootstrap que usa el portal (`#DFF0D8`, `#FCF8E3`, `#F2DEDE`, `#D9EDF7`). |
+| Footer negro `#000` con líneas `#252525` | Portal y login. |
+| Logos oficiales | Horizontal y apilado publicados por el portal; monograma U en `#09843B`. |
 
 ## 3. Tokens
 
@@ -27,98 +34,67 @@ Capturas de referencia guardadas fuera del repositorio (contienen datos personal
 
 | Token | Hex | Uso |
 |---|---|---|
-| `--verde` | `#09843B` | Identidad, acciones principales, estado "disponible". Contraste con blanco 4.8:1. |
-| `--verde-profundo` | `#00642D` | Texto de acento, botón presionado, navegación activa. |
-| `--tinta` | `#12261B` | Texto principal (negro con matiz verde, ligado a la marca). |
-| `--gris` | `#56665C` | Texto secundario, etiquetas de formulario. |
-| `--linea` | `#DCE5DF` | Bordes y separadores. |
-| `--campo` | `#EEF6F0` | Fondo de la zona protagonista de cada pantalla (la "cancha"). |
-| `--blanco` | `#FFFFFF` | Fondo general y superficies. |
-| `--oro` | `#F18700` | Advertencias y estado "con restricciones". Viene de la franja. |
-| `--rojo` | `#C62828` | Lesionado, errores, acciones destructivas. |
-
-**Franja de marca** (solo como firma, nunca como fondo de contenido): línea `#F18700 → #FFB31F` de 2 px sobre degradado `#00642D → #09843B → #00916F → #0CA8E3`.
-
-Reglas: un solo color de acción (verde). Los estados nunca se comunican solo con color: siempre van con ícono o texto. Sin violeta, sin neón, sin degradados decorativos.
+| `--verde-panel` | `#088732` | Encabezados de panel, pestaña activa, menú inferior activo. |
+| `--verde-boton` | `#218D45` | Botón principal ("Iniciar sesión"), estado disponible. |
+| `--verde-texto` | `#148E40` | Títulos verdes ("Iniciar sesión") y enlaces. |
+| `--verde-noche` | `#00470A` | Banners con el logo en blanco. |
+| `--verde-logo` | `#09843B` | Logo sobre fondo blanco. |
+| `--naranja` | `#F0AD4E` | Una sola acción destacada por pantalla ("Tomar asistencia", "Ver partido"). |
+| `--fondo` | `#EEEEEE` | Fondo de página (como el portal). |
+| `--texto` | `#333333` | Texto principal. |
+| `--borde` / `--pestana` / `--pestana-activa` | `#DDDDDD` / `#F8F8F8` / `#E7E7E7` | Bordes, barra de pestañas y pestaña activa. |
+| `--negro` | `#000000` | Footer. |
+| Estados | ok `#DFF0D8/#3C763D`, aviso `#FCF8E3/#8A6D3B`, error `#F2DEDE/#A94442`, info `#D9EDF7/#31708F` | Disponible, con restricciones, lesionado/error, información. Siempre con ícono. |
 
 ### Tipografía
 
-| Familia | Rol | Por qué |
-|---|---|---|
-| **Zilla Slab** (600/700) | Nombre de la app, títulos de pantalla, números de camiseta y cifras grandes. | Serifa *slab*: eco directo de la letra de bloque del monograma U. Da carácter deportivo-universitario sin caer en tipografía de disfraz. |
-| **Fira Sans** (400/500/600/700) | Todo el texto de interfaz, formularios y tablas. | Creada por Mozilla para leerse bien en pantallas de celular; es la pareja tipográfica oficial de Zilla Slab. Distingue l/I (la l tiene cola), cero normal y números tabulares para tablas. |
+**Roboto** 300/400/500/700 en toda la app. Títulos de panel 18 px bold blanco; texto 15 px; "Bienvenido" 24 px light (como el portal); nombre del sistema en mayúsculas con espaciado, igual que "SISTEMA DE INFORMACIÓN". Números con `tabular-nums`.
 
-Escala (rem, base 16 px, razón ≈ 1.25): 0.8125 · 0.875 · 1 · 1.125 · 1.375 · 1.75 · 2.25 · 3. Interlineado 1.5 en texto, 1.15 en títulos. Números en tablas con `tabular-nums`. Títulos en *sentence case*; **nunca etiquetas en mayúsculas sostenidas**.
+### Forma y profundidad
 
-### Espaciado, forma y elevación
-
-- Base 4 px: 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64.
-- Radios con jerarquía: 6 px controles y fichas, 12 px paneles. Fotos y avatares en cuadrado redondeado (parche de camiseta), no círculo.
-- Sin sombras decorativas. Elevación solo para lo que flota: menú inferior, diálogos, desplegables.
-- Áreas táctiles mínimas de 44 × 44 px.
+Radio 4 px (Bootstrap). Paneles con sombra y borde inferior gris, como el portal: `0 1px 3px rgba(0,0,0,.14), 0 4px 0 -1px #D2D2D2`. Banners verdes con degradados radiales sutiles para dar profundidad. Áreas táctiles mínimas de 44 px.
 
 ## 4. Estructura
 
-### Celular (≤ 768 px) — prioridad
+### Computador (≥ 1024 px): igual al portal
 
 ```
-┌────────────────────────────┐
-│▀▀▀▀▀▀ franja ▀▀▀▀▀▀▀▀▀▀▀▀▀│
-│ [U] Administración Dep. (CG)│  barra superior fija, compacta
-├────────────────────────────┤
-│ Buenos días, César          │
-│ Sábado 10 de octubre [Rugby▾]│
-│ ┌─ cancha (verde claro) ──┐ │  zona protagonista
-│ │ 19 de 23 disponibles     │ │
-│ │ [7][9][10][11][12][14]… │ │  plantel como dorsales
-│ └──────────────────────────┘ │
-│ Esta semana                 │  lista por fecha
-│ Asistencia                  │
-│ Para revisar                │
-├────────────────────────────┤
-│ Inicio Plantel Agenda Asist. Más │  menú inferior por rol
-└────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ [LOGO UNISIMÓN] │ ADMINISTRACIÓN DEPORTIVA   Bienvenido (CD) CÉSAR │  header blanco
+│▄▄▄▄▄▄▄▄▄▄▄ franja naranja + banda verde segmentada ▄▄▄▄▄▄▄▄▄▄▄│
+│ Inicio │ Equipos │ Deportistas │ Entrenamientos │ …            │  pestañas
+├─────────────────────────────────────────┬────────────────────┤
+│ Banner verde noche: próximo partido     │ Mi sesión          │
+│ [Disponibilidad del plantel] ▀ verde    │ (datos + botones)  │
+│ [Asistencia] ▀ verde                    │ [Para revisar]     │
+│                                         │ [Esta semana]      │
+├─────────────────────────────────────────┴────────────────────┤
+│ FOOTER NEGRO: logo apilado · Administración Deportiva · Portales │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### Computador (≥ 1024 px)
+### Celular (≤ 1023 px)
 
-```
-┌──────────┬───────────────────────────────────────────┐
-│▀▀▀▀▀▀▀▀▀▀ franja ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀│
-│ [U] Adm. │ Buenos días, César        [Rugby ▾]  (CG) │
-│ Deportiva├───────────────────────────────┬───────────┤
-│          │ cancha: disponibilidad        │ Esta      │
-│ Plantel  │ (dorsales del plantel)        │ semana    │
-│ Actividad├───────────────┬───────────────┴───────────┤
-│ Salud    │ Asistencia    │ Para revisar              │
-│ Admin.   │               │                           │
-└──────────┴───────────────┴───────────────────────────┘
-```
+Header blanco compacto (logo + nombre del sistema + foto), franja, contenido en una columna (banner, disponibilidad, para revisar, esta semana, asistencia, mi sesión), footer negro y **menú inferior fijo** con 5 secciones por rol.
 
-- Menú lateral **agrupado por dominio** (Plantel, Actividad, Salud, Administración): los grupos ordenan 12 módulos que en el portal de la universidad son 13 pestañas en fila.
-- Contenido alineado a la izquierda, ancho máximo 1280 px; texto corrido ≤ 72 caracteres.
+## 5. Qué se moderniza respecto al portal
 
-## 5. Principios
+| En el portal | En Administración Deportiva |
+|---|---|
+| 13 pestañas en fila, imposibles en celular | Pestañas en PC; menú inferior de 5 secciones en celular. |
+| Guirnaldas de temporada sobre los encabezados | Encabezados verdes limpios. |
+| Etiquetas de colores sin significado | Cada color es un estado y va con ícono. |
+| "Ooooops" en estados vacíos | Mensajes que dicen qué pasó y qué hacer. |
+| Bajo contraste en pestañas inactivas | Contraste AA en todo. |
+| Página fija de escritorio | Diseño responsive verificado a 390 px y 1440 px. |
 
-1. **La audacia está en un solo lugar:** la franja de marca y el monograma. Todo lo demás es sobrio.
-2. **Cada pantalla tiene una "cancha":** la pregunta principal de esa pantalla va en la zona verde clara; el resto es apoyo.
-3. **El plantel se ve como plantel:** jugadores representados por su dorsal, no por filas genéricas.
-4. **Celular primero, de verdad:** se diseña a 390 px y se amplía; nada depende de pasar el mouse por encima.
-5. **El color significa algo:** verde = disponible/acción, oro = con restricciones, rojo = lesión/error. Siempre con ícono o texto.
-6. **Textos claros:** verbos concretos ("Guardar lesión", no "Enviar"), errores que dicen qué pasó y cómo seguir, estados vacíos que invitan a actuar. Sin "Ooooops".
+## 6. Historial de decisiones
 
-## 6. Revisión contra lo genérico (decisiones corregidas)
-
-| Primer impulso | Por qué era genérico | Decisión final |
+| Versión | Dirección | Resultado |
 |---|---|---|
-| Dashboard con 4 tarjetas de cifras (jugadores, lesiones, partidos, entrenamientos) | Es la plantilla SaaS por defecto (y el diseño actual). | Zona protagonista con la **disponibilidad del plantel como dorsales**: responde la pregunta real del entrenador. |
-| Tipografía deportiva condensada (tipo Barlow/Oswald) | Es lo que usa cualquier plantilla deportiva. | **Zilla Slab** ligada al monograma U. |
-| Atkinson Hyperlegible para la interfaz | Probada en el prototipo: dibuja el cero tachado ("1Ø de octubre", "3:ØØ p. m.") y la versión de Google Fonts no trae alternativa. En fechas y horas en español parece un error. | **Fira Sans**: legible en celular, cero normal, números tabulares y misma familia de diseño que Zilla Slab. |
-| Todo en tarjetas blancas con sombra sobre gris | "Kit de tarjetas SaaS". | Fondo blanco, secciones separadas por espacio y líneas; solo la "cancha" tiene fondo propio. |
-| Login partido en dos con panel de color y logo gigante de marca de agua | Patrón de login por defecto. | Composición sobria: monograma real, nombre en slab, formulario; la franja como firma. |
-| Avatares circulares, íconos Lucide | Elección por defecto de las IA. | Cuadrados redondeados tipo parche; íconos Phosphor con un solo grosor de trazo. |
-| Etiquetas en mayúsculas sobre cada título, separadores con "·" | Plantilla de IA. | Títulos en *sentence case*, sin etiquetas decorativas. |
+| 1 | Reinterpretación propia: Zilla Slab + Fira Sans, fondo blanco minimalista, solo una franja fina como guiño a la marca. | **Rechazada** por Carlos: no se parecía a las plataformas de la universidad (otra tipografía, otros colores, sin footer negro, demasiado plana). |
+| 2 | Lenguaje visual de Unisimón medido en sus plataformas, modernizado. | En revisión. |
 
-## 7. Calidad mínima (se verifica con capturas en 390 px y 1440 px)
+## 7. Calidad mínima (se verifica con Playwright en 390 px y 1440 px)
 
-Responsive sin scroll horizontal · foco visible con teclado · `prefers-reduced-motion` respetado · contraste AA · estados de carga, vacío y error en cada módulo.
+Sin scroll horizontal · objetivos táctiles ≥ 44 px · foco visible con teclado · `prefers-reduced-motion` respetado · contraste AA · estados de carga, vacío y error en cada módulo.
