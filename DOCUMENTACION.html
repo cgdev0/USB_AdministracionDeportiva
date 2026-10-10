@@ -325,6 +325,33 @@
         </div>
     </section>
 
+
+    <section id="estado-frontend">
+        <div class="card">
+            <h2>🧭 Estado actual del frontend</h2>
+            <p>Esta sección describe la estructura de la versión actual del proyecto. La existencia de una pantalla no significa que todas sus operaciones estén conectadas y verificadas contra la base de datos.</p>
+            <h3>Módulos identificados</h3>
+            <ul>
+                <li><strong>Inicio:</strong> resumen e indicadores en Dashboard.</li>
+                <li><strong>Gestión deportiva:</strong> Equipos, Deportistas, Entrenamientos, Asistencia, Partidos y Estadísticas.</li>
+                <li><strong>Evaluación y salud:</strong> Evaluaciones, Antropometría, Lesiones y Salud y controles.</li>
+                <li><strong>Administración:</strong> Usuarios y Panel Head Coach.</li>
+            </ul>
+            <h3>Roles contemplados en el frontend</h3>
+            <p>Administrador, Head Coach, Entrenador, Personal de Salud y Jugador. El menú filtra opciones por rol y la aplicación contiene rutas protegidas; sin embargo, la autorización también debe validarse en el backend para impedir el acceso mediante peticiones directas.</p>
+            <h3>Validaciones pendientes</h3>
+            <ul>
+                <li>Comprobar permisos por rol en todas las rutas y endpoints.</li>
+                <li>Comprobar que el jugador no pueda consultar la antropometría ni datos privados de otro deportista.</li>
+                <li>Comprobar que las cuentas de jugador estén vinculadas al perfil deportivo correcto.</li>
+                <li>Crear registros de prueba, recargar la página y confirmar la persistencia.</li>
+                <li>Compilar el frontend y probar los flujos con cuentas separadas por rol.</li>
+            </ul>
+            <p><strong>Nota:</strong> las cuentas demo del frontend sirven para revisar la interfaz en desarrollo; no son prueba de autenticación o permisos de producción. No se declara la persistencia ni la seguridad como verificadas hasta completar las pruebas.</p>
+            <p>Para instrucciones de ejecución, consultar <code>README.md</code>. Para la lista de tareas y pruebas, consultar <code>IMPLEMENTACION.md</code>.</p>
+        </div>
+    </section>
+
 </main>
 
 <div class="footer">

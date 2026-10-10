@@ -4,28 +4,32 @@ import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
 import {
-  LayoutDashboard, Users, Shield, Dumbbell, HeartPulse, UserCog,
+  LayoutDashboard, Users, Shield, Dumbbell, HeartPulse, UserCog, Stethoscope,
   ClipboardList, Trophy, BarChart3, Activity, CalendarCheck2, LogOut,
   ChevronDown
 } from 'lucide-react'
 
 const TODOS_LOS_ITEMS = [
-  { to: '/',               icon: LayoutDashboard, label: 'Dashboard',      roles: ['administrador','entrenador','personal_salud','jugador'] },
-  { to: '/equipos',        icon: Shield,           label: 'Equipos',        roles: ['administrador','entrenador','personal_salud'] },
-  { to: '/jugadores',      icon: Users,            label: 'Jugadores',      roles: ['administrador','entrenador','personal_salud','jugador'] },
-  { to: '/entrenamientos', icon: Dumbbell,         label: 'Entrenamientos', roles: ['administrador','entrenador','personal_salud','jugador'] },
-  { to: '/asistencia',     icon: CalendarCheck2,   label: 'Asistencia',     roles: ['administrador','entrenador','personal_salud','jugador'] },
-  { to: '/lesiones',       icon: HeartPulse,       label: 'Lesiones',       roles: ['administrador','entrenador','personal_salud','jugador'] },
-  { to: '/evaluaciones',   icon: ClipboardList,    label: 'Evaluaciones',   roles: ['administrador','entrenador','personal_salud','jugador'] },
-  { to: '/partidos',       icon: Trophy,           label: 'Partidos',       roles: ['administrador','entrenador','personal_salud','jugador'] },
-  { to: '/estadisticas',   icon: BarChart3,        label: 'Estadísticas',   roles: ['administrador','entrenador','personal_salud','jugador'] },
-  { to: '/antropometria',  icon: Activity,         label: 'Antropometría',  roles: ['administrador','entrenador','personal_salud','jugador'] },
-  { to: '/usuarios',       icon: UserCog,          label: 'Usuarios',       roles: ['administrador'] },
+  { to: '/',               icon: LayoutDashboard, label: 'Inicio',          roles: ['administrador','head_coach','entrenador','personal_salud','jugador'] },
+  { to: '/equipos',        icon: Shield,           label: 'Equipos',         roles: ['administrador','head_coach','entrenador'] },
+  { to: '/jugadores',      icon: Users,            label: 'Deportistas',     roles: ['administrador','head_coach','entrenador','personal_salud'] },
+  { to: '/entrenamientos', icon: Dumbbell,         label: 'Entrenamientos',  roles: ['administrador','head_coach','entrenador','jugador'] },
+  { to: '/asistencia',     icon: CalendarCheck2,   label: 'Asistencia',      roles: ['administrador','head_coach','entrenador','jugador'] },
+  { to: '/lesiones',       icon: HeartPulse,       label: 'Lesiones',        roles: ['administrador','personal_salud'] },
+  { to: '/salud',          icon: Stethoscope,      label: 'Salud y controles',roles: ['administrador','personal_salud','jugador'] },
+  { to: '/evaluaciones',   icon: ClipboardList,    label: 'Evaluaciones',    roles: ['administrador','head_coach','entrenador','personal_salud','jugador'] },
+  { to: '/partidos',       icon: Trophy,           label: 'Partidos',        roles: ['administrador','head_coach','entrenador','jugador'] },
+  { to: '/estadisticas',   icon: BarChart3,        label: 'Mis estadísticas',roles: ['jugador'] },
+  { to: '/estadisticas',   icon: BarChart3,        label: 'Estadísticas',    roles: ['administrador','head_coach','entrenador','personal_salud'] },
+  { to: '/antropometria',  icon: Activity,         label: 'Antropometría',   roles: ['administrador','personal_salud','jugador'] },
+  { to: '/head-coach',     icon: Trophy,           label: 'Supervisión',     roles: ['head_coach'] },
+  { to: '/usuarios',       icon: UserCog,          label: 'Usuarios',        roles: ['administrador'] },
 ]
 
 
 const ROL_BADGE = {
   administrador: { label: 'Administrador', color: '#e74c3c' },
+  head_coach:     { label: 'Head Coach', color: '#8e44ad' },
   entrenador:    { label: 'Entrenador', color: '#2ecc71' },
   personal_salud:{ label: 'Personal Salud', color: '#3498db' },
   jugador:       { label: 'Jugador', color: '#f39c12' },

@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const PERMISOS = {
   administrador: ['*'],
+  head_coach: ['dashboard', 'head_coach', 'jugadores:read', 'entrenamientos:read', 'partidos:read', 'lesiones:read', 'estadisticas:read'],
   entrenador: [
     'dashboard', 'jugadores', 'entrenamientos', 'asistencia',
     'partidos', 'estadisticas', 'evaluaciones:read', 'lesiones:read',

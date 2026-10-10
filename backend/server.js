@@ -36,6 +36,8 @@ app.use('/api/estadisticas',  require('./routes/estadisticas.routes'));
 app.use('/api/dashboard',     require('./routes/dashboard.routes'));
 app.use('/api/settings',      require('./routes/settings.routes'));
 app.use('/api/antropometria', require('./routes/antropometria.routes'));
+app.use('/api/head-coach',    require('./routes/headcoach.routes'));
+app.use('/api/salud',         require('./routes/salud.routes'));
 
 // ── Health check ─────────────────────────────────────────
 app.get('/api/health', (_req, res) => {

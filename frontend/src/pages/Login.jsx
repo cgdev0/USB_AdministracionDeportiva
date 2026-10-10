@@ -74,6 +74,18 @@ export default function Login() {
             {cargando ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
+
+        {import.meta.env.DEV && (
+          <div style={{ marginTop: 18, padding: 14, borderRadius: 10, background: 'var(--bg-secondary, #f4f6f8)', fontSize: 12 }}>
+            <strong>Accesos de demostración (modo local)</strong>
+            <p style={{ margin: '6px 0 10px', color: 'var(--text-muted, #667085)' }}>Sirven para revisar la interfaz de cada rol mientras se conecta el backend.</p>
+            {[['Administrador','admin@dtdeportivo.com','Admin123!'],['Head Coach','headcoach@dtdeportivo.com','HeadCoach123!'],['Entrenador','entrenador@dtdeportivo.com','Coach123!'],['Personal de salud','salud@dtdeportivo.com','Salud123!'],['Deportista','jugador@dtdeportivo.com','Jugador123!']].map(([rol, email, password]) => (
+              <button key={rol} type="button" onClick={() => setForm({ email, password })} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 0', border: 0, background: 'transparent', cursor: 'pointer', color: 'var(--text, inherit)' }}>
+                <strong>{rol}:</strong> {email} <span style={{ opacity: .7 }}>· clic para cargar</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

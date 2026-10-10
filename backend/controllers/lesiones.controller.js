@@ -1,13 +1,14 @@
 const db = require('../config/db');
 
-exports.getAll = async (_req, res) => {
+exports.getAll = async (req, res) => {
   try {
-    const { rows } = await db.query(`
-      SELECT l.*, j.nombre AS jugador_nombre
-      FROM lesiones l
-      JOIN jugadores j ON l.jugador_id = j.id
-      ORDER BY l.fecha_inicio DESC
-    `);
+    let query = `SELECT l.*, j.nombre AS jugador_nombre FROM lesiones l JOIN jugadores j ON l.jugador_id = j.id`;
+    const params = [];
+    if (req.usuario?.rol === 'jugador') { params.push(req.usuario.jugador_id); query += ` WHERE l.jugador_id = $1`; }
+    else if (req.usuario?.rol === 'entrenador') { params.push(req.usuario.id); query += ` WHERE j.entrenador_id = $1`; }
+    else if (req.usuario?.rol === 'head_coach') { params.push(req.usuario.id); query += ` WHERE j.entrenador_id IN (SELECT id FROM usuarios WHERE head_coach_id=$1)`; }
+    query += ' ORDER BY l.fecha_inicio DESC';
+    const { rows } = await db.query(query, params);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
