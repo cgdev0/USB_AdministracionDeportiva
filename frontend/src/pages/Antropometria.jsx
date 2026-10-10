@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
 import { formatImageUrl } from '../utils/image'
 import { calculateAnthropometry } from '../utils/anthropometry'
+import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
 
 const EMPTY_ANTRO = {
   jugador_id: '',
@@ -361,7 +362,7 @@ export default function Antropometria() {
                 <option value="">Seleccionar Deportista...</option>
                 {jugadoresDisponibles.map(j => (
                   <option key={j.id} value={j.id}>
-                    {j.nombre} {j.disciplina_nombre ? `(${j.disciplina_nombre})` : ''} - {j.posicion || 'Sin posición'}
+                    {etiquetaJugador(j)} {j.disciplina_nombre ? `(${j.disciplina_nombre})` : ''} - {j.posicion || 'Sin posición'}
                   </option>
                 ))}
               </select>
@@ -374,7 +375,7 @@ export default function Antropometria() {
           </div>
 
           {/* Selector de Pestañas y Botón Nuevo Registro */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: 3, borderRadius: 8, border: '1px solid var(--border)' }}>
               <button
                 onClick={() => setActiveTab('dashboard')}
@@ -568,12 +569,12 @@ export default function Antropometria() {
                 <div style={{ width: '100%', height: 350 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart data={plieguesRadarData}>
-                      <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                      <PolarGrid stroke="#DDDDDD" />
                       <PolarAngleAxis dataKey="pliegue" stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} />
-                      <PolarRadiusAxis stroke="rgba(255,255,255,0.15)" />
+                      <PolarRadiusAxis stroke="#CCCCCC" />
                       <Radar name="Espesor (mm)" dataKey="valor" stroke="var(--accent2)" fill="var(--accent2)" fillOpacity={0.4} />
                       <Tooltip
-                        contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: '#fff' }}
+                        contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)' }}
                         formatter={(value) => [`${value} mm`, 'Espesor']}
                       />
                     </RadarChart>
@@ -603,8 +604,8 @@ export default function Antropometria() {
                   <AreaChart data={evolutionData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorMusculo" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--accent2)" stopOpacity={0.6} />
-                        <stop offset="95%" stopColor="var(--accent2)" stopOpacity={0.0} />
+                        <stop offset="5%" stopColor="#0B93C7" stopOpacity={0.6} />
+                        <stop offset="95%" stopColor="#0B93C7" stopOpacity={0.0} />
                       </linearGradient>
                       <linearGradient id="colorGrasa" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--danger)" stopOpacity={0.6} />
@@ -615,15 +616,15 @@ export default function Antropometria() {
                         <stop offset="95%" stopColor="var(--accent)" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
                     <XAxis dataKey="fecha" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
                     <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
                     <Tooltip
-                      contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: '#fff' }}
+                      contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)' }}
                     />
                     <Legend />
                     <Area type="monotone" dataKey="peso" name="Peso Total (kg)" stroke="var(--accent)" fillOpacity={1} fill="url(#colorPeso)" />
-                    <Area type="monotone" dataKey="musculo" name="Masa Muscular (kg)" stroke="var(--accent2)" fillOpacity={1} fill="url(#colorMusculo)" />
+                    <Area type="monotone" dataKey="musculo" name="Masa Muscular (kg)" stroke="#0B93C7" fillOpacity={1} fill="url(#colorMusculo)" />
                     <Area type="monotone" dataKey="grasa" name="% Grasa Corporal" stroke="var(--danger)" fillOpacity={1} fill="url(#colorGrasa)" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -645,7 +646,7 @@ export default function Antropometria() {
                 <div style={{ width: '100%', height: 260 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={perimetrosData} layout="vertical" margin={{ top: 10, right: 30, left: 40, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
                       <XAxis type="number" stroke="var(--text-muted)" />
                       <YAxis type="category" dataKey="nombre" stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
                       <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
@@ -763,8 +764,8 @@ export default function Antropometria() {
 
             {/* Tarjeta de Resumen en Tiempo Real de Composición Corporal */}
             <div style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.08))',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
+              background: 'var(--ok-fondo)',
+              border: '1px solid var(--ok-borde)',
               borderRadius: 12,
               padding: '16px',
               marginBottom: 20

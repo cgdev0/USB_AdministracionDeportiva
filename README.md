@@ -1,6 +1,8 @@
-# DTdeportivo
+# Administración Deportiva
 
-Plataforma web orientada a la gestión deportiva de la Universidad Simón Bolívar, sede Cúcuta.
+Plataforma web para la gestión deportiva de la Universidad Simón Bolívar, sede Cúcuta (antes llamada DTdeportivo).
+
+Diseño alineado con las plataformas oficiales de Unisimón y pensado para celular y computador: ver `docs/diseno/DESIGN.md`. Historial de versiones y autores en `CHANGELOG.md`.
 
 > **Estado documentado:** esta guía describe lo que se identifica en el código de la versión entregada. La existencia de una pantalla no demuestra por sí sola que la operación esté integrada con la base de datos ni que sus permisos hayan sido probados de extremo a extremo.
 
@@ -51,6 +53,7 @@ El frontend reconoce los roles `administrador`, `head_coach`, `entrenador`, `per
 npm install
 npm run db:init   # ejecuta backend/config/database.sql
 npm run seed      # crea los usuarios de prueba
+npm run demo      # opcional: plantel de rugby de ejemplo con dorsales, lesiones, asistencia y próximo partido
 npm run dev       # API + frontend en http://localhost:3000
 ```
 

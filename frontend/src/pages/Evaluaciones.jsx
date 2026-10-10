@@ -10,6 +10,7 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
+import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
 
 const EMPTY = {
   jugador_id: '',
@@ -136,7 +137,7 @@ export default function Evaluaciones() {
           <div key={ev.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <h3 style={{ fontSize: 18, fontWeight: 700 }}>{ev.jugador_nombre}</h3>
+                <h3 style={{ fontSize: 18, fontWeight: 700 }}>{nombreConDorsal(ev.jugador_nombre, ev.jugador_dorsal)}</h3>
                 <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(ev.fecha).toLocaleDateString('es')}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -194,7 +195,7 @@ export default function Evaluaciones() {
               <label>Jugador *</label>
               <select value={form.jugador_id} onChange={e => handleJugadorChange(e.target.value)}>
                 <option value="">Seleccionar...</option>
-                {jugadoresFiltrados.map(j => <option key={j.id} value={j.id}>{j.nombre} {j.disciplina_nombre ? `(${j.disciplina_nombre})` : ''}</option>)}
+                {jugadoresFiltrados.map(j => <option key={j.id} value={j.id}>{etiquetaJugador(j)} {j.disciplina_nombre ? `(${j.disciplina_nombre})` : ''}</option>)}
               </select>
             </div>
             <div className="form-group"><label>Fecha</label><input type="date" value={form.fecha} onChange={e => setForm({...form, fecha: e.target.value})} /></div>

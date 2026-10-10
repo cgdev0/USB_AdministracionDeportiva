@@ -1,662 +1,460 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  Users, Activity, Trophy, Dumbbell, Goal, Star, Plus, Trash2,
-  ChevronRight, ArrowRight, Sparkles, Filter, ShieldCheck, Shield, CheckCircle2
-} from 'lucide-react'
-
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-} from 'recharts'
-import StatCard from '../components/StatCard'
-import LoadingSpinner from '../components/LoadingSpinner'
-import Modal from '../components/Modal'
+import toast from 'react-hot-toast'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
-import toast from 'react-hot-toast'
+import LoadingSpinner from '../components/LoadingSpinner'
+import Modal from '../components/Modal'
+import ConfirmModal from '../components/ConfirmModal'
+import { ROLES, iniciales } from '../config/navegacion'
+import { capitalizar, diaCorto, fechaCorta, fechaLarga, fechaRelativa, numeroDia } from '../utils/fechas'
+import { nombreConDorsal, tieneDorsal } from '../utils/jugador'
 
-const ROL_LABELS = {
-  administrador: 'Administrador',
-  entrenador: 'Entrenador',
-  personal_salud: 'Personal Salud',
-  jugador: 'Jugador',
+// Acciones del panel "Mi sesión" según el rol (la primera es la destacada en naranja)
+const ACCIONES = {
+  administrador:  [{ a: '/usuarios', texto: 'Gestionar usuarios', icono: 'fa-user-gear' }, { a: '/jugadores', texto: 'Registrar deportista' }],
+  head_coach:     [{ a: '/head-coach', texto: 'Ver supervisión', icono: 'fa-binoculars' }, { a: '/jugadores', texto: 'Ver deportistas' }],
+  entrenador:     [{ a: '/asistencia', texto: 'Tomar asistencia', icono: 'fa-clipboard-check' }, { a: '/entrenamientos', texto: 'Registrar entrenamiento' }],
+  personal_salud: [{ a: '/lesiones', texto: 'Registrar lesión', icono: 'fa-kit-medical' }, { a: '/salud', texto: 'Registrar control médico' }],
+  jugador:        [{ a: '/salud', texto: 'Ver mis controles', icono: 'fa-stethoscope' }, { a: '/estadisticas', texto: 'Ver mis estadísticas' }],
+}
+
+const ESTADOS = {
+  disponible:    { texto: 'Disponible',       icono: 'fa-circle-check',         clase: 'ok' },
+  restringido:   { texto: 'Con restricciones', icono: 'fa-triangle-exclamation', clase: 'aviso' },
+  no_disponible: { texto: 'No disponible',    icono: 'fa-circle-xmark',         clase: 'error' },
 }
 
 export default function Dashboard() {
-  const { usuario, tienePermiso } = useAuth()
-  const {
-    disciplinas,
-    selectedSportId,
-    selectedSport,
-    setSelectedSportId,
-    crearDisciplina,
-    eliminarDisciplina,
-    puedeGestionarDeportes
-  } = useDeporte()
+  const { usuario, logout } = useAuth()
+  const { selectedSportId, selectedSport } = useDeporte()
+  const [datos, setDatos] = useState(null)
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState('')
 
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  // Modales de Gestión de Deporte
-  const [modalNuevoDeporte, setModalNuevoDeporte] = useState(false)
-  const [nuevoDeporteNombre, setNuevoDeporteNombre] = useState('')
-  const [creandoDeporte, setCreandoDeporte] = useState(false)
-
-  const [modalEliminarDeporte, setModalEliminarDeporte] = useState(false)
-  const [deporteAEliminar, setDeporteAEliminar] = useState(null)
-  const [eliminandoDeporte, setEliminandoDeporte] = useState(false)
-
-  const fetchDashboardData = useCallback(async (sportId) => {
-    setLoading(true)
+  const cargar = useCallback(async () => {
+    setCargando(true); setError('')
     try {
-      const q = sportId && sportId !== 'todos' ? `?disciplina_id=${sportId}` : ''
-      const res = await api.get(`/dashboard${q}`)
-      setData(res.data)
-    } catch (err) {
-      console.error('Error al cargar dashboard:', err)
-      toast.error('Error al cargar datos del dashboard')
+      const params = selectedSportId && selectedSportId !== 'todos' ? { disciplina_id: selectedSportId } : {}
+      const { data } = await api.get('/dashboard/inicio', { params })
+      setDatos(data)
+    } catch (e) {
+      setError(e.message || 'No se pudo cargar el inicio')
     } finally {
-      setLoading(false)
+      setCargando(false)
     }
-  }, [])
+  }, [selectedSportId])
 
-  useEffect(() => {
-    fetchDashboardData(selectedSportId)
-  }, [selectedSportId, fetchDashboardData])
+  useEffect(() => { cargar() }, [cargar])
 
-  // Manejar creación de deporte
-  const handleCrearDeporte = async (e) => {
-    e?.preventDefault()
-    if (!nuevoDeporteNombre.trim()) return toast.error('Ingresa el nombre del deporte')
-    setCreandoDeporte(true)
-    try {
-      await crearDisciplina(nuevoDeporteNombre.trim())
-      setNuevoDeporteNombre('')
-      setModalNuevoDeporte(false)
-    } catch (err) {
-      // toast ya manejado en contexto
-    } finally {
-      setCreandoDeporte(false)
-    }
+  if (cargando && !datos) return <LoadingSpinner />
+
+  if (error && !datos) {
+    return (
+      <div className="alerta alerta-error" role="alert">
+        <i className="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
+        <div>No se pudo cargar el inicio: {error}. <button className="btn btn-sm btn-secondary" onClick={cargar} style={{ marginLeft: 8 }}>Reintentar</button></div>
+      </div>
+    )
   }
 
-  // Manejar eliminación de deporte
-  const handleConfirmarEliminar = async () => {
-    if (!deporteAEliminar) return
-    setEliminandoDeporte(true)
-    try {
-      await eliminarDisciplina(deporteAEliminar.id, deporteAEliminar.nombre)
-      setModalEliminarDeporte(false)
-      setDeporteAEliminar(null)
-    } catch (err) {
-      // toast ya manejado en contexto
-    } finally {
-      setEliminandoDeporte(false)
-    }
-  }
-
-  const abrirModalEliminar = (d, e) => {
-    e.stopPropagation()
-    setDeporteAEliminar(d)
-    setModalEliminarDeporte(true)
-  }
-
-  const anotadores = data?.top_anotadores || []
-  const radarData  = anotadores.slice(0, 5).map(a => ({
-    name: a.nombre.split(' ')[0],
-    Anotaciones: Number(a.total_anotaciones),
-    Asistencias: Number(a.total_asistencias), 
-  }))
-
-  const esTodos = !selectedSportId || selectedSportId === 'todos'
+  const esJugador = usuario?.rol === 'jugador'
+  const deporte = selectedSport?.esTodos ? null : selectedSport?.nombre
 
   return (
-    <div>
-      {/* Header Principal */}
-      <div className="page-header" style={{ marginBottom: 20 }}>
-        <h2>Hola, {usuario?.nombre || 'Usuario'} - {ROL_LABELS[usuario?.rol] || usuario?.rol}</h2>
-        <p>Centro de mando y gestión deportiva en tiempo real</p>
+    <div className="inicio">
+      <h1 className="sr-only">Inicio</h1>
+      <div className="inicio-columna">
+        <BannerPartido partido={datos.proximo_partido} resumen={datos.resumen} esJugador={esJugador} rol={usuario?.rol} />
+        {esJugador
+          ? <MiEstado jugador={datos.plantel[0]} revisar={datos.revisar} />
+          : <Disponibilidad plantel={datos.plantel} resumen={datos.resumen} deporte={deporte} rol={usuario?.rol} />}
+        <Asistencia sesiones={datos.asistencia} esJugador={esJugador} />
+        <Anotadores lista={datos.anotadores} esJugador={esJugador} />
       </div>
-
-      {/* SECCIÓN PRINCIPAL: Selector y Gestión Global de Deportes */}
-      <div
-        className="card"
-        style={{
-          marginBottom: 24,
-          padding: '20px 24px',
-          background: 'linear-gradient(180deg, var(--surface) 0%, var(--bg-secondary) 100%)',
-          border: '1px solid var(--border-hover)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 'var(--radius-md)',
-                background: 'linear-gradient(135deg, var(--accent), var(--accent2))',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                boxShadow: '0 4px 12px rgba(108, 99, 255, 0.25)',
-              }}
-            >
-              <Trophy size={24} />
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent2)' }}>
-                  Deporte en Gestión Activa
-                </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    background: 'var(--accent2-glow)',
-                    color: 'var(--accent2)',
-                    padding: '1px 8px',
-                    borderRadius: 12,
-                    fontWeight: 600,
-                  }}
-                >
-                  Filtro Global
-                </span>
-              </div>
-              <h3 style={{ fontSize: 20, fontWeight: 800, margin: '2px 0 0 0', color: 'var(--text-primary)' }}>
-                {esTodos ? '🌐 Vista General (Todos los Deportes)' : `🏅 ${selectedSport?.nombre || 'Deporte Seleccionado'}`}
-              </h3>
-            </div>
-          </div>
-
-          {/* Botones de acción para Roles autorizados */}
-          {puedeGestionarDeportes && (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <button
-                className="btn btn-primary"
-                onClick={() => setModalNuevoDeporte(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 13 }}
-                title="Crear un nuevo deporte o disciplina para el club"
-              >
-                <Plus size={16} /> Crear Deporte
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Explicación de filtrado global */}
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 16px 0', lineHeight: 1.5 }}>
-          Al seleccionar un deporte aquí, <strong>todos los módulos del sistema</strong> (Jugadores, Antropometría, Evaluaciones, Asistencia, Lesiones y Estadísticas) se adaptarán y filtrarán automáticamente para mostrar únicamente la información correspondiente a dicha disciplina.
-        </p>
-
-        {/* Tarjetas / Chips de Selección de Deportes */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'stretch' }}>
-          {/* Opción Todos los deportes */}
-          <div
-            onClick={() => setSelectedSportId('todos')}
-            style={{
-              flex: '1 1 160px',
-              maxWidth: 220,
-              padding: '12px 14px',
-              borderRadius: 'var(--radius-md)',
-              border: esTodos ? '2px solid var(--accent)' : '1px solid var(--border)',
-              background: esTodos ? 'rgba(108, 99, 255, 0.12)' : 'var(--surface)',
-              cursor: 'pointer',
-              transition: 'var(--transition)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              position: 'relative',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 18 }}>🌐</span>
-              {esTodos && <CheckCircle2 size={16} color="var(--accent)" />}
-            </div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: esTodos ? 'var(--accent-light)' : 'var(--text-primary)' }}>
-              Todos los deportes
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-              Vista consolidada
-            </div>
-          </div>
-
-          {/* Listado de deportes registrados */}
-          {disciplinas.map(d => {
-            const isSelected = String(d.id) === String(selectedSportId)
-            const count = d.total_jugadores || 0
-
-            return (
-              <div
-                key={d.id}
-                onClick={() => setSelectedSportId(String(d.id))}
-                style={{
-                  flex: '1 1 180px',
-                  maxWidth: 240,
-                  padding: '12px 14px',
-                  borderRadius: 'var(--radius-md)',
-                  border: isSelected ? '2px solid var(--accent2)' : '1px solid var(--border)',
-                  background: isSelected ? 'rgba(0, 212, 170, 0.12)' : 'var(--surface)',
-                  cursor: 'pointer',
-                  transition: 'var(--transition)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  position: 'relative',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 18 }}>🏅</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {isSelected && <CheckCircle2 size={16} color="var(--accent2)" />}
-                    {puedeGestionarDeportes && (
-                      <button
-                        onClick={(e) => abrirModalEliminar(d, e)}
-                        title={`Eliminar disciplina "${d.nombre}"`}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--text-muted)',
-                          padding: 2,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          borderRadius: 4,
-                          transition: 'color 0.2s',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'}
-                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ fontWeight: 700, fontSize: 14, color: isSelected ? 'var(--accent2)' : 'var(--text-primary)' }}>
-                  {d.nombre}
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {count} {count === 1 ? 'deportista' : 'deportistas'}
-                  </span>
-                  {isSelected && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent2)', textTransform: 'uppercase' }}>
-                      Activo
-                    </span>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+      <div className="inicio-columna">
+        <MiSesion usuario={usuario} onSalir={logout} />
+        {!esJugador && <ParaRevisar items={datos.revisar} />}
+        <EstaSemana items={datos.semana} />
+        <Deportes />
       </div>
+    </div>
+  )
+}
 
-      {/* Indicador de estado y Métricas */}
-      {loading ? (
-        <LoadingSpinner />
-      ) : (
+/* ── Banner del próximo partido ─────────────────────────── */
+function BannerPartido({ partido, resumen, esJugador, rol }) {
+  const puedeProgramar = ['administrador', 'entrenador', 'head_coach'].includes(rol)
+  return (
+    <section className="ini-banner orden-1" aria-labelledby="t-partido">
+      <img className="ini-marca-agua" src="/brand/monograma-u-blanco-256.png" alt="" />
+      {partido ? (
         <>
-          {/* Tarjetas resumen con filtro aplicado */}
-          <div className="stats-grid">
-            <StatCard
-              label={esTodos ? 'Total Jugadores' : `Jugadores (${selectedSport?.nombre})`}
-              value={data?.total_jugadores}
-              icon={<Users size={22} color="#6c63ff" />}
-              color="var(--accent)"
-            />
-            <StatCard
-              label={esTodos ? 'Lesiones Activas' : `Lesiones (${selectedSport?.nombre})`}
-              value={data?.lesiones_activas}
-              icon={<Activity size={22} color="#ff4757" />}
-              color="var(--danger)"
-            />
-            <StatCard
-              label="Partidos Jugados"
-              value={data?.total_partidos}
-              icon={<Trophy size={22} color="#00d4aa" />}
-              color="var(--accent2)"
-            />
-            <StatCard
-              label="Entrenamientos"
-              value={data?.total_entrenamientos}
-              icon={<Dumbbell size={22} color="#ffa94d" />}
-              color="var(--warning)"
-            />
-          </div>
-
-          {/* Accesos rápidos filtrados para el deporte actual */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 24 }}>
-            <Link
-              to="/jugadores"
-              className="card"
-              style={{
-                padding: '14px 18px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                textDecoration: 'none',
-                color: 'var(--text-primary)',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
-                transition: 'var(--transition)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Users size={18} color="var(--accent)" />
-                <span style={{ fontWeight: 600, fontSize: 13 }}>Ver Plantel ({selectedSport?.nombre || 'Deporte'})</span>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </Link>
-
-            <Link
-              to="/antropometria"
-              className="card"
-              style={{
-                padding: '14px 18px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                textDecoration: 'none',
-                color: 'var(--text-primary)',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
-                transition: 'var(--transition)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Activity size={18} color="var(--accent2)" />
-                <span style={{ fontWeight: 600, fontSize: 13 }}>Antropometría & Somatotipo</span>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </Link>
-
-            <Link
-              to="/evaluaciones"
-              className="card"
-              style={{
-                padding: '14px 18px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                textDecoration: 'none',
-                color: 'var(--text-primary)',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
-                transition: 'var(--transition)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Star size={18} color="var(--warning)" />
-                <span style={{ fontWeight: 600, fontSize: 13 }}>Evaluaciones Físicas</span>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </Link>
-
-            {tienePermiso(['administrador', 'entrenador', 'personal_salud']) && (
-              <Link
-                to="/equipos"
-                className="card"
-                style={{
-                  padding: '14px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  textDecoration: 'none',
-                  color: 'var(--text-primary)',
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-md)',
-                  transition: 'var(--transition)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Shield size={18} color="var(--accent)" />
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>Módulo de Equipos</span>
-                </div>
-                <ChevronRight size={16} color="var(--text-muted)" />
-              </Link>
+          <p className="ini-banner-tipo">Próximo partido {partido.tipo === 'liga' ? 'de liga' : 'amistoso'}</p>
+          <h2 id="t-partido">Unisimón vs. {partido.rival}</h2>
+          <p className="ini-banner-dato"><i className="fa-regular fa-calendar" aria-hidden="true"></i> {capitalizar(fechaRelativa(partido.fecha))}{fechaRelativa(partido.fecha) !== fechaLarga(partido.fecha) ? `, ${fechaLarga(partido.fecha)}` : ''}</p>
+          <div className="ini-banner-acciones">
+            <Link className="btn btn-naranja" to="/partidos">Ver partidos</Link>
+            {!esJugador && resumen.total > 0 && (
+              <span className="ini-banner-disponibles">
+                <i className="fa-solid fa-user-check" aria-hidden="true"></i>
+                <span><b>{resumen.disponibles + resumen.restringidos} de {resumen.total}</b> jugadores disponibles</span>
+              </span>
             )}
-
-            <Link
-              to="/asistencia"
-              className="card"
-              style={{
-                padding: '14px 18px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                textDecoration: 'none',
-                color: 'var(--text-primary)',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
-                transition: 'var(--transition)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Dumbbell size={18} color="var(--accent)" />
-                <span style={{ fontWeight: 600, fontSize: 13 }}>Control de Asistencia</span>
-              </div>
-              <ChevronRight size={16} color="var(--text-muted)" />
-            </Link>
-          </div>
-
-          {/* Gráficos y Tablas del Dashboard */}
-          <div className="dashboard-grid">
-            {/* Top Anotadores */}
-            <div className="card">
-              <div className="card-title">
-                <Goal size={18} color="var(--accent)" /> Top Anotadores {esTodos ? '' : `(${selectedSport?.nombre})`}
-              </div>
-              {anotadores.length === 0 ? (
-                <div className="empty-state" style={{ padding: '30px 0' }}>
-                  <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-                    Sin registros de anotaciones {esTodos ? '' : `en ${selectedSport?.nombre}`}
-                  </p>
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={anotadores} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>        
-                    <XAxis
-                      dataKey="nombre"
-                      tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-                      tickFormatter={v => v.split(' ')[0]}
-                    />
-                    <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} allowDecimals={false} />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--surface)',
-                        border: '1px solid var(--border-hover)',
-                        borderRadius: 8,
-                        color: 'var(--text-primary)'
-                      }}
-                    />
-                    <Bar dataKey="total_anotaciones" name="Anotaciones" fill="var(--accent)" radius={[6,6,0,0]} />
-                    <Bar dataKey="total_asistencias" name="Asistencias" fill="var(--accent2)" radius={[6,6,0,0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-
-            {/* Radar Rendimiento */}
-            <div className="card">
-              <div className="card-title">
-                <Star size={18} color="var(--accent2)" /> Rendimiento (Anotaciones + Asistencias)
-              </div> 
-              {radarData.length === 0 ? (
-                <div className="empty-state" style={{ padding: '30px 0' }}>
-                  <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-                    Sin datos de rendimiento {esTodos ? '' : `en ${selectedSport?.nombre}`}
-                  </p>
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <RadarChart data={radarData}>
-                    <PolarGrid stroke="var(--border)" />
-                    <PolarAngleAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} />
-                    <PolarRadiusAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
-                    <Radar name="Anotaciones" dataKey="Anotaciones" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.3} />      
-                    <Radar name="Asistencias" dataKey="Asistencias" stroke="var(--accent2)" fill="var(--accent2)" fillOpacity={0.2} />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--surface)',
-                        border: '1px solid var(--border-hover)',
-                        borderRadius: 8,
-                        color: 'var(--text-primary)'
-                      }}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-
-            {/* Últimos entrenamientos */}
-            <div className="card">
-              <div className="card-title">
-                <Dumbbell size={18} color="var(--warning)" /> Últimos Entrenamientos
-              </div>
-              {!data?.ultimos_entrenamientos?.length ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Sin entrenamientos registrados</p>
-              ) : (
-                <table>
-                  <thead>
-                    <tr><th>Fecha</th><th>Tipo</th><th>Descripción</th></tr>
-                  </thead>
-                  <tbody>
-                    {data.ultimos_entrenamientos.map(e => (
-                      <tr key={e.id}>
-                        <td>{new Date(e.fecha).toLocaleDateString('es')}</td>
-                        <td><span className="badge badge-purple">{e.tipo}</span></td>
-                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{e.descripcion || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Próximos partidos */}
-            <div className="card">
-              <div className="card-title">
-                <Trophy size={18} color="var(--accent2)" /> Próximos Partidos
-              </div>
-              {!data?.proximos_partidos?.length ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No hay partidos programados</p>
-              ) : (
-                <table>
-                  <thead>
-                    <tr><th>Fecha</th><th>Rival</th><th>Tipo</th></tr>
-                  </thead>
-                  <tbody>
-                    {data.proximos_partidos.map(p => (
-                      <tr key={p.id}>
-                        <td>{new Date(p.fecha).toLocaleDateString('es')}</td>
-                        <td style={{ fontWeight: 600 }}>{p.rival}</td>
-                        <td>
-                          <span className={`badge ${p.tipo === 'liga' ? 'badge-green' : 'badge-orange'}`}>
-                            {p.tipo}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
           </div>
         </>
+      ) : (
+        <>
+          <p className="ini-banner-tipo">Calendario</p>
+          <h2 id="t-partido">No hay partidos programados</h2>
+          <p className="ini-banner-dato">Cuando se registre el próximo partido aparecerá aquí con la disponibilidad del plantel.</p>
+          {puedeProgramar && <div className="ini-banner-acciones"><Link className="btn btn-naranja" to="/partidos">Programar partido</Link></div>}
+        </>
       )}
+    </section>
+  )
+}
 
-      {/* MODAL: Crear Nuevo Deporte */}
-      {modalNuevoDeporte && (
-        <Modal
-          title="Crear Nuevo Deporte o Disciplina"
-          onClose={() => setModalNuevoDeporte(false)}
-          footer={
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, width: '100%' }}>
-              <button className="btn btn-ghost" onClick={() => setModalNuevoDeporte(false)}>
-                Cancelar
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleCrearDeporte}
-                disabled={creandoDeporte || !nuevoDeporteNombre.trim()}
-              >
-                {creandoDeporte ? 'Creando...' : 'Crear y Gestionar'}
-              </button>
-            </div>
-          }
-        >
-          <form onSubmit={handleCrearDeporte} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-              Como Director Técnico (Administrador) o Entrenador, ingresa el nombre de la nueva disciplina deportiva que deseas gestionar (ej. Rugby, Fútbol Sala, Baloncesto, Atletismo, etc.).
+/* ── Disponibilidad del plantel (dorsales) ──────────────── */
+function Disponibilidad({ plantel, resumen, deporte, rol }) {
+  return (
+    <section className="panel orden-2" aria-labelledby="t-disp">
+      <div className="panel-cabecera">
+        <h2 id="t-disp">Disponibilidad del plantel{deporte ? `: ${deporte}` : ''}</h2>
+        {resumen.total > 0 && <span className="panel-contador">{resumen.disponibles + resumen.restringidos} de {resumen.total}</span>}
+      </div>
+      <div className="panel-cuerpo">
+        {plantel.length === 0 ? (
+          <div className="ini-vacio">
+            <i className="fa-solid fa-users" aria-hidden="true"></i>
+            <p>
+              {deporte
+                ? `No hay deportistas${rol === 'entrenador' ? ' tuyos' : ''} en ${deporte}. Elige "Todos los deportes" en el selector de deporte para ver el plantel completo.`
+                : rol === 'entrenador' ? 'Todavía no tienes deportistas asignados.' : 'Todavía no hay deportistas registrados.'}
             </p>
-            <div className="form-group">
-              <label>Nombre de la Disciplina *</label>
-              <input
-                type="text"
-                placeholder="Ej. Rugby, Baloncesto, Fútbol Sala, Natación..."
-                value={nuevoDeporteNombre}
-                onChange={e => setNuevoDeporteNombre(e.target.value)}
-                autoFocus
-              />
-            </div>
-          </form>
-        </Modal>
-      )}
-
-      {/* MODAL: Confirmar Eliminación de Deporte */}
-      {modalEliminarDeporte && deporteAEliminar && (
-        <Modal
-          title={`Eliminar Deporte: ${deporteAEliminar.nombre}`}
-          onClose={() => { setModalEliminarDeporte(false); setDeporteAEliminar(null) }}
-          footer={
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, width: '100%' }}>
-              <button
-                className="btn btn-ghost"
-                onClick={() => { setModalEliminarDeporte(false); setDeporteAEliminar(null) }}
-                disabled={eliminandoDeporte}
-              >
-                Cancelar
-              </button>
-              <button
-                className="btn btn-danger"
-                onClick={handleConfirmarEliminar}
-                disabled={eliminandoDeporte}
-              >
-                {eliminandoDeporte ? 'Eliminando...' : 'Sí, Eliminar Deporte'}
-              </button>
-            </div>
-          }
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p style={{ fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>
-              ¿Estás seguro de que deseas eliminar la disciplina deportiva <strong>{deporteAEliminar.nombre}</strong>?
-            </p>
-            <div
-              style={{
-                background: 'rgba(231, 76, 60, 0.1)',
-                border: '1px solid rgba(231, 76, 60, 0.3)',
-                padding: '12px 14px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 13,
-                color: 'var(--danger)',
-              }}
-            >
-              ⚠️ Los deportistas asociados a este deporte no serán eliminados de la plataforma, pero quedarán sin disciplina asignada hasta que los reasignes.
-            </div>
+            {!deporte && ['administrador', 'entrenador'].includes(rol) && <Link className="btn btn-primary" to="/jugadores">Registrar deportista</Link>}
           </div>
-        </Modal>
-      )}
-    </div>
+        ) : (
+          <>
+            <ul className="ini-plantel" aria-label="Estado de cada jugador">
+              {plantel.map(j => {
+                const e = ESTADOS[j.estado]
+                const apellido = j.nombre.split(' ').slice(-1)[0]
+                return (
+                  <li key={j.id} className={`ini-dorsal ${j.estado}`} title={`${j.nombre}: ${e.texto}${j.motivo ? `. ${j.motivo}` : ''}`}>
+                    {j.estado !== 'disponible' && <i className={`fa-solid ${e.icono} ini-dorsal-estado`} aria-hidden="true"></i>}
+                    <span className="ini-dorsal-numero">{tieneDorsal(j.dorsal) ? j.dorsal : '–'}</span>
+                    <span className="ini-dorsal-nombre">{apellido}</span>
+                    <span className="sr-only">{j.nombre}, {e.texto}{j.motivo ? `, ${j.motivo}` : ''}</span>
+                  </li>
+                )
+              })}
+            </ul>
+            <p className="ini-leyenda">
+              <span><i className="fa-solid fa-circle-check l-ok" aria-hidden="true"></i><b>{resumen.disponibles}</b> disponibles</span>
+              <span><i className="fa-solid fa-triangle-exclamation l-aviso" aria-hidden="true"></i><b>{resumen.restringidos}</b> con restricciones</span>
+              <span><i className="fa-solid fa-circle-xmark l-error" aria-hidden="true"></i><b>{resumen.no_disponibles}</b> no disponibles</span>
+            </p>
+          </>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/* ── Vista del jugador: su propio estado ────────────────── */
+function MiEstado({ jugador, revisar }) {
+  if (!jugador) {
+    return (
+      <section className="panel orden-2" aria-labelledby="t-estado">
+        <div className="panel-cabecera"><h2 id="t-estado">Mi estado</h2></div>
+        <div className="panel-cuerpo">
+          <div className="alerta alerta-info"><i className="fa-solid fa-circle-info" aria-hidden="true"></i>
+            <span>Tu usuario todavía no está vinculado a una ficha de deportista. Pídele al administrador que lo vincule.</span></div>
+        </div>
+      </section>
+    )
+  }
+  const e = ESTADOS[jugador.estado]
+  const lesion = revisar.find(r => r.tipo === 'lesion')
+  return (
+    <section className="panel orden-2" aria-labelledby="t-estado">
+      <div className="panel-cabecera"><h2 id="t-estado">Mi estado</h2></div>
+      <div className="panel-cuerpo ini-mi-estado">
+        <div className={`ini-dorsal grande ${jugador.estado}`}>
+          <span className="ini-dorsal-numero">{tieneDorsal(jugador.dorsal) ? jugador.dorsal : '–'}</span>
+          <span className="ini-dorsal-nombre">{jugador.posicion || 'Sin posición'}</span>
+        </div>
+        <div>
+          <p className="ini-mi-nombre">{jugador.nombre}</p>
+          <p className={`badge badge-${e.clase === 'ok' ? 'green' : e.clase === 'aviso' ? 'orange' : 'red'}`}>
+            <i className={`fa-solid ${e.icono}`} aria-hidden="true"></i> {e.texto}
+          </p>
+          {jugador.motivo && <p className="ini-mi-motivo">{jugador.motivo}</p>}
+          {lesion?.retorno_estimado && <p className="ini-mi-motivo">Retorno estimado: {fechaCorta(lesion.retorno_estimado)}.</p>}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ── Asistencia (barras de progreso) ────────────────────── */
+function Asistencia({ sesiones, esJugador }) {
+  return (
+    <section className="panel orden-5" aria-labelledby="t-asis">
+      <div className="panel-cabecera"><h2 id="t-asis">{esJugador ? 'Mi asistencia' : 'Asistencia a entrenamientos'}</h2></div>
+      <div className="panel-cuerpo">
+        {sesiones.length === 0 ? (
+          <p className="ini-texto-suave">Todavía no hay entrenamientos registrados.</p>
+        ) : (
+          <>
+            <ul className="ini-asistencia">
+              {sesiones.map(s => {
+                const pct = s.registrados ? Math.round((s.presentes / s.registrados) * 100) : null
+                return (
+                  <li key={s.id}>
+                    <div className="ini-asistencia-fila">
+                      <span><b>{s.tipo}</b>, {fechaLarga(s.fecha)}</span>
+                      <span>{s.registrados ? (esJugador ? (s.presentes ? 'Asististe' : 'No asististe') : `${s.presentes} de ${s.registrados}`) : 'Sin registro'}</span>
+                    </div>
+                    {pct !== null && !esJugador && (
+                      <div className="ini-pista" role="img" aria-label={`${pct} % de asistencia`}>
+                        <div className={pct < 75 ? 'baja' : undefined} style={{ width: `${Math.max(pct, 4)}%` }}>{pct} %</div>
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+            {!esJugador && <p className="ini-nota"><span aria-hidden="true"></span>Sesiones con menos del 75 % de asistencia.</p>}
+          </>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/* ── Máximos anotadores ─────────────────────────────────── */
+function Anotadores({ lista, esJugador }) {
+  if (!lista.length || esJugador) return null
+  return (
+    <section className="panel orden-7" aria-labelledby="t-anot">
+      <div className="panel-cabecera"><h2 id="t-anot">Máximos anotadores</h2></div>
+      <div className="table-wrapper" style={{ border: 0, borderRadius: 0 }}>
+        <table>
+          <thead><tr><th>Jugador</th><th style={{ textAlign: 'right' }}>Anotaciones</th><th style={{ textAlign: 'right' }}>Asistencias</th></tr></thead>
+          <tbody>
+            {lista.map(j => (
+              <tr key={j.id}>
+                <td>{nombreConDorsal(j.nombre, j.dorsal)}</td>
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><b>{j.anotaciones}</b></td>
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{j.asistencias}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+/* ── Mi sesión (como "Sesión del usuario" del portal) ───── */
+function MiSesion({ usuario, onSalir }) {
+  const [cambiarClave, setCambiarClave] = useState(false)
+  const acciones = ACCIONES[usuario?.rol] || []
+  return (
+    <section className="panel orden-6" aria-labelledby="t-sesion">
+      <div className="panel-cabecera"><h2 id="t-sesion">Mi sesión</h2></div>
+      <div className="panel-cuerpo">
+        <div className="ini-sesion">
+          <div className="ini-sesion-foto" aria-hidden="true">{iniciales(usuario?.nombre)}</div>
+          <dl>
+            <div><dt>Nombre</dt><dd>{usuario?.nombre}</dd></div>
+            <div><dt>Rol</dt><dd>{ROLES[usuario?.rol] || usuario?.rol}</dd></div>
+            <div><dt>Correo</dt><dd>{usuario?.email}</dd></div>
+          </dl>
+        </div>
+        <div className="ini-botones">
+          {acciones.map((ac, i) => (
+            <Link key={ac.a} to={ac.a} className={`btn btn-bloque ${i === 0 ? 'btn-naranja' : 'btn-secondary'}`}>
+              {ac.icono && <i className={`fa-solid ${ac.icono}`} aria-hidden="true"></i>} {ac.texto}
+            </Link>
+          ))}
+          <button type="button" className="btn btn-secondary btn-bloque" onClick={() => setCambiarClave(true)}>Cambiar contraseña</button>
+          <button type="button" className="btn btn-secondary btn-bloque" onClick={onSalir}>Cerrar sesión</button>
+        </div>
+      </div>
+      {cambiarClave && <CambiarClave onCerrar={() => setCambiarClave(false)} />}
+    </section>
+  )
+}
+
+function CambiarClave({ onCerrar }) {
+  const [form, setForm] = useState({ actual: '', nueva: '', confirmar: '' })
+  const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const cambiar = (c) => (e) => { setForm(f => ({ ...f, [c]: e.target.value })); setError('') }
+
+  const guardar = async (e) => {
+    e.preventDefault()
+    if (form.nueva.length < 6) return setError('La contraseña nueva debe tener al menos 6 caracteres.')
+    if (form.nueva !== form.confirmar) return setError('La confirmación no coincide con la contraseña nueva.')
+    setGuardando(true)
+    try {
+      await api.put('/auth/cambiar-password', { password_actual: form.actual, password_nuevo: form.nueva })
+      toast.success('Contraseña cambiada')
+      onCerrar()
+    } catch (err) {
+      setError(err.message || 'No se pudo cambiar la contraseña.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <Modal title="Cambiar contraseña" onClose={onCerrar}>
+      <form onSubmit={guardar} style={{ display: 'grid', gap: 14 }}>
+        {error && <div className="alerta alerta-error" role="alert"><i className="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span>{error}</span></div>}
+        <div className="form-group"><label htmlFor="clave-actual">Contraseña actual</label>
+          <input id="clave-actual" type="password" autoComplete="current-password" value={form.actual} onChange={cambiar('actual')} required /></div>
+        <div className="form-group"><label htmlFor="clave-nueva">Contraseña nueva</label>
+          <input id="clave-nueva" type="password" autoComplete="new-password" value={form.nueva} onChange={cambiar('nueva')} required minLength={6} /></div>
+        <div className="form-group"><label htmlFor="clave-confirmar">Confirmar contraseña nueva</label>
+          <input id="clave-confirmar" type="password" autoComplete="new-password" value={form.confirmar} onChange={cambiar('confirmar')} required /></div>
+        <div className="modal-footer" style={{ marginTop: 4 }}>
+          <button type="button" className="btn btn-secondary" onClick={onCerrar}>Cancelar</button>
+          <button type="submit" className="btn btn-primary" disabled={guardando}>{guardando ? 'Guardando…' : 'Cambiar contraseña'}</button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/* ── Para revisar (alertas del portal) ──────────────────── */
+function ParaRevisar({ items }) {
+  return (
+    <section className="panel orden-3" aria-labelledby="t-rev">
+      <div className="panel-cabecera"><h2 id="t-rev">Para revisar</h2>{items.length > 0 && <span className="panel-contador">{items.length}</span>}</div>
+      <div className="panel-cuerpo">
+        {items.length === 0 ? (
+          <div className="alerta alerta-ok"><i className="fa-solid fa-circle-check" aria-hidden="true"></i><span>Todo al día: no hay lesiones activas ni restricciones pendientes.</span></div>
+        ) : (
+          <ul className="ini-avisos">
+            {items.map((it, i) => <Aviso key={i} it={it} />)}
+          </ul>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function Aviso({ it }) {
+  const quien = <b>{nombreConDorsal(it.nombre, it.dorsal)}</b>
+  if (it.tipo === 'lesion') return (
+    <li className="alerta alerta-error"><i className="fa-solid fa-kit-medical" aria-hidden="true"></i>
+      <div>{quien} lleva {it.dias} {it.dias === 1 ? 'día' : 'días'} lesionado{it.lesion ? ` (${it.lesion.toLowerCase()})` : ''}.{it.retorno_estimado ? ` Retorno estimado: ${fechaCorta(it.retorno_estimado)}.` : ''}<br />
+        <Link to="/lesiones">Ver lesiones</Link></div></li>
+  )
+  if (it.tipo === 'restriccion') return (
+    <li className="alerta alerta-aviso"><i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+      <div>{quien} juega con restricción{it.restricciones ? `: ${it.restricciones.charAt(0).toLowerCase()}${it.restricciones.slice(1)}` : ''}.<br />
+        <Link to="/salud">Ver controles médicos</Link></div></li>
+  )
+  if (it.tipo === 'no_apto') return (
+    <li className="alerta alerta-error"><i className="fa-solid fa-circle-xmark" aria-hidden="true"></i>
+      <div>{quien} está no apto temporalmente según su último control médico.<br /><Link to="/salud">Ver controles médicos</Link></div></li>
+  )
+  if (it.tipo === 'control_vencido') return (
+    <li className="alerta alerta-info"><i className="fa-solid fa-calendar-xmark" aria-hidden="true"></i>
+      <div>{quien} tiene un control médico pendiente desde el {fechaCorta(it.fecha)}.<br /><Link to="/salud">Registrar control</Link></div></li>
+  )
+  if (it.tipo === 'antropometria') return (
+    <li className="alerta alerta-info"><i className="fa-solid fa-ruler-combined" aria-hidden="true"></i>
+      <div><b>{it.total} {it.total === 1 ? 'jugador no tiene' : 'jugadores no tienen'}</b> evaluación antropométrica este semestre.<br /><Link to="/antropometria">Ir a antropometría</Link></div></li>
+  )
+  return null
+}
+
+/* ── Esta semana ────────────────────────────────────────── */
+function EstaSemana({ items }) {
+  return (
+    <section className="panel orden-4" aria-labelledby="t-semana">
+      <div className="panel-cabecera"><h2 id="t-semana">Esta semana</h2></div>
+      <div className="panel-cuerpo">
+        {items.length === 0 ? (
+          <p className="ini-texto-suave">No hay entrenamientos ni partidos en los próximos 7 días.</p>
+        ) : (
+          <ul className="ini-agenda">
+            {items.map(it => (
+              <li key={`${it.clase}-${it.id}`} className={it.clase}>
+                <div className="ini-agenda-fecha"><small>{diaCorto(it.fecha)}</small><b>{numeroDia(it.fecha)}</b></div>
+                <div>
+                  <p className="ini-agenda-titulo">{it.titulo} {it.etiqueta && <span className="ini-etiqueta">{it.etiqueta}</span>}</p>
+                  <p className="ini-agenda-detalle">{it.detalle || (it.clase === 'partido' ? 'Partido' : 'Entrenamiento')}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/* ── Deportes (crear y eliminar; antes estaba en el inicio antiguo) ── */
+function Deportes() {
+  const { disciplinas, selectedSportId, setSelectedSportId, crearDisciplina, eliminarDisciplina, puedeGestionarDeportes } = useDeporte()
+  const [nombre, setNombre] = useState('')
+  const [aEliminar, setAEliminar] = useState(null)
+  const [ocupado, setOcupado] = useState(false)
+  if (!puedeGestionarDeportes) return null
+
+  const crear = async (e) => {
+    e.preventDefault()
+    if (!nombre.trim()) return
+    setOcupado(true)
+    try { await crearDisciplina(nombre.trim()); setNombre('') } catch { /* el contexto ya muestra el error */ } finally { setOcupado(false) }
+  }
+  const eliminar = async () => {
+    setOcupado(true)
+    try { await eliminarDisciplina(aEliminar.id, aEliminar.nombre); setAEliminar(null) } catch { /* idem */ } finally { setOcupado(false) }
+  }
+
+  return (
+    <section className="panel orden-8" aria-labelledby="t-dep">
+      <div className="panel-cabecera"><h2 id="t-dep">Deportes</h2><span className="panel-contador">{disciplinas.length}</span></div>
+      <div className="panel-cuerpo">
+        <ul className="ini-deportes">
+          {disciplinas.map(d => {
+            const activo = String(selectedSportId) === String(d.id)
+            return (
+              <li key={d.id} className={activo ? 'activo' : undefined}>
+                <button type="button" className="ini-deporte-nombre" onClick={() => setSelectedSportId(activo ? 'todos' : d.id)} aria-pressed={activo}>
+                  <i className={`fa-solid ${activo ? 'fa-circle-dot' : 'fa-circle'}`} aria-hidden="true"></i> {d.nombre}
+                </button>
+                <button type="button" className="btn-icon btn-danger" onClick={() => setAEliminar(d)} aria-label={`Eliminar ${d.nombre}`}>
+                  <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+        <form className="ini-deporte-form" onSubmit={crear}>
+          <label className="sr-only" htmlFor="nuevo-deporte">Nuevo deporte</label>
+          <input id="nuevo-deporte" placeholder="Nuevo deporte, por ejemplo Voleibol" value={nombre} onChange={e => setNombre(e.target.value)} />
+          <button className="btn btn-primary" type="submit" disabled={ocupado || !nombre.trim()}>Agregar</button>
+        </form>
+      </div>
+      <ConfirmModal
+        isOpen={!!aEliminar}
+        title={`Eliminar ${aEliminar?.nombre || ''}`}
+        message="Los deportistas y equipos de este deporte quedarán sin deporte asignado. Esta acción no se puede deshacer."
+        confirmText="Eliminar deporte"
+        onConfirm={eliminar}
+        onCancel={() => setAEliminar(null)}
+        loading={ocupado}
+      />
+    </section>
   )
 }

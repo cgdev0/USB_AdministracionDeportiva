@@ -3,6 +3,33 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v1.3 — Administración Deportiva con identidad Unisimón
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.3`
+
+Identidad y diseño
+- Nuevo nombre: Administración Deportiva (antes DTdeportivo).
+- Diseño alineado con las plataformas de Unisimón: Roboto, Font Awesome, logos oficiales, franja de marca, paneles con encabezado verde, footer negro. Sistema documentado en `docs/diseno/DESIGN.md`.
+- Login rehecho como el del portal estudiantil.
+- Pestañas en computador y menú inferior con hoja "Más" en celular (antes, en celular no había forma de navegar).
+- Inicio nuevo con datos reales: próximo partido, disponibilidad del plantel por dorsal, para revisar, agenda de la semana, asistencia, máximos anotadores, mi sesión (con cambio de contraseña) y gestión de deportes.
+- Todos los módulos adoptan la paleta nueva; colores del tema oscuro corregidos (puntos de la somatocarta y textos de gráficas que quedaban invisibles).
+
+Dorsal (número de camiseta)
+- Columna `dorsal` (0 a 99), única por equipo; migración `003_dorsal.sql`.
+- Se edita en la ficha, con un clic en la tabla de Deportistas y por CSV; aparece como "#7 Nombre" en todos los módulos.
+
+Correcciones
+- Asignar o quitar un equipo ya no borra el dorsal ni el entrenador del jugador (actualización parcial).
+- El deporte por defecto es "Todos los deportes" (antes se elegía el primero y podía ocultar un plantel).
+- Menú y permisos de las páginas salen de la misma configuración; el head coach puede consultar equipos.
+- La búsqueda de Deportistas ya no ignora los filtros avanzados y permite buscar por dorsal.
+- Un login con credenciales incorrectas ya no intenta refrescar la sesión.
+
+Para el equipo
+- `npm run demo` carga un plantel de ejemplo con fechas relativas a hoy.
+- `HOST=127.0.0.1 npm run dev` limita el servidor a la propia computadora.
+
 ## v1.2 — PostgreSQL nativo
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.2`

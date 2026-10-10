@@ -11,6 +11,7 @@ import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
 import { formatImageUrl } from '../utils/image'
+import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
 
 const EMPTY_EQUIPO = {
   nombre: '',
@@ -343,7 +344,7 @@ export default function Equipos() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
             width: 44, height: 44, borderRadius: 12,
-            background: 'linear-gradient(135deg, rgba(26,115,232,0.15), rgba(0,200,83,0.15))',
+            background: 'linear-gradient(135deg, rgba(8,135,50,0.10), rgba(0,145,111,0.10))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: '1px solid var(--border)'
           }}>
@@ -444,7 +445,7 @@ export default function Equipos() {
                         width: 64,
                         height: 64,
                         borderRadius: 14,
-                        background: 'linear-gradient(135deg, rgba(26,115,232,0.1), rgba(0,200,83,0.1))',
+                        background: 'linear-gradient(135deg, rgba(8,135,50,0.08), rgba(0,145,111,0.08))',
                         border: '1.5px solid var(--border)',
                         display: 'flex',
                         alignItems: 'center',
@@ -560,7 +561,7 @@ export default function Equipos() {
                     fontSize: 13,
                     fontWeight: 700,
                     color: 'var(--accent)',
-                    background: 'rgba(26,115,232,0.12)',
+                    background: 'var(--ok-fondo)',
                     padding: '2px 8px',
                     borderRadius: 12
                   }}>
@@ -907,7 +908,7 @@ export default function Equipos() {
                                 )}
                               </div>
                               <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13.5 }}>
-                                {j.nombre}
+                                {etiquetaJugador(j)}
                               </span>
                             </div>
                           </td>
@@ -979,7 +980,7 @@ export default function Equipos() {
               <option value="">Selecciona un deportista de la lista...</option>
               {jugadoresDisponibles.map(j => (
                 <option key={j.id} value={j.id}>
-                  {j.nombre} {j.posicion ? `(${j.posicion})` : ''} {j.equipo_nombre ? `[Actualmente en: ${j.equipo_nombre}]` : '[Sin equipo]'}
+                  {etiquetaJugador(j)} {j.posicion ? `(${j.posicion})` : ''} {j.equipo_nombre ? `[Actualmente en: ${j.equipo_nombre}]` : '[Sin equipo]'}
                 </option>
               ))}
             </select>

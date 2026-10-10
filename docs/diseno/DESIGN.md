@@ -1,6 +1,6 @@
 # Sistema de diseño — Administración Deportiva
 
-Borrador v1.3, versión 2. Autor: Carlos Gamboa. Estado: **en revisión** (no aplicar al código hasta aprobarlo).
+v1.3. Autor: Carlos Gamboa. Estado: **aprobado y aplicado** a la app (login, estructura, inicio y paleta en todos los módulos).
 
 Prototipo: `docs/diseno/prototipo/login.html` y `dashboard.html` (abrir en el navegador; `login.html?error` muestra el estado de error). Capturas en `docs/diseno/capturas/`.
 
@@ -97,7 +97,7 @@ Header blanco compacto (logo + nombre del sistema + foto), franja, contenido en 
 | Versión | Dirección | Resultado |
 |---|---|---|
 | 1 | Reinterpretación propia: Zilla Slab + Fira Sans, fondo blanco minimalista, solo una franja fina como guiño a la marca. | **Rechazada** por Carlos: no se parecía a las plataformas de la universidad (otra tipografía, otros colores, sin footer negro, demasiado plana). |
-| 2 | Lenguaje visual de Unisimón medido en sus plataformas, modernizado. | En revisión. |
+| 2 | Lenguaje visual de Unisimón medido en sus plataformas, modernizado. | **Aprobada** por Carlos y aplicada en la v1.3. |
 
 ## 7. Calidad mínima (se verifica con Playwright en 390 px y 1440 px)
 
