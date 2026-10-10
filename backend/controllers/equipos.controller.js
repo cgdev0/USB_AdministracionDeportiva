@@ -3,13 +3,14 @@ const path   = require('path');
 const fs     = require('fs');
 const multer = require('multer');
 
+const { responderError } = require('../utils/errores');
 // Configuración de Multer para imágenes de equipos (logos/escudos)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
-    allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error('Formato de imagen no permitido (use PNG, JPG, WEBP o SVG)'));
+    allowed.includes(file.mimetype) ? cb(null, true) : cb(Object.assign(new Error('Formato de imagen no permitido (use PNG, JPG, WEBP o SVG)'), { status: 400 }));
   },
 });
 
@@ -38,7 +39,7 @@ exports.uploadLogo = async (req, res) => {
     res.json({ logo_url, message: 'Imagen del equipo actualizada correctamente' });
   } catch (err) {
     console.error('Error al actualizar escudo del equipo:', err);
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -63,7 +64,7 @@ exports.getAll = async (req, res) => {
     const { rows } = await db.query(query, params);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -97,7 +98,7 @@ exports.getOne = async (req, res) => {
 
     res.json(equipo);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -122,7 +123,7 @@ exports.create = async (req, res) => {
       message: 'Equipo creado exitosamente'
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -140,7 +141,7 @@ exports.update = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
     res.json({ message: 'Equipo actualizado correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -153,7 +154,7 @@ exports.remove = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
     res.json({ message: 'Equipo eliminado correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 

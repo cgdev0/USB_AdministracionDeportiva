@@ -1,13 +1,9 @@
-const crypto = require('crypto');
 const jwt    = require('jsonwebtoken');
 const db     = require('../config/db');
-
-function hashPassword(password, salt) {
-  return crypto.createHmac('sha256', salt).update(password).digest('hex');
-}
-
-const JWT_SECRET = process.env.JWT_SECRET || 'dtdeportivo_jwt_default_secret_key';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'dtdeportivo_refresh_default_secret_key';
+const { JWT_SECRET, JWT_REFRESH_SECRET } = require('../config/secretos');
+const { hashClave, verificarClave, simularVerificacion } = require('../utils/claves');
+const { responderError } = require('../utils/errores');
+const { registrarFallo, limpiarFallos } = require('../middleware/limite');
 
 function generarTokens(usuario) {
   const payload = { id: usuario.id, email: usuario.email, rol: usuario.rol, nombre: usuario.nombre, jugador_id: usuario.jugador_id || null };
@@ -18,8 +14,9 @@ function generarTokens(usuario) {
 
 // POST /api/auth/login
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Usuario / Email y contraseña requeridos' });
+  if (typeof email !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'Usuario y contraseña deben ser texto' });
 
   try {
     const rawInput = email.trim();
@@ -38,11 +35,24 @@ exports.login = async (req, res) => {
        ) AND activo = true`,
       [term, defaultEmail, termClean]
     );
-    if (!rows.length) return res.status(401).json({ error: 'Credenciales inválidas' });
+    if (!rows.length) {
+      await simularVerificacion(password);
+      registrarFallo(req);
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
 
     const usuario = rows[0];
-    const hash = hashPassword(password, usuario.salt);
-    if (hash !== usuario.password_hash) return res.status(401).json({ error: 'Credenciales inválidas' });
+    const { valida, rehacer } = await verificarClave(password, usuario);
+    if (!valida) {
+      registrarFallo(req);
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+    limpiarFallos(req);
+    // Migración transparente de hashes antiguos (HMAC-SHA256) a scrypt
+    if (rehacer) {
+      const nuevo = await hashClave(password);
+      await db.query('UPDATE usuarios SET password_hash=$1, salt=$2 WHERE id=$3', [nuevo.password_hash, nuevo.salt, usuario.id]);
+    }
 
     const { access, refresh } = generarTokens(usuario);
 
@@ -59,7 +69,7 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -68,7 +78,7 @@ exports.refresh = async (req, res) => {
   const { refresh_token } = req.body;
   if (!refresh_token) return res.status(400).json({ error: 'refresh_token requerido' });
   try {
-    const decoded = jwt.verify(refresh_token, JWT_REFRESH_SECRET);
+    const decoded = jwt.verify(refresh_token, JWT_REFRESH_SECRET, { algorithms: ['HS256'] });
     const { rows } = await db.query('SELECT * FROM usuarios WHERE id = $1 AND activo = true', [decoded.id]);
     if (!rows.length) return res.status(401).json({ error: 'Usuario no encontrado' });
     const { access, refresh } = generarTokens(rows[0]);
@@ -88,7 +98,7 @@ exports.me = async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json(rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -103,12 +113,11 @@ exports.cambiarPassword = async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Usuario no encontrado' });
 
     const usuario = rows[0];
-    if (hashPassword(password_actual, usuario.salt) !== usuario.password_hash) {
+    if (!(await verificarClave(password_actual, usuario)).valida) {
       return res.status(401).json({ error: 'Contraseña actual incorrecta' });
     }
 
-    const salt    = crypto.randomBytes(16).toString('hex');
-    const newHash = hashPassword(password_nuevo, salt);
+    const { password_hash: newHash, salt } = await hashClave(password_nuevo);
 
     await db.query(
       'UPDATE usuarios SET password_hash=$1, salt=$2, primer_login=false WHERE id=$3',
@@ -116,6 +125,6 @@ exports.cambiarPassword = async (req, res) => {
     );
     res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };

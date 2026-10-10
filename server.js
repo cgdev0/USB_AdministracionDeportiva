@@ -1,48 +1,11 @@
 const express = require('express');
-const cors    = require('cors');
 const path    = require('path');
 require('dotenv').config();
 
 async function startServer() {
-  const app = express();
+  // La API (rutas, seguridad y manejo de errores) vive en api/index.js
+  const app = require('./api/index');
   const PORT = Number(process.env.PORT) || 3000;
-
-  // Middlewares
-  app.use(cors({
-    origin: '*',
-    credentials: true,
-  }));
-  app.use(express.json());
-
-  // Servir estáticos de uploads con CORS
-  app.use('/uploads', (req, res, next) => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    next();
-  }, express.static(path.join(__dirname, 'backend', 'uploads')));
-
-  // Rutas API
-  app.use('/api/auth',          require('./backend/routes/auth.routes'));
-  app.use('/api/usuarios',      require('./backend/routes/usuarios.routes'));
-  app.use('/api/equipos',       require('./backend/routes/equipos.routes'));
-  app.use('/api/disciplinas',   require('./backend/routes/disciplinas.routes'));
-  app.use('/api/jugadores',     require('./backend/routes/jugadores.routes'));
-  app.use('/api/entrenamientos',require('./backend/routes/entrenamientos.routes'));
-  app.use('/api/asistencia',    require('./backend/routes/asistencia.routes'));
-  app.use('/api/lesiones',      require('./backend/routes/lesiones.routes'));
-  app.use('/api/evaluaciones',  require('./backend/routes/evaluaciones.routes'));
-  app.use('/api/partidos',      require('./backend/routes/partidos.routes'));
-  app.use('/api/estadisticas',  require('./backend/routes/estadisticas.routes'));
-  app.use('/api/dashboard',     require('./backend/routes/dashboard.routes'));
-  app.use('/api/settings',      require('./backend/routes/settings.routes'));
-  app.use('/api/antropometria', require('./backend/routes/antropometria.routes'));
-  app.use('/api/head-coach',    require('./backend/routes/headcoach.routes'));
-  app.use('/api/salud',         require('./backend/routes/salud.routes'));
-
-  // Health check
-  app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: new Date() });
-  });
 
   // Frontend integration (Vite dev server or static build)
   if (process.env.NODE_ENV !== 'production') {
@@ -69,6 +32,6 @@ async function startServer() {
 }
 
 startServer().catch(err => {
-  console.error('❌ Error al iniciar el servidor:', err);
+  console.error('❌ Error al iniciar el servidor:', err.message);
   process.exit(1);
 });

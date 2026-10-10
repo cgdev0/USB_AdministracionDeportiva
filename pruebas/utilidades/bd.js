@@ -7,7 +7,10 @@ const RAIZ = path.resolve(__dirname, '..', '..');
 require(path.join(RAIZ, 'node_modules', 'dotenv')).config({ path: path.join(RAIZ, '.env') });
 const { Client } = require(path.join(RAIZ, 'node_modules', 'pg'));
 
+const crypto = require('crypto');
 const BD_PRUEBAS = 'dt_deportivo_pruebas';
+// Clave de todas las cuentas creadas por seed.js y datos_demo.js en la base de pruebas
+const CLAVE_PRUEBAS = 'Pruebas.2026!';
 
 // Variables de entorno que fuerzan la conexión a la base de pruebas
 // (DATABASE_URL y SQL_HOST vacíos para que db.js use DB_* locales).
@@ -17,8 +20,10 @@ const ENV_PRUEBAS = {
   SQL_HOST: '',
   DB_NAME: BD_PRUEBAS,
   NODE_ENV: 'test',
-  JWT_SECRET: process.env.JWT_SECRET || 'secreto_solo_para_pruebas',
-  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'refresh_solo_para_pruebas',
+  // Secretos propios de cada ejecución: las pruebas no dependen del .env ni de valores fijos
+  JWT_SECRET: crypto.randomBytes(48).toString('hex'),
+  JWT_REFRESH_SECRET: crypto.randomBytes(48).toString('hex'),
+  SEED_CLAVE_INICIAL: CLAVE_PRUEBAS,
 };
 
 function credenciales(database) {
@@ -56,7 +61,7 @@ async function prepararBaseDePruebas({ conDemo = true } = {}) {
   if (conDemo) ejecutar('backend/config/datos_demo.js');
 }
 
-module.exports = { prepararBaseDePruebas, ENV_PRUEBAS, BD_PRUEBAS, credenciales, RAIZ };
+module.exports = { CLAVE_PRUEBAS, prepararBaseDePruebas, ENV_PRUEBAS, BD_PRUEBAS, credenciales, RAIZ };
 
 // Uso directo: node pruebas/utilidades/bd.js
 if (require.main === module) {

@@ -1,5 +1,6 @@
 const db = require('../config/db');
 
+const { responderError } = require('../utils/errores');
 exports.getSummary = async (req, res) => {
   try {
     const { disciplina_id } = req.query;
@@ -65,6 +66,6 @@ exports.getSummary = async (req, res) => {
       top_anotadores,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };

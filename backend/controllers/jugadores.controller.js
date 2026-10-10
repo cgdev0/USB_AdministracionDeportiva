@@ -3,6 +3,7 @@ const path = require('path');
 const fs   = require('fs');
 const multer = require('multer');
 
+const { responderError } = require('../utils/errores');
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -10,7 +11,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    allowed.includes(file.mimetype) ? cb(null, true) : cb(new Error('Formato no permitido'));
+    allowed.includes(file.mimetype) ? cb(null, true) : cb(Object.assign(new Error('Formato no permitido'), { status: 400 }));
   },
 });
 
@@ -37,7 +38,7 @@ exports.uploadPhoto = async (req, res) => {
     res.json({ foto_url });
   } catch (err) {
     console.error('Error al actualizar foto del jugador:', err);
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -92,7 +93,7 @@ exports.getAll = async (req, res) => {
     const { rows } = await db.query(query, params);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -135,7 +136,7 @@ exports.getOne = async (req, res) => {
 
     res.json(player);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -199,7 +200,7 @@ exports.create = async (req, res) => {
     res.status(201).json({ id: rows[0].id, nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, dorsal: dorsal.valor });
   } catch (err) {
     if (await responderDorsalOcupado(err, res, { dorsal: dorsal.valor, equipo_id })) return;
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -298,7 +299,7 @@ exports.bulkCreate = async (req, res) => {
       avisos,
     });
   } catch (err) {
-    res.status(500).json({ error: 'Error al procesar la importación: ' + err.message });
+    responderError(res, err);
   }
 };
 
@@ -344,7 +345,7 @@ exports.update = async (req, res) => {
     }
     res.json({ message: 'Jugador actualizado correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -364,7 +365,7 @@ exports.updateDorsal = async (req, res) => {
     }
     res.json({ id: Number(req.params.id), dorsal: dorsal.valor, message: dorsal.valor === null ? 'Dorsal quitado' : `Dorsal cambiado a ${dorsal.valor}` });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -377,6 +378,6 @@ exports.remove = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Jugador no encontrado' });
     res.json({ message: 'Jugador eliminado correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };

@@ -1,8 +1,6 @@
-const crypto = require('crypto');
 const db     = require('../config/db');
-
-function generateSalt()           { return crypto.randomBytes(16).toString('hex'); }
-function hashPassword(pwd, salt)  { return crypto.createHmac('sha256', salt).update(pwd).digest('hex'); }
+const { hashClave } = require('../utils/claves');
+const { responderError } = require('../utils/errores');
 
 // GET /api/usuarios
 exports.getAll = async (_req, res) => {
@@ -13,7 +11,7 @@ exports.getAll = async (_req, res) => {
     );
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -32,8 +30,7 @@ exports.create = async (req, res) => {
     return res.status(403).json({ error: 'El entrenador solo puede crear usuarios de tipo jugador o personal_salud' });
 
   try {
-    const salt = generateSalt();
-    const hash = hashPassword(password, salt);
+    const { password_hash: hash, salt } = await hashClave(password);
     const { rows } = await db.query(
       `INSERT INTO usuarios (nombre, email, password_hash, salt, rol, jugador_id, head_coach_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
@@ -42,7 +39,7 @@ exports.create = async (req, res) => {
     res.status(201).json({ id: rows[0].id, nombre, email, rol, activo: true, primer_login: true });
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'El email ya está registrado' });
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -59,7 +56,7 @@ exports.update = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json({ message: 'Usuario actualizado correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -68,8 +65,7 @@ exports.resetPassword = async (req, res) => {
   const { password } = req.body;
   if (!password) return res.status(400).json({ error: 'Nueva contraseña requerida' });
   try {
-    const salt = generateSalt();
-    const hash = hashPassword(password, salt);
+    const { password_hash: hash, salt } = await hashClave(password);
     const { rowCount } = await db.query(
       'UPDATE usuarios SET password_hash=$1, salt=$2, primer_login=true WHERE id=$3',
       [hash, salt, req.params.id]
@@ -77,7 +73,7 @@ exports.resetPassword = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json({ message: 'Contraseña restablecida. El usuario deberá cambiarla en su próximo ingreso.' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -91,7 +87,7 @@ exports.remove = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json({ message: 'Usuario desactivado correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -125,8 +121,7 @@ exports.createFromCSV = async (req, res) => {
         continue;
       }
       try {
-        const salt = generateSalt();
-        const hash = hashPassword(password, salt);
+        const { password_hash: hash, salt } = await hashClave(password);
         await db.query(
           `INSERT INTO usuarios (nombre, email, password_hash, salt, rol)
            VALUES ($1,$2,$3,$4,$5)
@@ -135,11 +130,11 @@ exports.createFromCSV = async (req, res) => {
         );
         resultados.creados++;
       } catch (err) {
-        resultados.errores.push({ fila: i + 2, error: err.message });
+        resultados.errores.push({ fila: i + 2, error: 'No se pudo crear el usuario: revisa los datos de la fila.' });
       }
     }
     res.json(resultados);
   } catch (err) {
-    res.status(500).json({ error: 'Error al procesar CSV: ' + err.message });
+    responderError(res, err);
   }
 };

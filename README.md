@@ -46,18 +46,26 @@ El frontend reconoce los roles `administrador`, `head_coach`, `entrenador`, `per
 ## Base de datos (PostgreSQL)
 
 1. Crear una base vacía, por ejemplo `dt_deportivo`.
-2. Copiar `.env.example` a `.env` y completar `DATABASE_URL` **o** las variables `DB_*`, además de `JWT_SECRET` y `JWT_REFRESH_SECRET`.
-3. Crear el esquema y los usuarios base:
+2. Copiar `.env.example` a `.env` y completar `DATABASE_URL` **o** las variables `DB_*`.
+3. Generar dos secretos distintos para `JWT_SECRET` y `JWT_REFRESH_SECRET` (mínimo 32 caracteres; en producción el servidor no arranca sin ellos):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+4. Crear el esquema y los usuarios base:
 
 ```bash
 npm install
 npm run db:init   # ejecuta backend/config/database.sql
-npm run seed      # crea los usuarios de prueba
+npm run seed      # crea los usuarios base y muestra su clave inicial una sola vez
 npm run demo      # opcional: plantel de rugby de ejemplo con dorsales, lesiones, asistencia y próximo partido
 npm run dev       # API + frontend en http://localhost:3000
 ```
 
-**Base existente de una versión anterior:** ejecutar en orden los scripts de `backend/migrations/` (`001_roles_y_salud.sql`, `002_postgres_nativo.sql`) después de hacer un respaldo.
+Las contraseñas no están en el código. `npm run seed` asigna a cada usuario nuevo una clave aleatoria y la muestra en la consola, o usa `SEED_CLAVE_INICIAL` si está definida en `.env`. Los usuarios que ya existen no se modifican.
+
+**Base existente de una versión anterior:** después de hacer un respaldo, ejecutar en orden los scripts de `backend/migrations/` que falten (`001_roles_y_salud.sql` a `004_valores_validos.sql`). Los usuarios existentes siguen entrando con su clave de siempre; su contraseña se protege con el hash nuevo la primera vez que inician sesión.
 
 ## Ejecutar el frontend en desarrollo
 

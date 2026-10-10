@@ -5,6 +5,7 @@
 // Es seguro ejecutarlo varias veces: si el equipo de demostración ya existe, no hace nada.
 // NO usar en producción.
 const pool = require('./db');
+const { crearUsuario, informar } = require('./seed');
 
 const EQUIPO = 'Unisimón Rugby (demo)';
 const JUGADORES = [
@@ -18,15 +19,12 @@ const JUGADORES = [
   [22, 'Esteban Mora', 'Centro'], [23, 'Tomás Ibarra', 'Wing'],
 ];
 
-// Head coach de prueba (mismas credenciales que los accesos demo del login), asociado al entrenador
+// Head coach de prueba asociado al entrenador. Su clave sigue las mismas reglas que seed.js.
 async function asegurarHeadCoach(client) {
-  const crypto = require('crypto');
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.createHmac('sha256', salt).update('HeadCoach123!').digest('hex');
+  const usuario = { nombre: 'Head Coach Demo', email: 'headcoach@dtdeportivo.com', rol: 'head_coach' };
+  informar(usuario, await crearUsuario(client, usuario));
   const { rows: [hc] } = await client.query(
-    `INSERT INTO usuarios (nombre, email, password_hash, salt, rol, primer_login)
-     VALUES ('Head Coach Demo', 'headcoach@dtdeportivo.com', $1, $2, 'head_coach', false)
-     ON CONFLICT (email) DO UPDATE SET rol = 'head_coach' RETURNING id`, [hash, salt]);
+    `UPDATE usuarios SET rol = 'head_coach' WHERE email = $1 RETURNING id`, [usuario.email]);
   await client.query(
     `UPDATE usuarios SET head_coach_id = $1
      WHERE id = (SELECT id FROM usuarios WHERE rol = 'entrenador' ORDER BY id LIMIT 1)`, [hc.id]);

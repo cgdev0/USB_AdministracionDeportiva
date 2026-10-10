@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 const fileFilter = (_req, file, cb) => {
   const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
   if (allowed.includes(file.mimetype)) cb(null, true)
-  else cb(new Error('Formato no permitido'))
+  else cb(Object.assign(new Error('Formato no permitido'), { status: 400 }))
 }
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } })

@@ -56,16 +56,18 @@ test('CP-MIG-002 [RNF-09] Una base de la versión original se migra sin perder d
   await c.query(esquemaV1);
   const { rows: [antes] } = await c.query('SELECT (SELECT COUNT(*) FROM jugadores)::int AS jugadores, (SELECT COUNT(*) FROM partidos)::int AS partidos');
 
-  for (const m of ['001_roles_y_salud.sql', '002_postgres_nativo.sql', '003_dorsal.sql']) {
-    await c.query(leer(`backend/migrations/${m}`));
-  }
+  // Todas las migraciones, en orden; se aplican dos veces para comprobar que se pueden repetir
+  const migraciones = fs.readdirSync(path.join(RAIZ, 'backend', 'migrations')).filter(f => f.endsWith('.sql')).sort();
+  for (const vuelta of [1, 2]) for (const m of migraciones) await c.query(leer(`backend/migrations/${m}`));
   const { rows: [despues] } = await c.query('SELECT (SELECT COUNT(*) FROM jugadores)::int AS jugadores, (SELECT COUNT(*) FROM partidos)::int AS partidos');
   const { rows: cols } = await c.query(`SELECT table_name || '.' || column_name AS c FROM information_schema.columns
     WHERE table_schema = 'public' AND column_name IN ('dorsal', 'genero', 'entrenador_id', 'head_coach_id', 'logo_url')`);
   const { rows: [t] } = await c.query(`SELECT COUNT(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public'`);
+  const { rows: [r] } = await c.query(`SELECT COUNT(*)::int AS n FROM pg_constraint WHERE conname LIKE 'chk\_%'`);
   await c.end();
 
   assert.deepEqual(despues, antes, 'se conservan todas las filas');
+  assert.equal(r.n, 7, 'rangos válidos de la migración 004');
   assert.deepEqual(cols.map(x => x.c).sort(),
     ['equipos.logo_url', 'jugadores.dorsal', 'jugadores.entrenador_id', 'jugadores.genero', 'usuarios.head_coach_id']);
   assert.equal(t.n, 16, 'queda con las mismas tablas que una instalación nueva');

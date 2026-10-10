@@ -1,5 +1,6 @@
 const db = require('../config/db');
 
+const { responderError } = require('../utils/errores');
 exports.getAll = async (req, res) => {
   try {
     let query = `
@@ -23,7 +24,7 @@ exports.getAll = async (req, res) => {
     const { rows } = await db.query(query, params);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -38,7 +39,7 @@ exports.getByJugador = async (req, res) => {
     `, [req.params.jugador_id]);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -52,7 +53,7 @@ exports.create = async (req, res) => {
     );
     res.status(201).json({ id: rows[0].id, jugador_id, partido_id, goles, asistencias, minutos_jugados });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -66,7 +67,7 @@ exports.update = async (req, res) => {
     if (rowCount === 0) return res.status(404).json({ error: 'Registro no encontrado' });
     res.json({ message: 'Estadística actualizada correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
 
@@ -75,6 +76,6 @@ exports.remove = async (req, res) => {
     await db.query('DELETE FROM estadisticas_jugador WHERE id = $1', [req.params.id]);
     res.json({ message: 'Estadística eliminada correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    responderError(res, err);
   }
 };
