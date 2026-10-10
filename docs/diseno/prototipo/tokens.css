@@ -1,0 +1,95 @@
+/* Prototipo v1.3 — tokens y base compartida (ver docs/diseno/DESIGN.md) */
+:root {
+  --verde: #09843B;
+  --verde-profundo: #00642D;
+  --tinta: #12261B;
+  --gris: #56665C;
+  --linea: #DCE5DF;
+  --campo: #EEF6F0;
+  --blanco: #FFFFFF;
+  --oro: #F18700;
+  --oro-suave: #FFF3E0;
+  --rojo: #C62828;
+  --rojo-suave: #FDECEC;
+
+  --franja-linea: linear-gradient(90deg, #F18700, #FFB31F);
+  --franja-banda: linear-gradient(90deg, #00642D 0%, #09843B 45%, #00916F 75%, #0CA8E3 100%);
+
+  --f-slab: 'Zilla Slab', Georgia, serif;
+  --f-ui: 'Fira Sans', system-ui, sans-serif;
+
+  --t-xs: 0.8125rem; --t-sm: 0.875rem; --t-md: 1rem; --t-lg: 1.125rem;
+  --t-xl: 1.375rem; --t-2xl: 1.75rem; --t-3xl: 2.25rem; --t-4xl: 3rem;
+
+  --r-control: 6px;
+  --r-panel: 12px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--f-ui);
+  font-size: var(--t-md);
+  line-height: 1.5;
+  color: var(--tinta);
+  background: var(--blanco);
+  -webkit-font-smoothing: antialiased;
+}
+img { display: block; max-width: 100%; }
+[hidden] { display: none !important; }
+b, strong { font-weight: 600; }
+button, input, select { font: inherit; color: inherit; }
+a { color: var(--verde-profundo); }
+
+:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* Franja de marca: línea dorada + banda verde → azul */
+.franja { height: 8px; background: var(--franja-banda); position: relative; }
+.franja::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 2px; background: var(--franja-linea); }
+
+.slab { font-family: var(--f-slab); }
+.ph { line-height: 1; }
+
+/* Botones */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 20px;
+  border: 1px solid transparent; border-radius: var(--r-control);
+  font-weight: 700; font-size: var(--t-md); cursor: pointer;
+  transition: background-color .15s ease, transform .1s ease;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primario { background: var(--verde); color: var(--blanco); }
+.btn-primario:hover { background: var(--verde-profundo); }
+.btn-texto { background: none; color: var(--verde-profundo); padding: 0 4px; min-height: 44px; }
+.btn-texto:hover { text-decoration: underline; }
+
+/* Enlace de acción: mismo estilo en toda la app */
+.accion {
+  display: inline-flex; align-items: center; min-height: 44px;
+  font-weight: 600; color: var(--verde-profundo); text-decoration: none;
+}
+.accion:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Campos */
+.campo-form { display: grid; gap: 6px; }
+.campo-form label { font-size: var(--t-sm); font-weight: 600; color: var(--tinta); }
+.campo-form .ayuda { font-size: var(--t-xs); color: var(--gris); }
+.entrada {
+  width: 100%; min-height: 48px; padding: 0 14px;
+  background: var(--blanco); border: 1px solid #B9C7BE; border-radius: var(--r-control);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.entrada:hover { border-color: var(--gris); }
+.entrada:focus { outline: none; border-color: var(--verde); box-shadow: 0 0 0 3px rgba(9,132,59,.18); }
+.entrada-con-boton { position: relative; }
+.entrada-con-boton .entrada { padding-right: 52px; }
+.entrada-con-boton button {
+  position: absolute; right: 2px; top: 2px; width: 44px; height: 44px;
+  border: 0; background: none; color: var(--gris); cursor: pointer; border-radius: var(--r-control);
+  display: grid; place-items: center; font-size: 20px;
+}

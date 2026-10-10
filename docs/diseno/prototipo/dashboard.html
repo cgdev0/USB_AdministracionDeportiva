@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inicio · Administración Deportiva</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&family=Zilla+Slab:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  /* ── Estructura general ───────────────────────────── */
+  .franja { position: sticky; top: 0; z-index: 30; }
+
+  .barra {
+    position: sticky; top: 8px; z-index: 20;
+    display: flex; align-items: center; gap: 10px;
+    height: 56px; padding: 0 16px;
+    background: var(--blanco); border-bottom: 1px solid var(--linea);
+  }
+  .barra img { width: 34px; }
+  .barra .nombre-app { font-family: var(--f-slab); font-weight: 700; font-size: var(--t-lg); line-height: 1.1; }
+  .avatar {
+    margin-left: auto;
+    width: 36px; height: 36px; border-radius: 8px;
+    display: grid; place-items: center;
+    background: var(--campo); color: var(--verde-profundo);
+    font-weight: 700; font-size: var(--t-sm);
+  }
+
+  .lateral { display: none; }
+
+  main { padding: 20px 16px 104px; display: grid; gap: 28px; }
+
+  /* ── Saludo ───────────────────────────────────────── */
+  .saludo h1 { font-family: var(--f-slab); font-weight: 700; font-size: var(--t-2xl); line-height: 1.1; }
+  .saludo-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+  .saludo .fecha { color: var(--gris); }
+  .selector-deporte {
+    display: inline-flex; align-items: center; gap: 6px;
+    min-height: 40px; padding: 0 12px;
+    border: 1px solid var(--linea); border-radius: var(--r-control); background: var(--blanco);
+    font-weight: 600; font-size: var(--t-sm); cursor: pointer;
+  }
+  .selector-deporte i { color: var(--gris); }
+
+  /* ── La "cancha": disponibilidad del plantel ──────── */
+  .cancha {
+    background: var(--campo); border-radius: var(--r-panel);
+    padding: 20px 16px; display: grid; gap: 16px;
+  }
+  .cancha h2 { font-family: var(--f-slab); font-weight: 700; font-size: var(--t-xl); line-height: 1.15; }
+  .cancha h2 .cifra { color: var(--verde-profundo); }
+  .cancha .contexto { color: var(--gris); font-size: var(--t-sm); margin-top: 4px; }
+
+  .plantel {
+    list-style: none;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px;
+  }
+  .dorsal {
+    position: relative;
+    display: grid; justify-items: center; align-content: center; gap: 2px;
+    min-height: 58px; padding: 6px 2px;
+    background: var(--blanco); border: 1px solid #CFE0D5; border-radius: var(--r-control);
+  }
+  .dorsal .numero { font-family: var(--f-slab); font-weight: 700; font-size: var(--t-lg); line-height: 1; color: var(--tinta); font-variant-numeric: tabular-nums; }
+  .dorsal .apellido { font-size: 0.6875rem; color: var(--gris); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 2px; }
+  .dorsal .marca-estado { position: absolute; top: 3px; right: 3px; font-size: 13px; }
+  .dorsal.restringido { background: var(--oro-suave); border-color: #F5B562; }
+  .dorsal.restringido .marca-estado { color: var(--oro); }
+  .dorsal.lesionado { background: var(--rojo-suave); border-color: #EBA3A3; }
+  .dorsal.lesionado .numero { color: var(--rojo); }
+  .dorsal.lesionado .marca-estado { color: var(--rojo); }
+
+  .leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: var(--t-sm); }
+  .leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+  .leyenda .muestra { width: 14px; height: 14px; border-radius: 4px; border: 1px solid #CFE0D5; background: var(--blanco); }
+  .leyenda .muestra.r { background: var(--oro-suave); border-color: #F5B562; }
+  .leyenda .muestra.l { background: var(--rojo-suave); border-color: #EBA3A3; }
+  .leyenda b { font-variant-numeric: tabular-nums; }
+
+  /* ── Secciones de apoyo ───────────────────────────── */
+  .seccion h2 { font-family: var(--f-slab); font-weight: 600; font-size: var(--t-xl); margin-bottom: 12px; }
+  .seccion-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .seccion-cabecera h2 { margin-bottom: 0; }
+  .seccion-cabecera .accion { font-size: var(--t-sm); }
+
+  .agenda { list-style: none; border-top: 1px solid var(--linea); }
+  .agenda li { display: grid; grid-template-columns: 52px 1fr; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--linea); }
+  .agenda .dia { text-align: center; line-height: 1; padding-top: 2px; }
+  .agenda .dia small { display: block; font-size: var(--t-xs); color: var(--gris); margin-bottom: 4px; }
+  .agenda .dia b { font-family: var(--f-slab); font-size: var(--t-2xl); font-weight: 700; }
+  .agenda .titulo { font-weight: 600; }
+  .agenda .detalle { font-size: var(--t-sm); color: var(--gris); }
+  .agenda li.partido .dia b { color: var(--verde-profundo); }
+  .etiqueta-partido { white-space: nowrap;
+    display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 4px;
+    background: var(--verde); color: var(--blanco); font-size: var(--t-xs); font-weight: 700; vertical-align: 2px;
+  }
+
+  .asistencia { list-style: none; display: grid; gap: 14px; }
+  .asistencia li { display: grid; gap: 6px; }
+  .asistencia .fila { display: flex; justify-content: space-between; gap: 12px; font-size: var(--t-sm); }
+  .asistencia .fila span:last-child { font-variant-numeric: tabular-nums; color: var(--gris); }
+  .asistencia .fila b { color: var(--tinta); }
+  .barra-dato { height: 10px; border-radius: 3px; background: var(--verde); }
+  .barra-dato.baja { background: var(--oro); }
+  .nota-dato { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: var(--t-xs); color: var(--gris); }
+  .muestra-baja { width: 14px; height: 6px; border-radius: 2px; background: var(--oro); }
+
+  .revisar { list-style: none; border-top: 1px solid var(--linea); }
+  .revisar li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--linea); }
+  .revisar i { font-size: 22px; margin-top: 1px; }
+  .revisar .i-rojo { color: var(--rojo); }
+  .revisar .i-oro { color: var(--oro); }
+  .revisar .i-verde { color: var(--verde); }
+  .revisar p { font-size: var(--t-sm); }
+  .revisar .accion { font-size: var(--t-sm); min-height: 36px; }
+
+  /* ── Menú inferior (celular) ──────────────────────── */
+  .menu-inferior {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 25;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    background: var(--blanco); border-top: 1px solid var(--linea);
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -2px 12px rgba(18, 38, 27, 0.06);
+  }
+  .menu-inferior a {
+    display: grid; justify-items: center; gap: 2px; padding: 8px 2px 10px;
+    min-height: 60px; text-decoration: none; color: var(--gris); font-size: 0.75rem; font-weight: 500;
+  }
+  .menu-inferior i { font-size: 24px; }
+  .menu-inferior a[aria-current="page"] { color: var(--verde-profundo); font-weight: 700; }
+  .menu-inferior a[aria-current="page"] i { color: var(--verde); }
+
+  /* ── Computador ───────────────────────────────────── */
+  @media (min-width: 1024px) {
+    body { display: grid; grid-template-columns: 260px 1fr; grid-template-rows: 8px 1fr; min-height: 100dvh; }
+    .franja { grid-column: 1 / -1; }
+    .barra, .menu-inferior { display: none; }
+
+    .lateral {
+      display: flex; flex-direction: column; gap: 4px;
+      position: sticky; top: 8px; height: calc(100dvh - 8px); overflow-y: auto;
+      padding: 20px 14px; border-right: 1px solid var(--linea);
+    }
+    .lateral .marca-app { display: flex; align-items: center; gap: 12px; padding: 4px 8px 20px; }
+    .lateral .marca-app img { width: 44px; }
+    .lateral .marca-app span { font-family: var(--f-slab); font-weight: 700; font-size: var(--t-lg); line-height: 1.1; }
+    .lateral h3 { font-size: var(--t-xs); font-weight: 700; color: var(--gris); padding: 16px 10px 6px; }
+    .lateral a {
+      display: flex; align-items: center; gap: 12px;
+      min-height: 40px; padding: 0 10px; border-radius: var(--r-control);
+      text-decoration: none; color: var(--tinta); font-size: var(--t-sm);
+    }
+    .lateral a i { font-size: 20px; color: var(--gris); }
+    .lateral a:hover { background: #F4F8F5; }
+    .lateral a[aria-current="page"] { background: var(--campo); color: var(--verde-profundo); font-weight: 700; }
+    .lateral a[aria-current="page"] i { color: var(--verde); }
+    .lateral .usuario { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 16px 8px 4px; border-top: 1px solid var(--linea); }
+    .lateral .usuario .avatar { margin: 0; }
+    .lateral .usuario small { display: block; color: var(--gris); font-size: var(--t-xs); }
+
+    main {
+      padding: 32px 40px 48px; max-width: 1280px; width: 100%;
+      grid-template-columns: repeat(12, 1fr); gap: 32px 40px; align-content: start;
+    }
+    .saludo { grid-column: 1 / -1; display: flex; align-items: flex-end; justify-content: space-between; }
+    .saludo h1 { font-size: var(--t-3xl); }
+    .saludo-fila { margin-top: 0; }
+    .saludo .fecha { margin-top: 4px; }
+    .cancha { grid-column: span 8; padding: 28px; }
+    .cancha h2 { font-size: var(--t-2xl); }
+    .plantel { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; }
+    .dorsal { min-height: 66px; }
+    .dorsal .numero { font-size: var(--t-xl); }
+    .dorsal .apellido { font-size: var(--t-xs); }
+    .s-agenda { grid-column: span 4; }
+    .s-asistencia { grid-column: span 5; }
+    .s-revisar { grid-column: span 7; }
+  }
+</style>
+</head>
+<body>
+  <div class="franja" role="presentation"></div>
+
+  <!-- Menú lateral (computador) -->
+  <nav class="lateral" aria-label="Menú principal">
+    <div class="marca-app">
+      <img src="../../../frontend/public/brand/monograma-u-verde-256.png" alt="">
+      <span>Administración Deportiva</span>
+    </div>
+    <a href="#" aria-current="page"><i class="ph ph-house" aria-hidden="true"></i>Inicio</a>
+    <h3>Plantel</h3>
+    <a href="#"><i class="ph ph-shield" aria-hidden="true"></i>Equipos</a>
+    <a href="#"><i class="ph ph-users-three" aria-hidden="true"></i>Deportistas</a>
+    <h3>Actividad</h3>
+    <a href="#"><i class="ph ph-barbell" aria-hidden="true"></i>Entrenamientos</a>
+    <a href="#"><i class="ph ph-check-square" aria-hidden="true"></i>Asistencia</a>
+    <a href="#"><i class="ph ph-calendar-blank" aria-hidden="true"></i>Partidos</a>
+    <a href="#"><i class="ph ph-chart-bar" aria-hidden="true"></i>Estadísticas</a>
+    <h3>Salud</h3>
+    <a href="#"><i class="ph ph-bandaids" aria-hidden="true"></i>Lesiones</a>
+    <a href="#"><i class="ph ph-clipboard-text" aria-hidden="true"></i>Evaluaciones</a>
+    <div class="usuario">
+      <div class="avatar" aria-hidden="true">CD</div>
+      <div>César Díaz<small>Entrenador</small></div>
+    </div>
+  </nav>
+
+  <!-- Barra superior (celular) -->
+  <header class="barra">
+    <img src="../../../frontend/public/brand/monograma-u-verde-256.png" alt="">
+    <span class="nombre-app">Administración Deportiva</span>
+    <div class="avatar" aria-label="César Díaz, entrenador">CD</div>
+  </header>
+
+  <main>
+    <section class="saludo">
+      <div>
+        <h1>Buenos días, César</h1>
+        <p class="fecha">Sábado 10 de octubre</p>
+      </div>
+      <div class="saludo-fila">
+        <button class="selector-deporte" type="button" aria-label="Cambiar deporte. Deporte actual: Rugby">
+          Rugby <i class="ph ph-caret-down" aria-hidden="true"></i>
+        </button>
+      </div>
+    </section>
+
+    <section class="cancha" aria-labelledby="t-disp">
+      <div>
+        <h2 id="t-disp"><span class="cifra">20 de 23</span> pueden jugar el domingo</h2>
+        <p class="contexto">Partido de liga contra Deportivo Sur, 3:00 p. m., cancha principal</p>
+      </div>
+
+      <ul class="plantel" aria-label="Estado del plantel">
+        <li class="dorsal"><span class="numero">1</span><span class="apellido">Torres</span></li>
+        <li class="dorsal lesionado"><i class="ph-fill ph-x-circle marca-estado" aria-label="Lesionado"></i><span class="numero">2</span><span class="apellido">Ramírez</span></li>
+        <li class="dorsal"><span class="numero">3</span><span class="apellido">Méndez</span></li>
+        <li class="dorsal"><span class="numero">4</span><span class="apellido">García</span></li>
+        <li class="dorsal"><span class="numero">5</span><span class="apellido">Flores</span></li>
+        <li class="dorsal"><span class="numero">6</span><span class="apellido">Pabón</span></li>
+        <li class="dorsal restringido"><i class="ph-fill ph-warning marca-estado" aria-label="Con restricciones"></i><span class="numero">7</span><span class="apellido">Contreras</span></li>
+        <li class="dorsal"><span class="numero">8</span><span class="apellido">Villamizar</span></li>
+        <li class="dorsal"><span class="numero">9</span><span class="apellido">Peñaranda</span></li>
+        <li class="dorsal"><span class="numero">10</span><span class="apellido">Rincón</span></li>
+        <li class="dorsal"><span class="numero">11</span><span class="apellido">Jaimes</span></li>
+        <li class="dorsal"><span class="numero">12</span><span class="apellido">Ortega</span></li>
+        <li class="dorsal"><span class="numero">13</span><span class="apellido">Sandoval</span></li>
+        <li class="dorsal lesionado"><i class="ph-fill ph-x-circle marca-estado" aria-label="Lesionado"></i><span class="numero">14</span><span class="apellido">Duarte</span></li>
+        <li class="dorsal"><span class="numero">15</span><span class="apellido">Carrillo</span></li>
+        <li class="dorsal"><span class="numero">16</span><span class="apellido">Bautista</span></li>
+        <li class="dorsal"><span class="numero">17</span><span class="apellido">Quintero</span></li>
+        <li class="dorsal restringido"><i class="ph-fill ph-warning marca-estado" aria-label="Con restricciones"></i><span class="numero">18</span><span class="apellido">Suárez</span></li>
+        <li class="dorsal"><span class="numero">19</span><span class="apellido">Galvis</span></li>
+        <li class="dorsal"><span class="numero">20</span><span class="apellido">Rojas</span></li>
+        <li class="dorsal"><span class="numero">21</span><span class="apellido">Parada</span></li>
+        <li class="dorsal lesionado"><i class="ph-fill ph-x-circle marca-estado" aria-label="Lesionado"></i><span class="numero">22</span><span class="apellido">Mora</span></li>
+        <li class="dorsal"><span class="numero">23</span><span class="apellido">Ibarra</span></li>
+      </ul>
+
+      <p class="leyenda">
+        <span><span class="muestra"></span><b>18</b> disponibles</span>
+        <span><span class="muestra r"></span><b>2</b> con restricciones</span>
+        <span><span class="muestra l"></span><b>3</b> lesionados</span>
+      </p>
+    </section>
+
+    <section class="seccion s-agenda" aria-labelledby="t-agenda">
+      <div class="seccion-cabecera"><h2 id="t-agenda">Esta semana</h2><a class="accion" href="#">Ver agenda</a></div>
+      <ul class="agenda">
+        <li class="partido">
+          <div class="dia"><small>dom</small><b>11</b></div>
+          <div><p class="titulo">Partido contra Deportivo Sur <span class="etiqueta-partido">Liga</span></p><p class="detalle">3:00 p. m., cancha principal</p></div>
+        </li>
+        <li>
+          <div class="dia"><small>lun</small><b>12</b></div>
+          <div><p class="titulo">Fuerza y recuperación</p><p class="detalle">6:00 a. m., gimnasio</p></div>
+        </li>
+        <li>
+          <div class="dia"><small>mié</small><b>14</b></div>
+          <div><p class="titulo">Táctica: salidas y line-out</p><p class="detalle">5:30 p. m., cancha sintética</p></div>
+        </li>
+        <li>
+          <div class="dia"><small>vie</small><b>16</b></div>
+          <div><p class="titulo">Resistencia</p><p class="detalle">5:30 p. m., pista atlética</p></div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="seccion s-asistencia" aria-labelledby="t-asis">
+      <div class="seccion-cabecera"><h2 id="t-asis">Asistencia</h2><a class="accion" href="#">Tomar asistencia</a></div>
+      <ul class="asistencia">
+        <li><div class="fila"><span><b>Resistencia</b>, vie 9</span><span>22 de 23</span></div><div class="barra-dato" style="width: 96%"></div></li>
+        <li><div class="fila"><span><b>Táctica</b>, mié 7</span><span>18 de 23</span></div><div class="barra-dato" style="width: 78%"></div></li>
+        <li><div class="fila"><span><b>Fuerza</b>, lun 5</span><span>21 de 23</span></div><div class="barra-dato" style="width: 91%"></div></li>
+        <li><div class="fila"><span><b>Resistencia</b>, vie 2</span><span>16 de 23</span></div><div class="barra-dato baja" style="width: 70%"></div></li>
+      </ul>
+      <p class="nota-dato"><span class="muestra-baja" aria-hidden="true"></span>Sesiones con menos del 75 % de asistencia.</p>
+    </section>
+
+    <section class="seccion s-revisar" aria-labelledby="t-rev">
+      <div class="seccion-cabecera"><h2 id="t-rev">Para revisar</h2></div>
+      <ul class="revisar">
+        <li>
+          <i class="ph ph-bandaids i-rojo" aria-hidden="true"></i>
+          <div><p><b>Pedro Ramírez</b> lleva 9 días lesionado. Retorno estimado: 20 de octubre.</p><a class="accion" href="#">Ver seguimiento</a></div>
+        </li>
+        <li>
+          <i class="ph ph-warning i-oro" aria-hidden="true"></i>
+          <div><p><b>Andrés Contreras</b> juega con restricción: sin contacto en el scrum hasta el 15 de octubre.</p><a class="accion" href="#">Ver control médico</a></div>
+        </li>
+        <li>
+          <i class="ph ph-ruler i-verde" aria-hidden="true"></i>
+          <div><p><b>4 jugadores</b> no tienen evaluación antropométrica este semestre.</p><a class="accion" href="#">Ver quiénes son</a></div>
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <!-- Menú inferior (celular) -->
+  <nav class="menu-inferior" aria-label="Menú principal">
+    <a href="#" aria-current="page"><i class="ph ph-house" aria-hidden="true"></i>Inicio</a>
+    <a href="#"><i class="ph ph-users-three" aria-hidden="true"></i>Plantel</a>
+    <a href="#"><i class="ph ph-calendar-blank" aria-hidden="true"></i>Agenda</a>
+    <a href="#"><i class="ph ph-check-square" aria-hidden="true"></i>Asistencia</a>
+    <a href="#"><i class="ph ph-dots-three-outline" aria-hidden="true"></i>Más</a>
+  </nav>
+</body>
+</html>
