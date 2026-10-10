@@ -83,7 +83,7 @@ exports.getOne = async (req, res) => {
 
     // Obtener los deportistas asignados a este equipo
     const { rows: jugadores } = await db.query(
-      `SELECT j.id, j.nombre, j.posicion, j.edad, j.peso, j.altura, j.foto_url, j.disciplina_id,
+      `SELECT j.id, j.nombre, j.dorsal, j.posicion, j.edad, j.peso, j.altura, j.foto_url, j.disciplina_id,
               d.nombre AS disciplina_nombre
        FROM jugadores j
        LEFT JOIN disciplinas d ON j.disciplina_id = d.id

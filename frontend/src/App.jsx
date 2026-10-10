@@ -2,7 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { DeporteProvider } from './context/DeporteContext'
 import ProtectedRoute from './components/ProtectedRoute'
-import Navbar from './components/Navbar'
+import AppLayout from './components/Estructura'
+import { MODULOS } from './config/navegacion'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Equipos from './pages/Equipos'
@@ -18,13 +19,22 @@ import Usuarios from './pages/Usuarios'
 import HeadCoach from './pages/HeadCoach'
 import Salud from './pages/Salud'
 
-function AppLayout({ children }) {
-  return (
-    <div className="app-layout">
-      <Navbar />
-      <main className="main-content">{children}</main>
-    </div>
-  )
+// Cada ruta usa los roles definidos en config/navegacion.js: el menú y el acceso
+// a las páginas salen de la misma fuente y no pueden contradecirse.
+const PAGINAS = {
+  '/': Dashboard,
+  '/head-coach': HeadCoach,
+  '/equipos': Equipos,
+  '/jugadores': Jugadores,
+  '/entrenamientos': Entrenamientos,
+  '/asistencia': Asistencia,
+  '/partidos': Partidos,
+  '/estadisticas': EstadisticasJugador,
+  '/lesiones': Lesiones,
+  '/salud': Salud,
+  '/evaluaciones': Evaluaciones,
+  '/antropometria': Antropometria,
+  '/usuarios': Usuarios,
 }
 
 export default function App() {
@@ -33,78 +43,16 @@ export default function App() {
       <DeporteProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
-
-          <Route path="/" element={
-            <ProtectedRoute>
-              <AppLayout><Dashboard /></AppLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/equipos" element={
-            <ProtectedRoute roles={['administrador','entrenador','personal_salud']}>
-              <AppLayout><Equipos /></AppLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/jugadores" element={
-            <ProtectedRoute>
-              <AppLayout><Jugadores /></AppLayout>
-            </ProtectedRoute>
-          } />
-
-
-          <Route path="/entrenamientos" element={
-            <ProtectedRoute>
-              <AppLayout><Entrenamientos /></AppLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/asistencia" element={
-            <ProtectedRoute>
-              <AppLayout><Asistencia /></AppLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/lesiones" element={
-            <ProtectedRoute>
-              <AppLayout><Lesiones /></AppLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/evaluaciones" element={
-            <ProtectedRoute>
-              <AppLayout><Evaluaciones /></AppLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/partidos" element={
-            <ProtectedRoute>
-              <AppLayout><Partidos /></AppLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/estadisticas" element={
-            <ProtectedRoute>
-              <AppLayout><EstadisticasJugador /></AppLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/antropometria" element={
-            <ProtectedRoute>
-              <AppLayout><Antropometria /></AppLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/head-coach" element={<ProtectedRoute roles={['head_coach']}><AppLayout><HeadCoach /></AppLayout></ProtectedRoute>} />
-
-          <Route path="/salud" element={<ProtectedRoute roles={['administrador','personal_salud','jugador']}><AppLayout><Salud /></AppLayout></ProtectedRoute>} />
-
-          <Route path="/usuarios" element={
-            <ProtectedRoute roles={['administrador']}>
-              <AppLayout><Usuarios /></AppLayout>
-            </ProtectedRoute>
-          } />
-
+          {MODULOS.map(({ ruta, roles }) => {
+            const Pagina = PAGINAS[ruta]
+            return (
+              <Route key={ruta} path={ruta} element={
+                <ProtectedRoute roles={roles}>
+                  <AppLayout><Pagina /></AppLayout>
+                </ProtectedRoute>
+              } />
+            )
+          })}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </DeporteProvider>

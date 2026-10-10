@@ -3,7 +3,7 @@ const db = require('../config/db');
 exports.getAll = async (req, res) => {
   try {
     let query = `
-      SELECT es.*, j.nombre AS jugador_nombre, p.rival, p.fecha AS partido_fecha
+      SELECT es.*, j.nombre AS jugador_nombre, j.dorsal AS jugador_dorsal, p.rival, p.fecha AS partido_fecha
       FROM estadisticas_jugador es
       JOIN jugadores j ON es.jugador_id = j.id
       LEFT JOIN partidos p ON es.partido_id = p.id`;

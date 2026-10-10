@@ -10,6 +10,7 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
+import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
 
 const EMPTY = { jugador_id: '', partido_id: '', goles: 0, asistencias: 0, minutos_jugados: 0 }
 
@@ -137,7 +138,7 @@ export default function EstadisticasJugador() {
               <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border-hover)', borderRadius: 8, color: 'var(--text-primary)' }} />
               <Legend wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }} />
               <Bar dataKey="goles"       name="Goles / Puntos"       fill="var(--accent)"  radius={[6,6,0,0]} />
-              <Bar dataKey="asistencias" name="Asistencias" fill="var(--accent2)" radius={[6,6,0,0]} />
+              <Bar dataKey="asistencias" name="Asistencias" fill="var(--naranja)" radius={[6,6,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -173,7 +174,7 @@ export default function EstadisticasJugador() {
               <tbody>
                 {statsFiltradas.map(s => (
                   <tr key={s.id}>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.jugador_nombre}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{nombreConDorsal(s.jugador_nombre, s.jugador_dorsal)}</td>
                     <td style={{ color: 'var(--text-muted)', fontSize: 12 }}> {s.partido_fecha ? new Date(s.partido_fecha).toLocaleDateString('es') : '—'}</td>
                     <td>{s.rival || '—'}</td>
                     <td style={{ fontWeight: 700, color: s.goles > 0 ? 'var(--accent-light)' : 'var(--text-muted)' }}>
@@ -221,7 +222,7 @@ export default function EstadisticasJugador() {
               <label>Jugador *</label>
               <select name="jugador_id" value={form.jugador_id} onChange={handleChange}>
                 <option value="">Seleccionar…</option>
-                {jugadoresFiltrados.map(j => <option key={j.id} value={j.id}>{j.nombre} {j.disciplina_nombre ? `(${j.disciplina_nombre})` : ''}</option>)}
+                {jugadoresFiltrados.map(j => <option key={j.id} value={j.id}>{etiquetaJugador(j)} {j.disciplina_nombre ? `(${j.disciplina_nombre})` : ''}</option>)}
               </select>
             </div>
             <div className="form-group">

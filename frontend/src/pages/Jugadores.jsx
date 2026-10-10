@@ -9,8 +9,10 @@ import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
 import { formatImageUrl } from '../utils/image'
+import DorsalEditable from '../components/DorsalEditable'
+import { nombreConDorsal, ordenarPorDorsal, tieneDorsal } from '../utils/jugador'
 
-const EMPTY = { nombre: '', edad: '', posicion: '', peso: '', altura: '', equipo_id: '', disciplina_id: '', entrenador_id: '' }
+const EMPTY = { nombre: '', dorsal: '', edad: '', posicion: '', peso: '', altura: '', equipo_id: '', disciplina_id: '', entrenador_id: '' }
 
 // Sugerencias de posiciones comunes según el deporte
 const POSICIONES_POR_DEPORTE = {
@@ -95,18 +97,19 @@ export default function Jugadores() {
     }
     // Filtro de texto
     if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase()
+      const term = searchTerm.trim().toLowerCase()
       const matchNombre = j.nombre?.toLowerCase().includes(term)
       const matchPos = j.posicion?.toLowerCase().includes(term)
       const matchEquipo = j.equipo_nombre?.toLowerCase().includes(term)
-      return matchNombre || matchPos || matchEquipo
+      const matchDorsal = tieneDorsal(j.dorsal) && String(j.dorsal) === term.replace('#', '')
+      if (!(matchNombre || matchPos || matchEquipo || matchDorsal)) return false
     }
     if (filtros.edadMin !== '' && Number(j.edad || 0) < Number(filtros.edadMin)) return false
     if (filtros.edadMax !== '' && Number(j.edad || 0) > Number(filtros.edadMax)) return false
     if (filtros.posicion && !j.posicion?.toLowerCase().includes(filtros.posicion.toLowerCase())) return false
     if (filtros.entrenador && String(j.entrenador_id || '') !== String(filtros.entrenador)) return false
     return true
-  })
+  }).sort(ordenarPorDorsal)
 
   // Obtener lista de posiciones sugeridas según el deporte seleccionado
   const currentPositions = (currentSport?.nombre && POSICIONES_POR_DEPORTE[currentSport.nombre]) 
@@ -142,6 +145,7 @@ export default function Jugadores() {
   const openEdit = (j) => {
     setForm({
       nombre: j.nombre,
+      dorsal: tieneDorsal(j.dorsal) ? String(j.dorsal) : '',
       edad: j.edad ?? '',
       posicion: j.posicion ?? '',
       peso: j.peso ?? '',
@@ -192,6 +196,9 @@ export default function Jugadores() {
 
   const handleSubmit = async () => {
     if (!form.nombre.trim()) return toast.error('El nombre es obligatorio')
+    if (String(form.dorsal).trim() !== '' && !/^\d{1,2}$/.test(String(form.dorsal).trim())) {
+      return toast.error('El dorsal debe ser un número entre 0 y 99')
+    }
     setSaving(true)
 
     const payload = { ...form }
@@ -436,7 +443,7 @@ export default function Jugadores() {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th>Dorsal</th>
                   <th>Deportista</th>
                   <th>Edad</th>
                   <th>Posición</th>
@@ -449,9 +456,15 @@ export default function Jugadores() {
                 </tr>
               </thead>
               <tbody>
-                {filteredJugadores.map((j, i) => (
+                {filteredJugadores.map((j) => (
                   <tr key={j.id}>
-                    <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
+                    <td>
+                      <DorsalEditable
+                        jugador={j}
+                        puedeEditar={puedeEditar}
+                        onCambio={(dorsal) => setJugadores(lista => lista.map(x => x.id === j.id ? { ...x, dorsal } : x))}
+                      />
+                    </td>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         {j.foto_url ? (
@@ -579,7 +592,7 @@ export default function Jugadores() {
 
       {/* Modal Ficha Técnica */}
       {modalFicha && selectedPlayer && (
-        <Modal title={`Ficha Deportiva: ${selectedPlayer.nombre}`} onClose={closeModal} width="800px">
+        <Modal title={`Ficha deportiva: ${nombreConDorsal(selectedPlayer.nombre, selectedPlayer.dorsal)}`} onClose={closeModal} width="800px">
           <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: 24 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div
@@ -651,6 +664,7 @@ export default function Jugadores() {
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <p style={{ fontSize: 14 }}><strong>Edad:</strong> {selectedPlayer.edad ? `${selectedPlayer.edad} años` : '—'}</p>
+                  <p style={{ fontSize: 14 }}><strong>Dorsal:</strong> {tieneDorsal(selectedPlayer.dorsal) ? <span className="dorsal-chip">{selectedPlayer.dorsal}</span> : 'Sin asignar'}</p>
                   <p style={{ fontSize: 14 }}><strong>Posición:</strong> <span className="badge badge-purple">{selectedPlayer.posicion || '—'}</span></p>
                   <p style={{ fontSize: 14 }}><strong>Deporte:</strong> <span className="badge badge-green">{selectedPlayer.disciplina_nombre || 'General'}</span></p>
                   <p style={{ fontSize: 14 }}><strong>Equipo:</strong> {selectedPlayer.equipo_nombre || '—'}</p>
@@ -729,8 +743,16 @@ export default function Jugadores() {
         >
           <div className="form-grid">
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label>Nombre completo *</label>
-              <input name="nombre" value={form.nombre} onChange={handleChange} placeholder="Ej. Carlos Méndez" autoFocus />
+              <label htmlFor="jug-nombre">Nombre completo *</label>
+              <input id="jug-nombre" name="nombre" value={form.nombre} onChange={handleChange} placeholder="Ej. Carlos Méndez" autoFocus />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="jug-dorsal">Dorsal (número de camiseta)</label>
+              <input id="jug-dorsal" name="dorsal" type="text" inputMode="numeric" maxLength={2}
+                value={form.dorsal} onChange={e => setForm(f => ({ ...f, dorsal: e.target.value.replace(/\D/g, '') }))}
+                placeholder="0 a 99, opcional" />
+              <small style={{ color: 'var(--texto-suave)', fontSize: 13 }}>No se puede repetir dentro del mismo equipo. También se cambia con un clic en la tabla.</small>
             </div>
 
             <div className="form-group">

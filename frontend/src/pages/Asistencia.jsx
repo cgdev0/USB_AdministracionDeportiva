@@ -6,6 +6,7 @@ import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
 import { formatImageUrl } from '../utils/image'
+import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
 
 export default function Asistencia() {
   const { tienePermiso } = useAuth()
@@ -141,7 +142,7 @@ export default function Asistencia() {
           {/* Selector de entrenamiento */}
           <div className="card" style={{ marginBottom: 20, padding: '20px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 260 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, flexBasis: 240 }}>
                 <ClipboardList size={18} color="var(--accent)" style={{ flexShrink: 0 }} />
                 <select
                   id="select-entrenamiento"
@@ -155,6 +156,8 @@ export default function Asistencia() {
                     color: 'var(--text-primary)',
                     fontSize: 14,
                     flex: 1,
+                    minWidth: 0,
+                    width: '100%',
                     outline: 'none',
                     cursor: 'pointer',
                   }}
@@ -284,7 +287,7 @@ export default function Asistencia() {
                                   justifyContent: 'center', fontSize: 14
                                 }}>👤</div>
                               )}
-                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{j.nombre}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{etiquetaJugador(j)}</span>
                             </div>
                           </td>
                           <td>

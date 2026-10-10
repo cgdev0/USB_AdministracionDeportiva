@@ -28,7 +28,7 @@ export default function ConfirmModal({
               width: 44,
               height: 44,
               borderRadius: '50%',
-              background: confirmVariant === 'danger' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+              background: confirmVariant === 'danger' ? 'var(--error-fondo)' : 'var(--info-fondo)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

@@ -7,6 +7,7 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
+import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
 
 const EMPTY = { jugador_id: '', tipo: '', descripcion: '', fecha_inicio: '', fecha_fin: '' }
 
@@ -144,7 +145,7 @@ export default function Lesiones() {
               <tbody>
                 {lesionesFiltradas.map(l => (
                   <tr key={l.id}>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{l.jugador_nombre}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{nombreConDorsal(l.jugador_nombre, l.jugador_dorsal)}</td>
                     <td>{l.tipo || '—'}</td>
                     <td>{l.fecha_inicio ? new Date(l.fecha_inicio).toLocaleDateString('es') : '—'}</td>
                     <td>{l.fecha_fin    ? new Date(l.fecha_fin).toLocaleDateString('es')    : '—'}</td>
@@ -191,7 +192,7 @@ export default function Lesiones() {
               <label>Jugador *</label>
               <select name="jugador_id" value={form.jugador_id} onChange={handleChange}>
                 <option value="">Seleccionar jugador…</option>
-                {jugadoresFiltrados.map(j => <option key={j.id} value={j.id}>{j.nombre} {j.disciplina_nombre ? `(${j.disciplina_nombre})` : ''}</option>)}
+                {jugadoresFiltrados.map(j => <option key={j.id} value={j.id}>{etiquetaJugador(j)} {j.disciplina_nombre ? `(${j.disciplina_nombre})` : ''}</option>)}
               </select>
             </div>
             <div className="form-group">

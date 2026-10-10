@@ -61,8 +61,10 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor DT Deportivo corriendo en http://0.0.0.0:${PORT}`);
+  // HOST=127.0.0.1 limita el servidor a este equipo (útil para pruebas locales)
+  const HOST = process.env.HOST || '0.0.0.0';
+  app.listen(PORT, HOST, () => {
+    console.log(`🚀 Administración Deportiva corriendo en http://${HOST}:${PORT}`);
   });
 }
 

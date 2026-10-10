@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS jugadores (
   edad                 INT,
   fecha_nacimiento     DATE,
   genero               VARCHAR(20) CHECK (genero IN ('masculino','femenino')),
+  dorsal               SMALLINT CHECK (dorsal BETWEEN 0 AND 99),
   posicion             VARCHAR(50),
   peso                 DECIMAL(5,2),
   altura               DECIMAL(4,2),
@@ -280,6 +281,9 @@ CREATE TABLE IF NOT EXISTS notificaciones (
 CREATE INDEX IF NOT EXISTS idx_jugadores_equipo        ON jugadores(equipo_id);
 CREATE INDEX IF NOT EXISTS idx_jugadores_disciplina    ON jugadores(disciplina_id);
 CREATE INDEX IF NOT EXISTS idx_jugadores_entrenador    ON jugadores(entrenador_id);
+-- Un dorsal no se repite dentro del mismo equipo (los jugadores sin equipo no compiten por número)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_jugadores_equipo_dorsal ON jugadores(equipo_id, dorsal)
+  WHERE equipo_id IS NOT NULL AND dorsal IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_usuarios_headcoach      ON usuarios(head_coach_id);
 CREATE INDEX IF NOT EXISTS idx_lesiones_jugador        ON lesiones(jugador_id);
 CREATE INDEX IF NOT EXISTS idx_antropometria_jugador   ON antropometria(jugador_id, fecha DESC);
@@ -302,15 +306,15 @@ SELECT * FROM (VALUES
 ) AS v(nombre, categoria)
 WHERE NOT EXISTS (SELECT 1 FROM equipos);
 
-INSERT INTO jugadores (nombre, edad, posicion, peso, altura, equipo_id)
-SELECT v.nombre, v.edad, v.posicion, v.peso, v.altura, (SELECT MIN(id) FROM equipos)
+INSERT INTO jugadores (nombre, edad, posicion, peso, altura, dorsal, equipo_id)
+SELECT v.nombre, v.edad, v.posicion, v.peso, v.altura, v.dorsal, (SELECT MIN(id) FROM equipos)
 FROM (VALUES
-  ('Carlos Méndez',   22, 'Delantero',  72.5, 1.78),
-  ('Luis García',     25, 'Mediocampo', 68.0, 1.75),
-  ('Pedro Ramírez',   19, 'Defensa',    80.0, 1.82),
-  ('Andrés Torres',   28, 'Portero',    85.0, 1.88),
-  ('Miguel Flores',   21, 'Delantero',  70.0, 1.76)
-) AS v(nombre, edad, posicion, peso, altura)
+  ('Carlos Méndez',   22, 'Delantero',  72.5, 1.78,  9),
+  ('Luis García',     25, 'Mediocampo', 68.0, 1.75,  8),
+  ('Pedro Ramírez',   19, 'Defensa',    80.0, 1.82,  4),
+  ('Andrés Torres',   28, 'Portero',    85.0, 1.88,  1),
+  ('Miguel Flores',   21, 'Delantero',  70.0, 1.76, 11)
+) AS v(nombre, edad, posicion, peso, altura, dorsal)
 WHERE NOT EXISTS (SELECT 1 FROM jugadores);
 
 INSERT INTO entrenamientos (fecha, tipo, descripcion)

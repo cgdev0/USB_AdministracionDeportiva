@@ -24,22 +24,18 @@ export function DeporteProvider({ children }) {
       const lista = res.data || []
       setDisciplinas(lista)
 
-      // Auto-seleccionar primer deporte si no hay nada seleccionado o si el seleccionado ya no existe
+      // Conserva el deporte elegido si sigue existiendo; si no hay ninguno, se muestran todos.
+      // (Antes se elegía el primero de la lista y podía ocultar el plantel de un entrenador de otro deporte.)
       setSelectedSportIdState(prev => {
         const stored = localStorage.getItem(STORAGE_KEY)
         if (stored === 'todos') return 'todos'
         if (stored && lista.some(d => String(d.id) === String(stored))) {
           return stored
         }
-        if (prev === 'todos') return 'todos'
-        if (prev && lista.some(d => String(d.id) === String(prev))) {
+        if (prev && prev !== 'todos' && lista.some(d => String(d.id) === String(prev))) {
           return prev
         }
-        if (lista.length > 0) {
-          const firstId = String(lista[0].id)
-          localStorage.setItem(STORAGE_KEY, firstId)
-          return firstId
-        }
+        localStorage.setItem(STORAGE_KEY, 'todos')
         return 'todos'
       })
     } catch (err) {

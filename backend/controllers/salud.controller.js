@@ -3,7 +3,7 @@ const puedeVerSaludCompleta = rol => ['administrador','personal_salud'].includes
 
 exports.getHistorias = async (req,res) => {
   if (!puedeVerSaludCompleta(req.usuario.rol)) return res.status(403).json({error:'Solo el personal de salud autorizado puede consultar historias clínicas'});
-  try { const {rows}=await db.query(`SELECT h.*,j.nombre AS jugador_nombre FROM historias_clinicas h JOIN jugadores j ON j.id=h.jugador_id ORDER BY j.nombre`); res.json(rows); }
+  try { const {rows}=await db.query(`SELECT h.*,j.nombre AS jugador_nombre,j.dorsal AS jugador_dorsal FROM historias_clinicas h JOIN jugadores j ON j.id=h.jugador_id ORDER BY j.nombre`); res.json(rows); }
   catch(e){res.status(500).json({error:e.message});}
 };
 exports.saveHistoria = async (req,res) => {
@@ -17,7 +17,7 @@ exports.saveHistoria = async (req,res) => {
 };
 exports.getControles = async (req,res) => {
   try {
-    let q=`SELECT c.*,j.nombre AS jugador_nombre FROM controles_medicos c JOIN jugadores j ON j.id=c.jugador_id`;
+    let q=`SELECT c.*,j.nombre AS jugador_nombre,j.dorsal AS jugador_dorsal FROM controles_medicos c JOIN jugadores j ON j.id=c.jugador_id`;
     let params=[];
     if(req.usuario.rol==='jugador'){q+=' WHERE c.jugador_id=$1';params=[req.usuario.jugador_id];}
     else if(req.usuario.rol==='entrenador'){q+=' JOIN usuarios u ON u.id=j.entrenador_id WHERE u.id=$1';params=[req.usuario.id];}
@@ -36,7 +36,7 @@ exports.leerNotificacion = async(req,res)=>{try{const {rowCount}=await db.query(
 
 exports.getSeguimientos = async (req,res)=>{
  if(!puedeVerSaludCompleta(req.usuario.rol)) return res.status(403).json({error:'Solo personal de salud autorizado puede consultar el detalle clínico de lesiones'});
- try { const {rows}=await db.query(`SELECT s.*,l.jugador_id,j.nombre AS jugador_nombre,l.tipo AS lesion_tipo FROM seguimiento_lesiones s JOIN lesiones l ON l.id=s.lesion_id JOIN jugadores j ON j.id=l.jugador_id ORDER BY s.fecha_seguimiento DESC`); res.json(rows); } catch(e){res.status(500).json({error:e.message});}
+ try { const {rows}=await db.query(`SELECT s.*,l.jugador_id,j.nombre AS jugador_nombre,j.dorsal AS jugador_dorsal,l.tipo AS lesion_tipo FROM seguimiento_lesiones s JOIN lesiones l ON l.id=s.lesion_id JOIN jugadores j ON j.id=l.jugador_id ORDER BY s.fecha_seguimiento DESC`); res.json(rows); } catch(e){res.status(500).json({error:e.message});}
 };
 exports.createSeguimiento = async(req,res)=>{
  if(!puedeVerSaludCompleta(req.usuario.rol)) return res.status(403).json({error:'Solo personal de salud autorizado puede registrar seguimientos clínicos'});

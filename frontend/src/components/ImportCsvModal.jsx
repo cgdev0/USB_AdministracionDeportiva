@@ -61,7 +61,9 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
       const item = {}
       rawHeaders.forEach((h, idx) => {
         const val = values[idx] || ''
-        if (h.includes('nombre') || h.includes('jugador') || h.includes('atleta') || h.includes('deportista')) {
+        if (h.includes('dorsal') || h.includes('camiseta') || h === 'numero' || h === 'número' || h === '#') {
+          item.dorsal = val
+        } else if (h.includes('nombre') || h.includes('jugador') || h.includes('atleta') || h.includes('deportista')) {
           item.nombre = val
         } else if (h.includes('edad') || h.includes('anos') || h.includes('años')) {
           item.edad = val
@@ -142,6 +144,12 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
 
       const res = await api.post('/jugadores/bulk', { deportistas })
       toast.success(res.data.message || `Importados ${res.data.total} deportistas`)
+      const avisos = res.data.avisos || []
+      if (avisos.length) {
+        toast(`${avisos.length} ${avisos.length === 1 ? 'deportista se importó' : 'deportistas se importaron'} sin dorsal:\n` +
+          avisos.slice(0, 4).map(a => `Fila ${a.fila}: ${a.aviso}`).join('\n') + (avisos.length > 4 ? '\n…' : ''),
+          { icon: '⚠️', duration: 9000, style: { whiteSpace: 'pre-line', maxWidth: 520 } })
+      }
       onSuccess?.()
       onClose()
     } catch (err) {
@@ -152,17 +160,17 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
   }
 
   const downloadTemplate = () => {
-    const csvContent = 'nombre,edad,posicion,peso,altura,deporte,equipo\n' +
-      'Juan Pérez,22,Penetrador,78.5,1.80,Rugby,Los Cóndores\n' +
-      'Carlos Gómez,25,Enlace,74.0,1.75,Rugby,Los Cóndores\n' +
-      'Mateo Silva,20,Delantero,68.0,1.78,Fútbol,\n' +
-      'Lucas Rossi,24,Ala,82.0,1.84,Baloncesto,\n'
+    const csvContent = 'dorsal,nombre,edad,posicion,peso,altura,deporte,equipo\n' +
+      '9,Juan Pérez,22,Penetrador,78.5,1.80,Rugby,Los Cóndores\n' +
+      '10,Carlos Gómez,25,Enlace,74.0,1.75,Rugby,Los Cóndores\n' +
+      '7,Mateo Silva,20,Delantero,68.0,1.78,Fútbol,\n' +
+      ',Lucas Rossi,24,Ala,82.0,1.84,Baloncesto,\n'
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.setAttribute('href', url)
-    link.setAttribute('download', 'plantilla_deportistas_dtdeportivo.csv')
+    link.setAttribute('download', 'plantilla_deportistas.csv')
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -170,7 +178,7 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
 
   return (
     <Modal
-      title="Importar Deportistas Masivamente (CSV)"
+      title="Importar deportistas desde CSV"
       onClose={onClose}
       width="850px"
       footer={
@@ -225,7 +233,7 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
             {file ? file.name : 'Arrastra tu archivo CSV aquí o haz clic para seleccionarlo'}
           </h4>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
-            Columnas recomendadas: <strong>nombre, edad, posicion, peso, altura, deporte, equipo</strong>
+            Columnas recomendadas: <strong>dorsal, nombre, edad, posicion, peso, altura, deporte, equipo</strong>. El dorsal es opcional (0 a 99).
           </p>
         </div>
 
@@ -263,6 +271,7 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
                 <thead>
                   <tr>
                     <th>#</th>
+                    <th>Dorsal</th>
                     <th>Nombre</th>
                     <th>Edad</th>
                     <th>Posición</th>
@@ -276,6 +285,7 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
                   {previewData.map((row, idx) => (
                     <tr key={idx}>
                       <td style={{ color: 'var(--text-muted)' }}>{idx + 1}</td>
+                      <td>{row.dorsal ? <span className="dorsal-chip">{row.dorsal}</span> : '—'}</td>
                       <td style={{ fontWeight: 600 }}>{row.nombre}</td>
                       <td>{row.edad || '—'}</td>
                       <td>{row.posicion ? <span className="badge badge-purple">{row.posicion}</span> : '—'}</td>

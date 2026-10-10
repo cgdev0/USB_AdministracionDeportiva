@@ -9,14 +9,14 @@ const Somatocarta = ({ data, average = null }) => {
   
   const getPosColor = (pos) => {
     const colors = {
-      'Enlace': '#6c63ff',
-      'Transportador': '#00d4aa',
-      'Penetrador': '#ff4757',
-      'Ala': '#ffa94d',
-      'Forward': '#2ed573',
-      'Back': '#8b84ff'
+      'Enlace': '#218D45',
+      'Transportador': '#0B93C7',
+      'Penetrador': '#C9302C',
+      'Ala': '#D9890B',
+      'Forward': '#6A3F9E',
+      'Back': '#00916F'
     };
-    return colors[pos] || '#e8eaf6';
+    return colors[pos] || '#555555';
   };
 
   const CustomTooltip = ({ active, payload }) => {
@@ -59,7 +59,7 @@ const Somatocarta = ({ data, average = null }) => {
     <div className="somatocarta-wrapper" style={{ width: '100%', height: 450, background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', padding: '20px', border: '1px solid var(--border)', position: 'relative' }}>
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ top: 30, right: 30, bottom: 30, left: 30 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
           
           <XAxis 
             type="number" 

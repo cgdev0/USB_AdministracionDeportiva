@@ -1,4 +1,4 @@
-# IMPLEMENTACION.md — Estado del frontend y hoja de ruta DTdeportivo
+# IMPLEMENTACION.md — Estado del frontend y hoja de ruta de Administración Deportiva
 
 ## 1. Base revisada
 

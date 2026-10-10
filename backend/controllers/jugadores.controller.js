@@ -139,21 +139,66 @@ exports.getOne = async (req, res) => {
   }
 };
 
+// ── Dorsal (número de camiseta) ───────────────────────────
+// Valor permitido: entero de 0 a 99, o vacío para quitarlo.
+function normalizarDorsal(valor) {
+  if (valor === undefined || valor === null || valor === '') return { ok: true, valor: null };
+  const n = Number(valor);
+  if (!Number.isInteger(n) || n < 0 || n > 99) {
+    return { ok: false, error: 'El dorsal debe ser un número entero entre 0 y 99' };
+  }
+  return { ok: true, valor: n };
+}
+
+// Si PostgreSQL rechaza el dorsal por estar ocupado en el equipo, responde 409 con quién lo tiene.
+async function responderDorsalOcupado(err, res, { dorsal, equipo_id }) {
+  if (err.code !== '23505' || !String(err.constraint || '').includes('dorsal')) return false;
+  let quien = 'otro jugador';
+  if (equipo_id && dorsal !== null && dorsal !== undefined) {
+    const { rows } = await db.query(
+      'SELECT nombre FROM jugadores WHERE equipo_id = $1 AND dorsal = $2 LIMIT 1', [equipo_id, dorsal]
+    );
+    if (rows.length) quien = rows[0].nombre;
+  }
+  res.status(409).json({ error: `El dorsal ${dorsal} ya lo usa ${quien} en este equipo. Elige otro número.` });
+  return true;
+}
+
+// Entrenador y head coach solo modifican deportistas que les pertenecen.
+async function verificarPermisoEscritura(req, jugadorId, accion = 'modificar') {
+  const { rows } = await db.query('SELECT id, entrenador_id, equipo_id, dorsal FROM jugadores WHERE id = $1', [jugadorId]);
+  if (!rows.length) return { status: 404, error: 'Jugador no encontrado' };
+  const jugador = rows[0];
+  const rol = req.usuario?.rol;
+  if (rol === 'jugador') return { status: 403, error: `No tienes permiso para ${accion} este deportista` };
+  if (rol === 'entrenador' && Number(jugador.entrenador_id) !== Number(req.usuario.id)) {
+    return { status: 403, error: `No tienes permiso para ${accion} este deportista` };
+  }
+  if (rol === 'head_coach') {
+    const { rows: linked } = await db.query('SELECT id FROM usuarios WHERE id = $1 AND head_coach_id = $2', [jugador.entrenador_id, req.usuario.id]);
+    if (!linked.length) return { status: 403, error: 'Este deportista no pertenece a tus entrenadores asociados' };
+  }
+  return { jugador };
+}
+
 // POST /api/jugadores
 exports.create = async (req, res) => {
   const { nombre, edad, posicion, peso, altura, equipo_id, disciplina_id } = req.body;
   const entrenador_id = req.usuario?.rol === 'entrenador' ? req.usuario.id : (req.body.entrenador_id || null);
-  if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
+  if (!nombre || !String(nombre).trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+  const dorsal = normalizarDorsal(req.body.dorsal);
+  if (!dorsal.ok) return res.status(400).json({ error: dorsal.error });
 
   try {
     const { rows } = await db.query(
-      `INSERT INTO jugadores (nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, entrenador_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-      [nombre, edad || null, posicion || null, peso || null, altura || null,
-       equipo_id || null, disciplina_id || null, entrenador_id]
+      `INSERT INTO jugadores (nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, entrenador_id, dorsal)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      [String(nombre).trim(), edad || null, posicion || null, peso || null, altura || null,
+       equipo_id || null, disciplina_id || null, entrenador_id, dorsal.valor]
     );
-    res.status(201).json({ id: rows[0].id, nombre, edad, posicion, peso, altura, equipo_id, disciplina_id });
+    res.status(201).json({ id: rows[0].id, nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, dorsal: dorsal.valor });
   } catch (err) {
+    if (await responderDorsalOcupado(err, res, { dorsal: dorsal.valor, equipo_id })) return;
     res.status(500).json({ error: err.message });
   }
 };
@@ -170,6 +215,7 @@ exports.bulkCreate = async (req, res) => {
     const client = await db.connect();
     const inserted = [];
     const errors = [];
+    const avisos = [];
 
     try {
       await client.query('BEGIN');
@@ -212,13 +258,28 @@ exports.bulkCreate = async (req, res) => {
         const altura = item.altura ? parseFloat(item.altura) : null;
         const posicion = item.posicion ? item.posicion.trim() : null;
 
+        // Dorsal opcional: si es inválido o ya está ocupado en el equipo, se importa sin dorsal y se avisa
+        let { ok, valor: dorsal } = normalizarDorsal(item.dorsal);
+        if (!ok) {
+          avisos.push({ fila: i + 1, aviso: `Dorsal "${item.dorsal}" no válido (0 a 99): ${nombre} se importó sin dorsal` });
+          dorsal = null;
+        } else if (dorsal !== null && equipo_id) {
+          const { rows: ocupado } = await client.query(
+            'SELECT nombre FROM jugadores WHERE equipo_id = $1 AND dorsal = $2 LIMIT 1', [equipo_id, dorsal]
+          );
+          if (ocupado.length) {
+            avisos.push({ fila: i + 1, aviso: `El dorsal ${dorsal} ya lo usa ${ocupado[0].nombre}: ${nombre} se importó sin dorsal` });
+            dorsal = null;
+          }
+        }
+
         const { rows } = await client.query(
-          `INSERT INTO jugadores (nombre, edad, posicion, peso, altura, equipo_id, disciplina_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-          [nombre, isNaN(edad) ? null : edad, posicion, isNaN(peso) ? null : peso, isNaN(altura) ? null : altura, equipo_id, disciplina_id]
+          `INSERT INTO jugadores (nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, dorsal)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+          [nombre, isNaN(edad) ? null : edad, posicion, isNaN(peso) ? null : peso, isNaN(altura) ? null : altura, equipo_id, disciplina_id, dorsal]
         );
 
-        inserted.push({ id: rows[0].id, nombre, posicion, disciplina_id, equipo_id });
+        inserted.push({ id: rows[0].id, nombre, posicion, disciplina_id, equipo_id, dorsal });
       }
 
       await client.query('COMMIT');
@@ -233,7 +294,8 @@ exports.bulkCreate = async (req, res) => {
       message: `Se importaron ${inserted.length} deportistas correctamente`,
       total: inserted.length,
       insertados: inserted,
-      errores: errors
+      errores: errors,
+      avisos,
     });
   } catch (err) {
     res.status(500).json({ error: 'Error al procesar la importación: ' + err.message });
@@ -241,25 +303,66 @@ exports.bulkCreate = async (req, res) => {
 };
 
 // PUT /api/jugadores/:id
+// Actualización parcial: solo se modifican los campos presentes en el body.
+// Así, asignar un equipo desde otra pantalla no borra el dorsal ni el entrenador.
 exports.update = async (req, res) => {
-  const { nombre, edad, posicion, peso, altura, equipo_id, disciplina_id } = req.body;
-  const entrenador_id = req.usuario?.rol === 'entrenador' ? req.usuario.id : (req.body.entrenador_id || null);
+  const permitidos = ['nombre', 'edad', 'posicion', 'peso', 'altura', 'equipo_id', 'disciplina_id', 'entrenador_id', 'dorsal'];
+  const presente = (campo) => Object.prototype.hasOwnProperty.call(req.body, campo);
+  const vacioANull = (v) => (v === '' || v === undefined ? null : v);
 
   try {
-    if (['entrenador','jugador','head_coach'].includes(req.usuario?.rol)) {
-      const { rows: existing } = await db.query('SELECT id, entrenador_id FROM jugadores WHERE id=$1', [req.params.id]);
-      if (!existing.length) return res.status(404).json({ error: 'Jugador no encontrado' });
-      if (req.usuario.rol === 'jugador' || (req.usuario.rol === 'entrenador' && Number(existing[0].entrenador_id) !== Number(req.usuario.id))) return res.status(403).json({ error: 'No tienes permiso para modificar este deportista' });
-      if (req.usuario.rol === 'head_coach') { const { rows: linked } = await db.query('SELECT id FROM usuarios WHERE id=$1 AND head_coach_id=$2', [existing[0].entrenador_id, req.usuario.id]); if (!linked.length) return res.status(403).json({ error: 'Este deportista no pertenece a tus entrenadores asociados' }); }
+    const permiso = await verificarPermisoEscritura(req, req.params.id);
+    if (permiso.error) return res.status(permiso.status).json({ error: permiso.error });
+
+    const cambios = {};
+    for (const campo of permitidos) if (presente(campo)) cambios[campo] = vacioANull(req.body[campo]);
+
+    if ('nombre' in cambios && !String(cambios.nombre || '').trim()) {
+      return res.status(400).json({ error: 'El nombre es obligatorio' });
     }
-    const { rowCount } = await db.query(
-      `UPDATE jugadores SET nombre=$1, edad=$2, posicion=$3, peso=$4, altura=$5,
-       equipo_id=$6, disciplina_id=$7, entrenador_id=$8 WHERE id=$9`,
-      [nombre, edad || null, posicion || null, peso || null, altura || null,
-       equipo_id || null, disciplina_id || null, entrenador_id, req.params.id]
-    );
-    if (rowCount === 0) return res.status(404).json({ error: 'Jugador no encontrado' });
+    if ('nombre' in cambios) cambios.nombre = String(cambios.nombre).trim();
+    // Un entrenador no puede reasignar sus deportistas a otro entrenador
+    if (req.usuario?.rol === 'entrenador') delete cambios.entrenador_id;
+    if ('dorsal' in cambios) {
+      const dorsal = normalizarDorsal(cambios.dorsal);
+      if (!dorsal.ok) return res.status(400).json({ error: dorsal.error });
+      cambios.dorsal = dorsal.valor;
+    }
+
+    const campos = Object.keys(cambios);
+    if (!campos.length) return res.status(400).json({ error: 'No hay cambios para guardar' });
+
+    const set = campos.map((c, i) => `${c} = $${i + 1}`).join(', ');
+    const valores = [...campos.map(c => cambios[c]), req.params.id];
+    try {
+      await db.query(`UPDATE jugadores SET ${set} WHERE id = $${valores.length}`, valores);
+    } catch (err) {
+      const equipo_id = 'equipo_id' in cambios ? cambios.equipo_id : permiso.jugador.equipo_id;
+      const dorsal = 'dorsal' in cambios ? cambios.dorsal : permiso.jugador.dorsal;
+      if (await responderDorsalOcupado(err, res, { dorsal, equipo_id })) return;
+      throw err;
+    }
     res.json({ message: 'Jugador actualizado correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// PATCH /api/jugadores/:id/dorsal
+// Cambio rápido del número de camiseta (edición en línea desde la tabla).
+exports.updateDorsal = async (req, res) => {
+  const dorsal = normalizarDorsal(req.body.dorsal);
+  if (!dorsal.ok) return res.status(400).json({ error: dorsal.error });
+  try {
+    const permiso = await verificarPermisoEscritura(req, req.params.id);
+    if (permiso.error) return res.status(permiso.status).json({ error: permiso.error });
+    try {
+      await db.query('UPDATE jugadores SET dorsal = $1 WHERE id = $2', [dorsal.valor, req.params.id]);
+    } catch (err) {
+      if (await responderDorsalOcupado(err, res, { dorsal: dorsal.valor, equipo_id: permiso.jugador.equipo_id })) return;
+      throw err;
+    }
+    res.json({ id: Number(req.params.id), dorsal: dorsal.valor, message: dorsal.valor === null ? 'Dorsal quitado' : `Dorsal cambiado a ${dorsal.valor}` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -268,12 +371,8 @@ exports.update = async (req, res) => {
 // DELETE /api/jugadores/:id
 exports.remove = async (req, res) => {
   try {
-    if (['entrenador','jugador','head_coach'].includes(req.usuario?.rol)) {
-      const { rows: existing } = await db.query('SELECT id, entrenador_id FROM jugadores WHERE id=$1', [req.params.id]);
-      if (!existing.length) return res.status(404).json({ error: 'Jugador no encontrado' });
-      if (req.usuario.rol === 'jugador' || (req.usuario.rol === 'entrenador' && Number(existing[0].entrenador_id) !== Number(req.usuario.id))) return res.status(403).json({ error: 'No tienes permiso para eliminar este deportista' });
-      if (req.usuario.rol === 'head_coach') { const { rows: linked } = await db.query('SELECT id FROM usuarios WHERE id=$1 AND head_coach_id=$2', [existing[0].entrenador_id, req.usuario.id]); if (!linked.length) return res.status(403).json({ error: 'Este deportista no pertenece a tus entrenadores asociados' }); }
-    }
+    const permiso = await verificarPermisoEscritura(req, req.params.id, 'eliminar');
+    if (permiso.error) return res.status(permiso.status).json({ error: permiso.error });
     const { rowCount } = await db.query('DELETE FROM jugadores WHERE id = $1', [req.params.id]);
     if (rowCount === 0) return res.status(404).json({ error: 'Jugador no encontrado' });
     res.json({ message: 'Jugador eliminado correctamente' });

@@ -4,9 +4,9 @@ const { verificarToken, autorizar } = require('../middleware/auth');
 
 router.use(verificarToken);
 
-// Solo entrenadores, personal de salud y administrador pueden ver los equipos
-router.get('/',           autorizar('administrador', 'entrenador', 'personal_salud'), ctrl.getAll);
-router.get('/:id',        autorizar('administrador', 'entrenador', 'personal_salud'), ctrl.getOne);
+// Consulta: administrador, head coach, entrenadores y personal de salud
+router.get('/',           autorizar('administrador', 'head_coach', 'entrenador', 'personal_salud'), ctrl.getAll);
+router.get('/:id',        autorizar('administrador', 'head_coach', 'entrenador', 'personal_salud'), ctrl.getOne);
 
 // Entrenadores y administrador pueden crear, editar y gestionar imágenes
 router.post('/',          autorizar('administrador', 'entrenador'), ctrl.create);

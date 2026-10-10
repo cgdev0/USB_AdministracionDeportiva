@@ -15,11 +15,11 @@ const ROLE_LABELS = {
   jugador: 'Jugador',
 }
 const ROLE_COLORS = {
-  administrador: '#e74c3c',
-  head_coach: '#8e44ad',
-  entrenador: '#2ecc71',
-  personal_salud: '#3498db',
-  jugador: '#f39c12',
+  administrador: '#C9302C',
+  head_coach: '#6A3F9E',
+  entrenador: '#218D45',
+  personal_salud: '#31708F',
+  jugador: '#A86A07',
 }
 
 export default function Usuarios() {
@@ -213,7 +213,7 @@ export default function Usuarios() {
                     </span>
                   </td>
                   <td>
-                    <span style={{ color: u.activo ? '#2ecc71' : '#e74c3c' }}>
+                    <span style={{ color: u.activo ? 'var(--ok-texto)' : 'var(--error-texto)' }}>
                       {u.activo ? <Check size={16} /> : <X size={16} />}
                     </span>
                   </td>
@@ -309,11 +309,11 @@ export default function Usuarios() {
                 </form>
               ) : (
                 <div>
-                  <p style={{ color: '#2ecc71' }}>✅ Usuarios creados: <strong>{csvResultado.creados}</strong></p>
+                  <p style={{ color: 'var(--ok-texto)' }}>✅ Usuarios creados: <strong>{csvResultado.creados}</strong></p>
                   {csvResultado.errores.length > 0 && (
                     <>
-                      <p style={{ color: '#e74c3c' }}>❌ Errores: {csvResultado.errores.length}</p>
-                      <ul style={{ fontSize: '0.85rem', color: '#e74c3c' }}>
+                      <p style={{ color: 'var(--error-texto)' }}>❌ Errores: {csvResultado.errores.length}</p>
+                      <ul style={{ fontSize: '0.85rem', color: 'var(--error-texto)' }}>
                         {csvResultado.errores.map((e, i) => (
                           <li key={i}>Fila {e.fila}: {e.error}</li>
                         ))}
