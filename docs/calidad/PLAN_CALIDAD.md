@@ -1,6 +1,6 @@
 # Plan de calidad y pruebas — Administración Deportiva
 
-Estado: **pendiente de iniciar**. Registrado el 10 de octubre de 2026 a partir de lo pedido en clase.
+Estado: **en marcha desde v1.3.1** (10 de octubre de 2026). Las partes 1, 2 y 3 están hechas; las partes 4, 5 y 6 se actualizan en cada Pull Request. Línea base: `informes/v1.3.1.md`.
 
 ## Norma de referencia
 
@@ -49,25 +49,30 @@ Así no hay que reconstruir al final qué se probó en cada versión, y las evid
 - [ ] Tablero de GitHub Projects actualizado.
 - [ ] Entrada en `CHANGELOG.md`.
 
-## Material que ya existe y se puede reutilizar
+## Estado de cada parte
 
-Las versiones 1.2 y 1.3 ya se verificaron con pruebas automáticas. Esas pruebas pueden convertirse en casos de prueba formales y en las primeras evidencias del informe:
+| # | Parte | Dónde está | Estado |
+|---|---|---|---|
+| — | Requisitos | `00_requisitos.md` | Hecho (RF-01 a RF-19, RNF-01 a RNF-10) |
+| 1 | Características de calidad | `01_caracteristicas.md` | Hecho |
+| 2 | Métricas e indicadores | `02_metricas.md` | Hecho (26 métricas, índice global con meta ≥ 85) |
+| 3 | Plan de pruebas | `03_plan_de_pruebas.md` | Hecho (PP-AD-01) |
+| 4 | Casos de prueba | `casos/catalogo.md` (automáticos, generado) y `casos/manuales.md` | 94 automáticos y 7 manuales pendientes de ejecutar |
+| 5 | Informe de ejecución | `informes/` | Línea base v1.3.1: 92,6 % de aprobación, índice 67 |
+| 6 | Repositorio y tableros | esta carpeta, `defectos.md`, GitHub Projects | Carpeta y registro hechos; tablero por crear |
 
-- **Backend, regresión:** 48 casos contra PostgreSQL (inicio de sesión, lectura y escritura de todos los módulos, intento de inyección SQL bloqueado y filtros por rol).
-- **Backend, dorsal:** 14 casos (dorsal repetido, cambio rápido, actualización parcial, importación CSV).
-- **Navegador (Playwright):** recorrido de 5 roles por 13 módulos, en celular (390 px) y computador (1440 px), revisando errores, desbordes y permisos. Además, 6 casos de la edición del dorsal en la tabla.
+Las pruebas que antes vivían fuera del repositorio ya están en `pruebas/` (ver `pruebas/README.md`). Cualquier integrante puede repetirlas con `npm test`.
 
-**Pendiente:** hoy esos scripts viven fuera del repositorio. Al iniciar este plan hay que **pasarlos al repositorio** (por ejemplo, a una carpeta `pruebas/`) para que cualquier integrante pueda ejecutarlos y repetir los resultados.
-
-## Estructura propuesta de esta carpeta
+## Estructura de esta carpeta
 
 ```
 docs/calidad/
 ├── PLAN_CALIDAD.md            ← este archivo
+├── 00_requisitos.md           ← requisitos funcionales y no funcionales
 ├── 01_caracteristicas.md      ← características ISO 9126, factores y justificación
 ├── 02_metricas.md             ← matriz de características, factores, métricas y criterios
 ├── 03_plan_de_pruebas.md      ← plan de pruebas formal
-├── casos/                     ← casos de prueba por módulo
-├── informes/                  ← un informe de ejecución por versión (v1.4, v1.5…) y el informe final
+├── casos/                     ← catálogo generado y casos manuales
+├── informes/                  ← un informe de ejecución por versión, sus conclusiones y evidencias
 └── defectos.md                ← registro de defectos
 ```

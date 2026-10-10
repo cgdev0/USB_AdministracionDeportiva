@@ -3,6 +3,32 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v1.3.1 — Marco de calidad y pruebas
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.3.1`
+
+No cambia el funcionamiento del sistema: agrega cómo se evalúa su calidad.
+
+Plan de calidad (ISO/IEC 9126) en `docs/calidad/`
+- Requisitos del sistema (RF-01 a RF-19, RNF-01 a RNF-10).
+- Características y subcaracterísticas relevantes, con su justificación.
+- 26 métricas con fórmula, umbrales e instrumento, e índice de calidad global (meta ≥ 85).
+- Plan de pruebas PP-AD-01: alcance, tipos de prueba, entorno, responsables y criterios de aceptación.
+- Registro de defectos (26 registrados: 14 cerrados y 12 abiertos, programados para v1.4 y v1.5).
+
+Pruebas automáticas en `pruebas/`
+- 94 casos: unitarias, integración de la API contra PostgreSQL, robustez, seguridad, migraciones y navegador (Chromium, Firefox y WebKit).
+- Recorrido de los 5 roles por los 13 módulos en 4 anchos de pantalla, accesibilidad con axe-core, objetivos táctiles, carga en 4G y caída del servidor.
+- Base de pruebas aparte (`dt_deportivo_pruebas`): no tocan los datos de desarrollo.
+- `npm test`, `npm run test:api`, `npm run test:ui` y `npm run test:reporte`, que genera el catálogo de casos y el informe con las métricas.
+
+Línea base (informe `docs/calidad/informes/v1.3.1.md`)
+- 92,6 % de aprobación (87 de 94; los 7 restantes son defectos conocidos).
+- Índice global 67 de 100: funcionalidad y mantenibilidad en 100; usabilidad y fiabilidad son las prioridades.
+
+Otros
+- El servidor acepta la variable `PORT`.
+
 ## v1.3 — Administración Deportiva con identidad Unisimón
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.3`

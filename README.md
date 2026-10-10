@@ -82,19 +82,21 @@ Este comando inicia el **frontend**. No garantiza por sí solo que el backend ni
 - `.env.example`: ejemplo de variables de entorno; revisar antes de iniciar el backend.
 - `backend/config/database.sql`: esquema completo de PostgreSQL (crea la base desde cero).
 - `backend/migrations/`: scripts para actualizar bases creadas con versiones anteriores.
+- `docs/calidad/`: plan de calidad (ISO/IEC 9126), casos de prueba, defectos e informes.
+- `pruebas/`: pruebas automáticas de la API y del navegador.
 - `backend/`: rutas, controladores, middleware, configuración y migraciones del backend.
 
-## Lista de verificación pendiente
+## Pruebas y calidad
 
-- [ ] Compilar el frontend con `npm run build`.
-- [ ] Iniciar y comprobar el backend con la configuración correcta.
-- [ ] Crear un registro de prueba en cada módulo que permita guardar información.
-- [ ] Recargar la página y comprobar que el registro siga disponible.
-- [ ] Probar cada rol con una cuenta separada.
-- [ ] Confirmar que un jugador no pueda consultar datos de otro modificando una URL o petición.
-- [ ] Confirmar que la cuenta de jugador quede vinculada al perfil deportivo correcto.
-- [ ] Probar los permisos en el backend, no solamente en el menú.
-- [ ] Revisar las reglas de acceso a datos de salud antes de usar datos reales.
+El proyecto se evalúa con la norma ISO/IEC 9126. El marco completo está en `docs/calidad/`: requisitos, características, métricas, plan de pruebas, catálogo de casos, registro de defectos e informes por versión.
+
+```bash
+npx playwright install   # solo la primera vez
+npm test                 # API (unitarias e integración) y navegador; usa una base aparte, dt_deportivo_pruebas
+npm run test:reporte -- v1.4   # regenera el catálogo y escribe el informe de esa versión
+```
+
+Detalle de los comandos y de cómo agregar casos: `pruebas/README.md`. Último informe: `docs/calidad/informes/v1.3.1.md`.
 
 ## Alcance de esta versión
 
