@@ -107,6 +107,28 @@ const calculateAnthropometry = (data, genero = 'masculino') => {
   };
 };
 
+// Columnas que se pueden escribir en la tabla antropometria.
+// Cualquier otra clave del body se descarta (evita errores e inyección SQL en los nombres de columna).
+const COLUMNAS = [
+  'jugador_id', 'fecha', 'peso', 'estatura', 'imc',
+  'pliegue_biceps', 'pliegue_triceps', 'pliegue_subescapular', 'pliegue_suprailiaco',
+  'pliegue_supraespinal', 'pliegue_abdominal', 'pliegue_muslo_anterior', 'pliegue_pierna_medial',
+  'perimetro_brazo_relajado', 'perimetro_brazo_contraido', 'perimetro_muslo_medio', 'perimetro_pierna',
+  'diametro_humero', 'diametro_muneca', 'diametro_femur',
+  'porcentaje_grasa', 'masa_muscular_esqueletica', 'masa_mineral_osea', 'sumatoria_pliegues',
+  'posicion_rugby', 'categoria', 'grupo',
+  'endomorfia', 'mesomorfia', 'ectomorfia', 'x_somatocarta', 'y_somatocarta',
+];
+
+const soloColumnas = (obj) =>
+  Object.fromEntries(Object.entries(obj).filter(([k]) => COLUMNAS.includes(k)));
+
+const generoDelJugador = async (jugadorId) => {
+  if (!jugadorId) return 'masculino';
+  const { rows } = await pool.query('SELECT genero FROM jugadores WHERE id = $1', [jugadorId]);
+  return rows[0]?.genero || 'masculino';
+};
+
 const getAntropometriaByJugador = async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -121,20 +143,12 @@ const getAntropometriaByJugador = async (req, res) => {
 
 const createAntropometria = async (req, res) => {
   try {
-    const data = { ...req.body };
+    const data = soloColumnas(req.body);
     for (const key in data) if (data[key] === '') data[key] = null;
 
-    // Buscar género del jugador si está disponible
-    let genero = 'masculino';
-    if (data.jugador_id) {
-      try {
-        const { rows: jugRows } = await pool.query('SELECT genero FROM jugadores WHERE id = $1', [data.jugador_id]);
-        if (jugRows.length > 0 && jugRows[0].genero) genero = jugRows[0].genero;
-      } catch (err) {}
-    }
-
+    const genero = await generoDelJugador(data.jugador_id);
     const calculated = calculateAnthropometry(data, genero);
-    const fields = { ...data, ...calculated };
+    const fields = soloColumnas({ ...data, ...calculated });
     const keys   = Object.keys(fields);
     const vals   = Object.values(fields);
     const params = keys.map((_, i) => `$${i + 1}`).join(', ');
@@ -151,21 +165,12 @@ const createAntropometria = async (req, res) => {
 
 const updateAntropometria = async (req, res) => {
   try {
-    const data = { ...req.body };
+    const data = soloColumnas(req.body);
     for (const key in data) if (data[key] === '') data[key] = null;
-    delete data.id;
-    delete data.created_at;
 
-    let genero = 'masculino';
-    if (data.jugador_id) {
-      try {
-        const { rows: jugRows } = await pool.query('SELECT genero FROM jugadores WHERE id = $1', [data.jugador_id]);
-        if (jugRows.length > 0 && jugRows[0].genero) genero = jugRows[0].genero;
-      } catch (err) {}
-    }
-
+    const genero = await generoDelJugador(data.jugador_id);
     const calculated = calculateAnthropometry(data, genero);
-    const fields = { ...data, ...calculated };
+    const fields = soloColumnas({ ...data, ...calculated });
     const keys   = Object.keys(fields);
     const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
     const vals = [...Object.values(fields), req.params.id];

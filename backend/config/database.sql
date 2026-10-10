@@ -1,10 +1,22 @@
 -- ============================================================
 -- SCHEMA PostgreSQL - Sistema de Gestión Deportiva
--- Compatible con Neon (serverless PostgreSQL)
+-- Crea la base completa desde cero. Es idempotente: se puede
+-- ejecutar varias veces sin duplicar tablas ni datos semilla.
+--   psql "$DATABASE_URL" -f backend/config/database.sql
+-- Para bases existentes usar los scripts de backend/migrations/.
 -- ============================================================
 
 -- -------------------------------------------------------
--- 1. EQUIPOS
+-- 1. DISCIPLINAS DEPORTIVAS
+-- -------------------------------------------------------
+CREATE TABLE IF NOT EXISTS disciplinas (
+  id         SERIAL PRIMARY KEY,
+  nombre     VARCHAR(100) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- -------------------------------------------------------
+-- 2. EQUIPOS
 -- -------------------------------------------------------
 CREATE TABLE IF NOT EXISTS equipos (
   id            SERIAL PRIMARY KEY,
@@ -17,28 +29,24 @@ CREATE TABLE IF NOT EXISTS equipos (
 );
 
 -- -------------------------------------------------------
--- 2. DISCIPLINAS DEPORTIVAS
--- -------------------------------------------------------
-CREATE TABLE IF NOT EXISTS disciplinas (
-  id         SERIAL PRIMARY KEY,
-  nombre     VARCHAR(100) NOT NULL UNIQUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- -------------------------------------------------------
 -- 3. JUGADORES
+--    entrenador_id se agrega después de crear usuarios
+--    (usuarios y jugadores se referencian mutuamente).
 -- -------------------------------------------------------
 CREATE TABLE IF NOT EXISTS jugadores (
-  id             SERIAL PRIMARY KEY,
-  nombre         VARCHAR(100) NOT NULL,
-  edad           INT,
-  posicion       VARCHAR(50),
-  peso           DECIMAL(5,2),
-  altura         DECIMAL(4,2),
-  foto_url       VARCHAR(255),
-  equipo_id      INT REFERENCES equipos(id) ON DELETE SET NULL,
-  disciplina_id  INT REFERENCES disciplinas(id) ON DELETE SET NULL,
-  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  id                   SERIAL PRIMARY KEY,
+  nombre               VARCHAR(100) NOT NULL,
+  edad                 INT,
+  fecha_nacimiento     DATE,
+  genero               VARCHAR(20) CHECK (genero IN ('masculino','femenino')),
+  posicion             VARCHAR(50),
+  peso                 DECIMAL(5,2),
+  altura               DECIMAL(4,2),
+  foto_url             TEXT,
+  objetivos_deportivos TEXT,
+  equipo_id            INT REFERENCES equipos(id) ON DELETE SET NULL,
+  disciplina_id        INT REFERENCES disciplinas(id) ON DELETE SET NULL,
+  created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- -------------------------------------------------------
@@ -50,12 +58,17 @@ CREATE TABLE IF NOT EXISTS usuarios (
   email          VARCHAR(150) NOT NULL UNIQUE,
   password_hash  VARCHAR(255) NOT NULL,
   salt           VARCHAR(64) NOT NULL,
-  rol            VARCHAR(20) NOT NULL CHECK (rol IN ('administrador','entrenador','personal_salud','jugador')),
+  rol            VARCHAR(20) NOT NULL CONSTRAINT usuarios_rol_check
+                 CHECK (rol IN ('administrador','head_coach','entrenador','personal_salud','jugador')),
   jugador_id     INT REFERENCES jugadores(id) ON DELETE SET NULL,
+  head_coach_id  INT REFERENCES usuarios(id) ON DELETE SET NULL,
   activo         BOOLEAN DEFAULT TRUE,
   primer_login   BOOLEAN DEFAULT TRUE,
   created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE jugadores ADD COLUMN IF NOT EXISTS
+  entrenador_id INT REFERENCES usuarios(id) ON DELETE SET NULL;
 
 -- -------------------------------------------------------
 -- 5. ENTRENAMIENTOS
@@ -195,39 +208,123 @@ CREATE TABLE IF NOT EXISTS evaluaciones_rugby (
 );
 
 -- -------------------------------------------------------
--- DATOS SEMILLA
+-- 13. SALUD: HISTORIAS CLÍNICAS
 -- -------------------------------------------------------
-INSERT INTO equipos (nombre, categoria) VALUES
-  ('Los Cóndores', 'Primera División'),
-  ('Club Rugby Norte', 'Segunda División')
-ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS historias_clinicas (
+  id                  SERIAL PRIMARY KEY,
+  jugador_id          INT NOT NULL UNIQUE REFERENCES jugadores(id) ON DELETE CASCADE,
+  antecedentes        TEXT,
+  alergias            TEXT,
+  medicamentos        TEXT,
+  cirugias            TEXT,
+  enfermedades        TEXT,
+  historial_deportivo TEXT,
+  observaciones       TEXT,
+  actualizado_por     INT REFERENCES usuarios(id) ON DELETE SET NULL,
+  updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
+-- -------------------------------------------------------
+-- 14. SALUD: CONTROLES MÉDICOS
+-- -------------------------------------------------------
+CREATE TABLE IF NOT EXISTS controles_medicos (
+  id             SERIAL PRIMARY KEY,
+  jugador_id     INT NOT NULL REFERENCES jugadores(id) ON DELETE CASCADE,
+  fecha          DATE NOT NULL DEFAULT CURRENT_DATE,
+  proxima_fecha  DATE,
+  tipo           VARCHAR(100) NOT NULL,
+  resultado      TEXT,
+  restricciones  TEXT,
+  aptitud        VARCHAR(40) NOT NULL DEFAULT 'pendiente'
+                 CHECK (aptitud IN ('apto','apto_restricciones','no_apto_temporal','pendiente')),
+  profesional_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+  created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- -------------------------------------------------------
+-- 15. SALUD: SEGUIMIENTO DE LESIONES
+-- -------------------------------------------------------
+CREATE TABLE IF NOT EXISTS seguimiento_lesiones (
+  id                     SERIAL PRIMARY KEY,
+  lesion_id              INT NOT NULL REFERENCES lesiones(id) ON DELETE CASCADE,
+  zona_corporal          VARCHAR(100),
+  gravedad               VARCHAR(30),
+  diagnostico            TEXT,
+  tratamiento            TEXT,
+  evolucion              TEXT,
+  fecha_seguimiento      DATE NOT NULL DEFAULT CURRENT_DATE,
+  fecha_retorno_estimada DATE,
+  fecha_retorno_real     DATE,
+  estado                 VARCHAR(40) NOT NULL DEFAULT 'activa'
+                         CHECK (estado IN ('activa','en_recuperacion','alta')),
+  profesional_id         INT REFERENCES usuarios(id) ON DELETE SET NULL,
+  created_at             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- -------------------------------------------------------
+-- 16. NOTIFICACIONES
+-- -------------------------------------------------------
+CREATE TABLE IF NOT EXISTS notificaciones (
+  id         SERIAL PRIMARY KEY,
+  usuario_id INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  titulo     VARCHAR(150) NOT NULL,
+  mensaje    TEXT NOT NULL,
+  tipo       VARCHAR(40) NOT NULL DEFAULT 'general',
+  leida      BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- -------------------------------------------------------
+-- ÍNDICES
+-- -------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_jugadores_equipo        ON jugadores(equipo_id);
+CREATE INDEX IF NOT EXISTS idx_jugadores_disciplina    ON jugadores(disciplina_id);
+CREATE INDEX IF NOT EXISTS idx_jugadores_entrenador    ON jugadores(entrenador_id);
+CREATE INDEX IF NOT EXISTS idx_usuarios_headcoach      ON usuarios(head_coach_id);
+CREATE INDEX IF NOT EXISTS idx_lesiones_jugador        ON lesiones(jugador_id);
+CREATE INDEX IF NOT EXISTS idx_antropometria_jugador   ON antropometria(jugador_id, fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_controles_jugador_fecha ON controles_medicos(jugador_id, fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_seguimiento_lesion_fecha ON seguimiento_lesiones(lesion_id, fecha_seguimiento DESC);
+CREATE INDEX IF NOT EXISTS idx_notificaciones_usuario  ON notificaciones(usuario_id, leida, created_at DESC);
+
+-- -------------------------------------------------------
+-- DATOS SEMILLA (solo si las tablas están vacías)
+-- Los usuarios se crean con: npm run seed (backend/config/seed.js)
+-- -------------------------------------------------------
 INSERT INTO disciplinas (nombre) VALUES
   ('Fútbol'), ('Rugby'), ('Atletismo'), ('Natación'), ('Baloncesto')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (nombre) DO NOTHING;
 
-INSERT INTO jugadores (nombre, edad, posicion, peso, altura, equipo_id) VALUES
-  ('Carlos Méndez',   22, 'Delantero',  72.5, 1.78, 1),
-  ('Luis García',     25, 'Mediocampo', 68.0, 1.75, 1),
-  ('Pedro Ramírez',   19, 'Defensa',    80.0, 1.82, 1),
-  ('Andrés Torres',   28, 'Portero',    85.0, 1.88, 1),
-  ('Miguel Flores',   21, 'Delantero',  70.0, 1.76, 1);
+INSERT INTO equipos (nombre, categoria)
+SELECT * FROM (VALUES
+  ('Los Cóndores', 'Primera División'),
+  ('Club Rugby Norte', 'Segunda División')
+) AS v(nombre, categoria)
+WHERE NOT EXISTS (SELECT 1 FROM equipos);
 
--- Contraseñas: Admin123! / Coach123! / Salud123! / Jugador123!
--- Hash generado con SHA-256 + salt (ver auth.controller.js)
-INSERT INTO usuarios (nombre, email, password_hash, salt, rol, primer_login) VALUES
-  ('Administrador',   'admin@dtdeportivo.com',      'HASH_PLACEHOLDER', 'SALT_PLACEHOLDER', 'administrador',  false),
-  ('Entrenador',      'entrenador@dtdeportivo.com', 'HASH_PLACEHOLDER', 'SALT_PLACEHOLDER', 'entrenador',     false),
-  ('Personal Salud',  'salud@dtdeportivo.com',      'HASH_PLACEHOLDER', 'SALT_PLACEHOLDER', 'personal_salud', false),
-  ('Jugador Demo',    'jugador@dtdeportivo.com',    'HASH_PLACEHOLDER', 'SALT_PLACEHOLDER', 'jugador',        false)
-ON CONFLICT DO NOTHING;
+INSERT INTO jugadores (nombre, edad, posicion, peso, altura, equipo_id)
+SELECT v.nombre, v.edad, v.posicion, v.peso, v.altura, (SELECT MIN(id) FROM equipos)
+FROM (VALUES
+  ('Carlos Méndez',   22, 'Delantero',  72.5, 1.78),
+  ('Luis García',     25, 'Mediocampo', 68.0, 1.75),
+  ('Pedro Ramírez',   19, 'Defensa',    80.0, 1.82),
+  ('Andrés Torres',   28, 'Portero',    85.0, 1.88),
+  ('Miguel Flores',   21, 'Delantero',  70.0, 1.76)
+) AS v(nombre, edad, posicion, peso, altura)
+WHERE NOT EXISTS (SELECT 1 FROM jugadores);
 
-INSERT INTO entrenamientos (fecha, tipo, descripcion) VALUES
-  ('2026-03-25', 'Resistencia', 'Carrera continua 45 min + circuito'),
-  ('2026-03-27', 'Fuerza',      'Pesas y ejercicios funcionales'),
-  ('2026-03-29', 'Táctica',     'Prácticas de posicionamiento y pressing');
+INSERT INTO entrenamientos (fecha, tipo, descripcion)
+SELECT * FROM (VALUES
+  (DATE '2026-03-25', 'Resistencia', 'Carrera continua 45 min + circuito'),
+  (DATE '2026-03-27', 'Fuerza',      'Pesas y ejercicios funcionales'),
+  (DATE '2026-03-29', 'Táctica',     'Prácticas de posicionamiento y pressing')
+) AS v(fecha, tipo, descripcion)
+WHERE NOT EXISTS (SELECT 1 FROM entrenamientos);
 
-INSERT INTO partidos (fecha, rival, tipo, resultado) VALUES
-  ('2026-03-15', 'Club Atlético Norte', 'liga',     '2-1'),
-  ('2026-03-22', 'Deportivo Sur',       'liga',     '0-0'),
-  ('2026-04-05', 'FC Estrella',         'amistoso', NULL);
+INSERT INTO partidos (fecha, rival, tipo, resultado)
+SELECT * FROM (VALUES
+  (DATE '2026-03-15', 'Club Atlético Norte', 'liga',     '2-1'),
+  (DATE '2026-03-22', 'Deportivo Sur',       'liga',     '0-0'),
+  (DATE '2026-04-05', 'FC Estrella',         'amistoso', NULL)
+) AS v(fecha, rival, tipo, resultado)
+WHERE NOT EXISTS (SELECT 1 FROM partidos);

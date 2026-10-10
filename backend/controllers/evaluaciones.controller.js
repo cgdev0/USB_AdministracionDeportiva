@@ -14,8 +14,19 @@ exports.getAll = async (_req, res) => {
   }
 };
 
+// Columnas que se pueden escribir en evaluaciones_rugby.
+// Cualquier otra clave del body se descarta (evita errores e inyección SQL en los nombres de columna).
+const COLUMNAS = [
+  'jugador_id', 'fecha', 'sprint_30m', 'salto_vertical', 'resistencia_yoyo',
+  'peso', 'estatura', 'porcentaje_grasa', 'masa_muscular', 'imc',
+  'score_velocidad', 'score_potencia', 'score_resistencia', 'score_grasa', 'score_musculo', 'score_general',
+];
+
+const soloColumnas = (obj) =>
+  Object.fromEntries(Object.entries(obj).filter(([k]) => COLUMNAS.includes(k)));
+
 exports.create = async (req, res) => {
-  const data = { ...req.body };
+  const data = soloColumnas(req.body);
 
   const refs = {
     sprint:  { best: 3.8,  worst: 5.5  },

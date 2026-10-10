@@ -3,35 +3,6 @@ const path   = require('path');
 const fs     = require('fs');
 const multer = require('multer');
 
-// Asegurar columnas en la base de datos al inicio
-let columnasAseguradas = false;
-async function asegurarColumnasEquipos() {
-  if (columnasAseguradas) return;
-  try {
-    await db.query(`
-      DO $$
-      BEGIN
-        BEGIN
-          ALTER TABLE equipos ADD COLUMN logo_url TEXT;
-        EXCEPTION WHEN duplicate_column THEN END;
-        BEGIN
-          ALTER TABLE equipos ADD COLUMN disciplina_id INT;
-        EXCEPTION WHEN duplicate_column THEN END;
-      END $$;
-    `);
-    columnasAseguradas = true;
-  } catch (e) {
-    // Si la BD es MySQL o no soporta DO block, intentar ALTER directo
-    try {
-      await db.query('ALTER TABLE equipos ADD COLUMN IF NOT EXISTS logo_url TEXT');
-    } catch (_) {}
-    try {
-      await db.query('ALTER TABLE equipos ADD COLUMN IF NOT EXISTS disciplina_id INT');
-    } catch (_) {}
-    columnasAseguradas = true;
-  }
-}
-
 // Configuración de Multer para imágenes de equipos (logos/escudos)
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -45,7 +16,6 @@ const upload = multer({
 exports.uploadMiddleware = upload.single('logo');
 
 exports.uploadLogo = async (req, res) => {
-  await asegurarColumnasEquipos();
   const { id } = req.params;
   if (!req.file) return res.status(400).json({ error: 'No se recibió ningún archivo de imagen' });
   try {
@@ -74,7 +44,6 @@ exports.uploadLogo = async (req, res) => {
 
 // GET /api/equipos
 exports.getAll = async (req, res) => {
-  await asegurarColumnasEquipos();
   try {
     const { disciplina_id } = req.query;
     let query = `
@@ -100,7 +69,6 @@ exports.getAll = async (req, res) => {
 
 // GET /api/equipos/:id
 exports.getOne = async (req, res) => {
-  await asegurarColumnasEquipos();
   try {
     const { rows: teamRows } = await db.query(
       `SELECT e.*, d.nombre AS disciplina_nombre
@@ -135,7 +103,6 @@ exports.getOne = async (req, res) => {
 
 // POST /api/equipos
 exports.create = async (req, res) => {
-  await asegurarColumnasEquipos();
   const { nombre, categoria, descripcion, disciplina_id, logo_url } = req.body;
   if (!nombre) return res.status(400).json({ error: 'El nombre del equipo es obligatorio' });
   try {
@@ -161,7 +128,6 @@ exports.create = async (req, res) => {
 
 // PUT /api/equipos/:id
 exports.update = async (req, res) => {
-  await asegurarColumnasEquipos();
   const { nombre, categoria, descripcion, disciplina_id, logo_url } = req.body;
   if (!nombre) return res.status(400).json({ error: 'El nombre del equipo es obligatorio' });
   try {

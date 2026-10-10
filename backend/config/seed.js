@@ -1,12 +1,7 @@
-// Ejecutar después de correr database.sql:  node config/seed.js
+// Crea o actualiza los usuarios base. Ejecutar después de database.sql:
+//   npm run db:init   (crea el esquema)  →  npm run seed
 const crypto = require('crypto');
-const { Pool } = require('pg');
-require('dotenv').config();
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
+const pool = require('./db');
 
 function generateSalt() {
   return crypto.randomBytes(16).toString('hex');
