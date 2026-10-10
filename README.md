@@ -8,7 +8,7 @@ Plataforma web orientada a la gestión deportiva de la Universidad Simón Bolív
 
 - **Frontend:** React 18, Vite, React Router, Axios, Recharts y Lucide.
 - **Backend:** Node.js/Express, controladores y rutas bajo `backend/`.
-- **Datos:** el repositorio incluye configuración de Firebase/Firestore y opciones de configuración del servidor. La persistencia real depende de la configuración activa y debe verificarse en la instalación.
+- **Datos:** PostgreSQL nativo (driver `pg`). Funciona con PostgreSQL local, Neon o Cloud SQL. Desde la v1.2 no se usa Firebase.
 - **Acceso:** el frontend incluye contexto de autenticación y un menú que filtra opciones por rol. En modo desarrollo también contiene cuentas de demostración; estas no sustituyen una autenticación real ni prueban los permisos del backend.
 
 ## Módulos visibles en el frontend
@@ -41,6 +41,21 @@ El frontend reconoce los roles `administrador`, `head_coach`, `entrenador`, `per
 
 **Advertencia de seguridad:** el menú y las rutas protegidas del frontend no bastan para garantizar privacidad. Deben validarse también los permisos y filtros en el backend para cada endpoint, especialmente para datos médicos, antropometría, estadísticas y asistencia. La matriz definitiva de permisos debe actualizarse después de probar cada rol.
 
+## Base de datos (PostgreSQL)
+
+1. Crear una base vacía, por ejemplo `dt_deportivo`.
+2. Copiar `.env.example` a `.env` y completar `DATABASE_URL` **o** las variables `DB_*`, además de `JWT_SECRET` y `JWT_REFRESH_SECRET`.
+3. Crear el esquema y los usuarios base:
+
+```bash
+npm install
+npm run db:init   # ejecuta backend/config/database.sql
+npm run seed      # crea los usuarios de prueba
+npm run dev       # API + frontend en http://localhost:3000
+```
+
+**Base existente de una versión anterior:** ejecutar en orden los scripts de `backend/migrations/` (`001_roles_y_salud.sql`, `002_postgres_nativo.sql`) después de hacer un respaldo.
+
 ## Ejecutar el frontend en desarrollo
 
 Requisito: instalar Node.js.
@@ -62,7 +77,8 @@ Este comando inicia el **frontend**. No garantiza por sí solo que el backend ni
 - `DOCUMENTACION.html`: documentación visual general del sistema.
 - `IMPLEMENTACION.md`: estado de las funcionalidades, limitaciones y tareas de validación.
 - `.env.example`: ejemplo de variables de entorno; revisar antes de iniciar el backend.
-- `firestore.rules` y `firebase-applet-config.json`: configuración relacionada con Firebase/Firestore. No garantizan que el proyecto Firebase esté habilitado ni que las reglas sean correctas para producción.
+- `backend/config/database.sql`: esquema completo de PostgreSQL (crea la base desde cero).
+- `backend/migrations/`: scripts para actualizar bases creadas con versiones anteriores.
 - `backend/`: rutas, controladores, middleware, configuración y migraciones del backend.
 
 ## Lista de verificación pendiente

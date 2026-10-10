@@ -77,7 +77,7 @@ En desarrollo, `AuthContext.jsx` contiene cuentas de demostración. Los tokens `
 
 ## 7. Base de datos y despliegue
 
-El repositorio incluye configuración de Firebase/Firestore y configuración de servidor. Antes de realizar migraciones, se debe identificar qué almacenamiento está activo en la instalación. Una migración SQL no actualiza automáticamente colecciones de Firestore. No ejecutar migraciones en producción sin respaldo.
+Desde la v1.2 el único almacenamiento es PostgreSQL. Una base nueva se crea con `npm run db:init` (`backend/config/database.sql`); una base existente se actualiza con los scripts de `backend/migrations/` en orden. No ejecutar migraciones en producción sin respaldo.
 
 Las cuentas demo del frontend sirven únicamente para revisar la interfaz en modo desarrollo. Para comprobar persistencia y seguridad se requieren cuentas y datos de prueba conectados al backend y al almacenamiento realmente utilizado.
 
