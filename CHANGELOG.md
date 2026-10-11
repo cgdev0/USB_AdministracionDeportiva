@@ -3,6 +3,14 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v1.5.1 — Vista del deportista desde el inicio
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.5.1`
+
+- En el plantel del inicio, cada número es un botón: al tocarlo se abre el inicio tal como lo ve ese deportista en su cuenta (su estado, retorno estimado y su asistencia).
+- La API acepta `GET /api/dashboard/inicio?jugador_id=N` para el personal. Solo funciona con deportistas a los que ese rol ya tiene acceso (si no, responde 404); un deportista no puede ver la vista de otro.
+- Pruebas: CP-INI-010, CP-INI-011 y CP-UI-INI-002.
+
 ## v1.5 — Pulido y experiencia de usuario
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.5`

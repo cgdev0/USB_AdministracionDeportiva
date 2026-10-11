@@ -478,6 +478,14 @@ tbody tr:nth-child(even) td { background: #FAFAFA; }
   .tabla-movil th { white-space: normal; }
 }
 
+/* Plantel del inicio: cada número abre la vista del deportista (v1.5.1) */
+button.ini-dorsal { width: 100%; font: inherit; color: inherit; cursor: pointer; transition: var(--transition); }
+@media (hover: hover) and (pointer: fine) { button.ini-dorsal:hover { border-color: var(--verde-boton); box-shadow: 0 0 0 1px var(--verde-boton); } }
+button.ini-dorsal:active { transform: scale(0.97); }
+.ini-plantel > li { list-style: none; }
+.ini-nota-toque { margin-top: 10px; font-size: 13px; color: var(--texto-suave); }
+.vista-deportista { display: grid; gap: 16px; }
+
 /* Chips de filtro (deportes rápidos): botones con estado presionado */
 .chip-filtro {
   display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px;

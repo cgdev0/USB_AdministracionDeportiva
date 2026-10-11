@@ -29,16 +29,32 @@ function estadoDe(fila) {
   return 'disponible';
 }
 
-// GET /api/dashboard/inicio?disciplina_id=
+// GET /api/dashboard/inicio?disciplina_id=&jugador_id=
 // Todo lo que muestra la pantalla de inicio en una sola llamada.
+// Con jugador_id, el personal (no los deportistas) obtiene el inicio tal como lo ve ese deportista,
+// solo si está dentro de su alcance; los permisos de salud siguen siendo los de quien consulta.
 exports.getInicio = async (req, res) => {
   const usuario = req.usuario;
-  const disciplinaId = req.query.disciplina_id && req.query.disciplina_id !== 'todos'
+  let disciplinaId = req.query.disciplina_id && req.query.disciplina_id !== 'todos'
     ? parseInt(req.query.disciplina_id, 10) || null
     : null;
   const veSalud = ['administrador', 'personal_salud', 'jugador'].includes(usuario.rol);
 
   try {
+    // Alcance de los datos: el propio usuario o, en la vista de un deportista, solo ese deportista
+    let vista = usuario;
+    if (req.query.jugador_id !== undefined && usuario.rol !== 'jugador') {
+      const id = Number(req.query.jugador_id);
+      if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'El deportista indicado no es válido.' });
+      const p0 = [];
+      const cond = alcanceJugadores(usuario, null, p0);
+      p0.push(id);
+      const { rows } = await db.query(`SELECT j.id FROM jugadores j WHERE ${cond} AND j.id = $${p0.length}`, p0);
+      if (!rows.length) return res.status(404).json({ error: 'Deportista no encontrado o fuera de tu alcance.' });
+      vista = { rol: 'jugador', jugador_id: id };
+      disciplinaId = null;
+    }
+
     // 1. Plantel con su estado
     const p1 = [];
     const { rows: plantelFilas } = await db.query(`
@@ -63,7 +79,7 @@ exports.getInicio = async (req, res) => {
         SELECT c.aptitud, c.restricciones, c.proxima_fecha FROM controles_medicos c
         WHERE c.jugador_id = j.id ORDER BY c.fecha DESC, c.id DESC LIMIT 1
       ) ctl ON TRUE
-      WHERE ${alcanceJugadores(usuario, disciplinaId, p1)}
+      WHERE ${alcanceJugadores(vista, disciplinaId, p1)}
       ORDER BY j.dorsal NULLS LAST, j.nombre`, p1);
 
     const plantel = plantelFilas.map(f => ({
@@ -97,11 +113,11 @@ exports.getInicio = async (req, res) => {
         revisar.push({ tipo: 'control_vencido', jugador_id: f.id, nombre: f.nombre, dorsal: f.dorsal, fecha: f.proximo_control });
       }
     }
-    if (['administrador', 'personal_salud'].includes(usuario.rol) && plantel.length) {
+    if (vista === usuario && ['administrador', 'personal_salud'].includes(usuario.rol) && plantel.length) {
       const p2 = [];
       const { rows: [sinAntro] } = await db.query(`
         SELECT COUNT(*)::int AS total FROM jugadores j
-        WHERE ${alcanceJugadores(usuario, disciplinaId, p2)}
+        WHERE ${alcanceJugadores(vista, disciplinaId, p2)}
           AND NOT EXISTS (
             SELECT 1 FROM antropometria a WHERE a.jugador_id = j.id
               AND a.fecha >= make_date(EXTRACT(YEAR FROM CURRENT_DATE)::int,
@@ -127,7 +143,7 @@ exports.getInicio = async (req, res) => {
 
     // 4. Asistencia de las últimas 4 sesiones (solo jugadores del alcance)
     const p3 = [];
-    const alcance3 = alcanceJugadores(usuario, disciplinaId, p3);
+    const alcance3 = alcanceJugadores(vista, disciplinaId, p3);
     const { rows: asistencia } = await db.query(`
       SELECT e.id, e.fecha::text AS fecha, e.tipo,
              COUNT(ae.id) FILTER (WHERE ae.asistencia)::int AS presentes,
@@ -145,7 +161,7 @@ exports.getInicio = async (req, res) => {
              COALESCE(SUM(es.goles), 0)::int AS anotaciones,
              COALESCE(SUM(es.asistencias), 0)::int AS asistencias
       FROM estadisticas_jugador es JOIN jugadores j ON j.id = es.jugador_id
-      WHERE ${alcanceJugadores(usuario, disciplinaId, p4)}
+      WHERE ${alcanceJugadores(vista, disciplinaId, p4)}
       GROUP BY j.id, j.nombre, j.dorsal
       HAVING COALESCE(SUM(es.goles), 0) + COALESCE(SUM(es.asistencias), 0) > 0
       ORDER BY anotaciones DESC, asistencias DESC, j.nombre LIMIT 5`, p4);
