@@ -461,6 +461,18 @@ tbody tr:nth-child(even) td { background: #FAFAFA; }
 .empty-state-icon { font-size: 44px; margin-bottom: 12px; color: #BBB; }
 .empty-state p { font-size: 15px; }
 
+/* Tablas anchas en celular (v1.5, opción B aprobada por Carlos): columnas clave; lo demás debajo del nombre o en la ficha */
+.sub-movil { display: none; }
+/* Tableta: se ocultan además las columnas de consulta ocasional (están en la ficha) */
+@media (max-width: 1279px) { .tabla-movil .col-ter { display: none; } }
+@media (max-width: 719px) {
+  .tabla-movil .col-sec, .tabla-movil .acc-sec { display: none; }
+  .tabla-movil .sub-movil { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 400; color: var(--texto-suave); white-space: normal; }
+  .tabla-movil .texto-pc { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tabla-movil th, .tabla-movil td { padding: 8px 8px; }
+  .tabla-movil th { white-space: normal; }
+}
+
 /* Chips de filtro (deportes rápidos): botones con estado presionado */
 .chip-filtro {
   display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px;

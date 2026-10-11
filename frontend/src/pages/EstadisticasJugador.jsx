@@ -178,32 +178,35 @@ export default function EstadisticasJugador() {
           />
         ) : (
           <div className="table-wrapper" tabIndex={0} role="region" aria-label="Estadísticas por partido">
-            <table>
+            <table className="tabla-movil">
               <thead>
                 <tr>
-                  <th>Jugador</th><th>Partido</th><th>Rival</th>
-                  <th>Goles / Puntos</th><th>Asistencias</th><th>Minutos</th>
+                  <th>Jugador</th><th className="col-sec">Partido</th><th className="col-sec">Rival</th>
+                  <th>Goles / Puntos</th><th>Asistencias</th><th className="col-sec">Minutos</th>
                   {puedeEditar && <th>Acciones</th>}
                 </tr>
               </thead>
               <tbody>
                 {statsFiltradas.map(s => (
                   <tr key={s.id}>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{nombreConDorsal(s.jugador_nombre, s.jugador_dorsal)}</td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: 12 }}> {s.partido_fecha ? new Date(s.partido_fecha).toLocaleDateString('es') : '—'}</td>
-                    <td>{s.rival || '—'}</td>
-                    <td style={{ fontWeight: 700, color: s.goles > 0 ? 'var(--accent-light)' : 'var(--text-muted)' }}>
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {nombreConDorsal(s.jugador_nombre, s.jugador_dorsal)}
+                      <span className="sub-movil">{s.rival ? `vs ${s.rival}` : 'Sin partido'} · {s.minutos_jugados} min</span>
+                    </td>
+                    <td className="col-sec" style={{ color: 'var(--text-muted)', fontSize: 12 }}> {s.partido_fecha ? new Date(s.partido_fecha).toLocaleDateString('es') : '—'}</td>
+                    <td className="col-sec">{s.rival || '—'}</td>
+                    <td style={{ fontWeight: 700, color: s.goles > 0 ? 'var(--verde-texto)' : 'var(--text-muted)' }}>
                       {s.goles}
                     </td>
                     <td style={{ fontWeight: 700, color: s.asistencias > 0 ? 'var(--accent2)' : 'var(--text-muted)' }}>
                       {s.asistencias}
                     </td>
-                    <td>{s.minutos_jugados}</td>
+                    <td className="col-sec">{s.minutos_jugados}</td>
                     {puedeEditar && (
                       <td>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <button className="btn btn-ghost btn-sm" onClick={() => openEdit(s)}>
-                            <Pencil size={13} /> Editar
+                          <button className="btn btn-ghost btn-sm" onClick={() => openEdit(s)} aria-label={`Editar la estadística de ${s.jugador_nombre || 'este deportista'}`}>
+                            <Pencil size={13} /> <span className="texto-pc">Editar</span>
                           </button>
                           <button className="btn btn-danger btn-sm" onClick={() => handleDelete(s.id)} aria-label={`Eliminar la estadística de ${s.jugador_nombre || "este deportista"}`} title="Eliminar">
                             <Trash2 size={13} />
