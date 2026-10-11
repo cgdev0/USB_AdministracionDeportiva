@@ -67,3 +67,27 @@ test('CP-INI-009 [RF-18] Máximos anotadores ordenados por anotaciones', () => {
   assert.ok(a.length > 0);
   for (let i = 1; i < a.length; i++) assert.ok(a[i - 1].anotaciones >= a[i].anotaciones);
 });
+
+test('CP-INI-010 [RF-18] El personal ve el inicio de un deportista de su alcance, como lo ve ese deportista', async () => {
+  const lesionado = datos.entrenador.plantel.find(j => j.estado === 'no_disponible');
+  for (const rol of ['entrenador', 'administrador', 'head_coach', 'salud']) {
+    const r = await llamar('GET', `/api/dashboard/inicio?jugador_id=${lesionado.id}`, await token(rol));
+    assert.equal(r.status, 200, rol);
+    assert.equal(r.datos.plantel.length, 1, `${rol}: solo ese deportista`);
+    assert.equal(r.datos.plantel[0].id, lesionado.id);
+    assert.equal(r.datos.plantel[0].estado, 'no_disponible');
+    assert.ok(r.datos.revisar.every(x => x.jugador_id === lesionado.id), `${rol}: avisos solo de ese deportista`);
+  }
+});
+
+test('CP-INI-011 [RF-05] Nadie ve la vista de un deportista fuera de su alcance', async () => {
+  const deCesar = datos.entrenador.plantel[0];
+  const otro = await llamar('GET', `/api/dashboard/inicio?jugador_id=${deCesar.id}`, await token('entrenador2'));
+  assert.equal(otro.status, 404, 'otro entrenador no ve deportistas ajenos');
+  assert.equal((await llamar('GET', '/api/dashboard/inicio?jugador_id=abc', await token('entrenador'))).status, 400);
+  // Un deportista no puede pedir la vista de otro: el parámetro se ignora y solo se ve a sí mismo
+  const propio = datos.jugador.plantel.map(j => j.id);
+  const r = await llamar('GET', `/api/dashboard/inicio?jugador_id=${deCesar.id}`, await token('jugador'));
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.datos.plantel.map(j => j.id), propio);
+});

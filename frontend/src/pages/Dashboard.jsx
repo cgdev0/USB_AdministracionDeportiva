@@ -127,6 +127,7 @@ function BannerPartido({ partido, resumen, esJugador, rol }) {
 /* ── Disponibilidad del plantel (dorsales) ──────────────── */
 function Disponibilidad({ plantel, resumen, deporte, rol }) {
   const { setSelectedSportId } = useDeporte()
+  const [visto, setVisto] = useState(null)
   return (
     <section className="panel orden-2" aria-labelledby="t-disp">
       <div className="panel-cabecera">
@@ -152,11 +153,14 @@ function Disponibilidad({ plantel, resumen, deporte, rol }) {
                 const e = ESTADOS[j.estado]
                 const apellido = j.nombre.split(' ').slice(-1)[0]
                 return (
-                  <li key={j.id} className={`ini-dorsal ${j.estado}`} title={`${j.nombre}: ${e.texto}${j.motivo ? `. ${j.motivo}` : ''}`}>
-                    {j.estado !== 'disponible' && <i className={`fa-solid ${e.icono} ini-dorsal-estado`} aria-hidden="true"></i>}
-                    <span className="ini-dorsal-numero">{tieneDorsal(j.dorsal) ? j.dorsal : '–'}</span>
-                    <span className="ini-dorsal-nombre">{apellido}</span>
-                    <span className="sr-only">{j.nombre}, {e.texto}{j.motivo ? `, ${j.motivo}` : ''}</span>
+                  <li key={j.id}>
+                    <button type="button" className={`ini-dorsal ${j.estado}`} onClick={() => setVisto(j)}
+                      title={`${j.nombre}: ${e.texto}${j.motivo ? `. ${j.motivo}` : ''}`}>
+                      {j.estado !== 'disponible' && <i className={`fa-solid ${e.icono} ini-dorsal-estado`} aria-hidden="true"></i>}
+                      <span className="ini-dorsal-numero">{tieneDorsal(j.dorsal) ? j.dorsal : '–'}</span>
+                      <span className="ini-dorsal-nombre">{apellido}</span>
+                      <span className="sr-only">{j.nombre}, {e.texto}{j.motivo ? `, ${j.motivo}` : ''}. Ver como lo ve el deportista</span>
+                    </button>
                   </li>
                 )
               })}
@@ -166,10 +170,49 @@ function Disponibilidad({ plantel, resumen, deporte, rol }) {
               <span><i className="fa-solid fa-triangle-exclamation l-aviso" aria-hidden="true"></i><b>{resumen.restringidos}</b> con restricciones</span>
               <span><i className="fa-solid fa-circle-xmark l-error" aria-hidden="true"></i><b>{resumen.no_disponibles}</b> no disponibles</span>
             </p>
+            <p className="ini-nota-toque">Toca un número para ver el inicio tal como lo ve ese deportista.</p>
           </>
         )}
       </div>
+      {visto && <VistaDeportista jugador={visto} onCerrar={() => setVisto(null)} />}
     </section>
+  )
+}
+
+/* ── Vista de un deportista: su inicio, como lo ve en su cuenta ── */
+function VistaDeportista({ jugador, onCerrar }) {
+  const [datos, setDatos] = useState(null)
+  const [error, setError] = useState('')
+  const cargar = useCallback(async () => {
+    setDatos(null); setError('')
+    try {
+      const { data } = await api.get('/dashboard/inicio', { params: { jugador_id: jugador.id } })
+      // Nunca mostrar a otro deportista: la respuesta debe traer exactamente al que se tocó
+      if (!data.plantel?.some(j => j.id === jugador.id)) throw new Error('El servidor no devolvió la vista de este deportista.')
+      setDatos(data)
+    } catch (e) {
+      setError(e.message || 'No se pudo cargar la vista del deportista')
+    }
+  }, [jugador.id])
+  useEffect(() => { cargar() }, [cargar])
+
+  return (
+    <Modal title={nombreConDorsal(jugador.nombre, jugador.dorsal)} onClose={onCerrar}>
+      <div className="vista-deportista">
+        <p className="alerta alerta-info"><i className="fa-solid fa-eye" aria-hidden="true"></i>
+          <span>Así ve su inicio este deportista cuando entra con su cuenta.</span></p>
+        {error ? (
+          <EstadoError compacto mensaje={error} onReintentar={cargar} />
+        ) : !datos ? (
+          <Esqueleto tipo="panel" filas={6} etiqueta="Cargando la vista del deportista…" />
+        ) : (
+          <>
+            <MiEstado jugador={datos.plantel.find(j => j.id === jugador.id)} revisar={datos.revisar.filter(r => r.jugador_id === jugador.id)} />
+            <Asistencia sesiones={datos.asistencia} esJugador idTitulo="t-asis-deportista" />
+          </>
+        )}
+      </div>
+    </Modal>
   )
 }
 
@@ -210,10 +253,10 @@ function MiEstado({ jugador, revisar }) {
 }
 
 /* ── Asistencia (barras de progreso) ────────────────────── */
-function Asistencia({ sesiones, esJugador }) {
+function Asistencia({ sesiones, esJugador, idTitulo = 't-asis' }) {
   return (
-    <section className="panel orden-5" aria-labelledby="t-asis">
-      <div className="panel-cabecera"><h2 id="t-asis">{esJugador ? 'Mi asistencia' : 'Asistencia a entrenamientos'}</h2></div>
+    <section className="panel orden-5" aria-labelledby={idTitulo}>
+      <div className="panel-cabecera"><h2 id={idTitulo}>{esJugador ? 'Mi asistencia' : 'Asistencia a entrenamientos'}</h2></div>
       <div className="panel-cuerpo">
         {sesiones.length === 0 ? (
           <p className="ini-texto-suave">Todavía no hay entrenamientos registrados.</p>

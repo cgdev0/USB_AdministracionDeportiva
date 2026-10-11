@@ -118,3 +118,19 @@ test.describe('Dorsal', () => {
     });
   }
 });
+
+test('CP-UI-INI-002 [RF-18] Tocar un número del plantel muestra el inicio de ese deportista', async ({ browser }) => {
+  const { paginaEn } = require('./ayuda');
+  const page = await paginaEn(browser, 'celular');
+  await entrar(page, 'entrenador');
+  await page.goto('/');
+  const lesionado = page.locator('.ini-plantel button.ini-dorsal.no_disponible').first();
+  await lesionado.click();
+  const hoja = page.locator('.modal-box, .modal').first();
+  await expect(hoja.getByText('Así ve su inicio este deportista')).toBeVisible();
+  await expect(hoja.getByRole('heading', { name: 'Mi estado' })).toBeVisible();
+  await expect(hoja.getByText('No disponible')).toBeVisible();
+  await expect(hoja.getByRole('heading', { name: 'Mi asistencia' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.context().close();
+});
