@@ -8,6 +8,9 @@ import { Esqueleto, EstadoError } from '../components/EstadoVista'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
 import Convocatoria from '../components/Convocatoria'
+import InstalarApp from '../components/InstalarApp'
+import AgregarCalendario from '../components/AgregarCalendario'
+import AvisosEquipo from '../components/AvisosEquipo'
 import { ROLES, iniciales } from '../config/navegacion'
 import { capitalizar, diaCorto, fechaCorta, fechaLarga, fechaRelativa, numeroDia } from '../utils/fechas'
 import { nombreConDorsal, tieneDorsal } from '../utils/jugador'
@@ -81,11 +84,13 @@ export default function Dashboard() {
           ? <MiEstado jugador={datos.plantel[0]} revisar={datos.revisar} />
           : <Disponibilidad plantel={datos.plantel} resumen={datos.resumen} deporte={deporte} rol={usuario?.rol} />}
         <Asistencia sesiones={datos.asistencia} esJugador={esJugador} />
+        <Reconocimientos lista={datos.reconocimientos || []} />
         <Anotadores lista={datos.anotadores} esJugador={esJugador} />
       </div>
       <div className="inicio-columna">
         <MiSesion usuario={usuario} onSalir={logout} />
         {!esJugador && <ParaRevisar items={datos.revisar} />}
+        <AvisosEquipo />
         <EstaSemana items={datos.semana} />
         <Deportes />
       </div>
@@ -325,6 +330,33 @@ function Asistencia({ sesiones, esJugador, idTitulo = 't-asis' }) {
   )
 }
 
+/* ── Reconocimientos (v1.7): sobrios, con los datos que ya registra el cuerpo técnico ── */
+function Reconocimientos({ lista }) {
+  if (!lista.length) return null
+  return (
+    <section className="panel orden-5" aria-labelledby="t-rcn">
+      <div className="panel-cabecera"><h2 id="t-rcn">Reconocimientos</h2></div>
+      <div className="panel-cuerpo">
+        <ul className="ini-rcn">
+          {lista.map(r => (
+            <li key={r.tipo}>
+              <i className={`fa-solid ${r.icono}`} aria-hidden="true"></i>
+              <div>
+                <p className="ini-rcn-titulo">{r.titulo}</p>
+                <p className="ini-rcn-nombres">
+                  {r.jugadores.map(j => nombreConDorsal(j.nombre, j.dorsal)).join(', ')}
+                  {r.total > r.jugadores.length && ` y ${r.total - r.jugadores.length} más`}
+                </p>
+                {r.detalle && <p className="ini-rcn-detalle">{r.detalle}</p>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )
+}
+
 /* ── Máximos anotadores ─────────────────────────────────── */
 function Anotadores({ lista, esJugador }) {
   if (!lista.length || esJugador) return null
@@ -371,6 +403,7 @@ function MiSesion({ usuario, onSalir }) {
               {ac.icono && <i className={`fa-solid ${ac.icono}`} aria-hidden="true"></i>} {ac.texto}
             </Link>
           ))}
+          <InstalarApp />
           <button type="button" className="btn btn-secondary btn-bloque" onClick={() => setCambiarClave(true)}>Cambiar contraseña</button>
           <button type="button" className="btn btn-secondary btn-bloque" onClick={onSalir}>Cerrar sesión</button>
         </div>
@@ -483,6 +516,11 @@ function EstaSemana({ items }) {
                   <p className="ini-agenda-titulo">{it.titulo} {it.etiqueta && <span className="ini-etiqueta">{it.etiqueta}</span>}</p>
                   <p className="ini-agenda-detalle">{it.detalle || (it.clase === 'partido' ? 'Partido' : 'Entrenamiento')}</p>
                 </div>
+                <AgregarCalendario compacto evento={{
+                  id: `${it.clase}-${it.id}`, titulo: it.titulo, fecha: it.fecha, hora: it.hora, lugar: it.lugar,
+                  minutos: it.clase === 'partido' ? 150 : 90,
+                  descripcion: it.clase === 'partido' ? 'Partido · Administración Deportiva Unisimón' : 'Entrenamiento · Administración Deportiva Unisimón',
+                }} />
               </li>
             ))}
           </ul>

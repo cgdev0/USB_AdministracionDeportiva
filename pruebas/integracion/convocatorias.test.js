@@ -32,7 +32,11 @@ test.after(async () => {
   await cerrar(__filename);
 });
 
-const avisos = async (t) => (await llamar('GET', '/api/notificaciones', t)).datos;
+// Los recordatorios automáticos (v1.7) se prueban en comunicacion.test.js; aquí solo cuentan los avisos de la convocatoria
+const avisos = async (t) => {
+  const propios = (await llamar('GET', '/api/notificaciones', t)).datos.avisos.filter(a => a.tipo !== 'recordatorio');
+  return { avisos: propios, sin_leer: propios.filter(a => !a.leida).length };
+};
 const guardar = (t, cuerpo) => llamar('PUT', `/api/convocatorias/partido/${partido.id}`, t, cuerpo);
 
 test('CP-CNV-001 [RF-20] El entrenador guarda un borrador que solo ve el cuerpo técnico', async () => {
@@ -67,10 +71,12 @@ test('CP-CNV-002 [RF-20] Al publicar, los convocados reciben el aviso y ven la p
   assert.equal(vista.resumen, null);
 });
 
-test('CP-CNV-003 [RF-05] Otro entrenador no convoca ni retira deportistas ajenos', async () => {
-  assert.equal((await guardar(T.entrenador2, { convocados: [{ jugador_id: otros[2], rol: 'titular' }] })).status, 403);
-  const r = await guardar(T.entrenador2, { convocados: [] });
-  assert.equal(r.status, 200);
+test('CP-CNV-003 [RF-05] Otro entrenador no ve el partido de otro equipo ni puede tocar su convocatoria', async () => {
+  // Desde v1.7 el partido pertenece al equipo de Cesar: para otro entrenador no existe
+  assert.equal((await guardar(T.entrenador2, { convocados: [{ jugador_id: otros[2], rol: 'titular' }] })).status, 404);
+  assert.equal((await guardar(T.entrenador2, { convocados: [] })).status, 404);
+  assert.equal((await llamar('GET', `/api/convocatorias/partido/${partido.id}`, T.entrenador2)).status, 404);
+  const r = await llamar('GET', `/api/convocatorias/partido/${partido.id}`, T.entrenador);
   assert.equal(r.datos.convocatoria.convocados.length, 3, 'los convocados de Cesar siguen intactos');
 });
 
@@ -152,7 +158,7 @@ test('CP-CNV-009 [RF-20] Los avisos se marcan como leídos y nadie ve los de otr
 });
 
 test('CP-CNV-010 [RF-20] Guardar sin hora ni lugar no borra los que ya estaban', async () => {
-  await guardar(T.entrenador2, { convocados: [] });
+  await guardar(T.administrador, { convocados: [{ jugador_id: propio, rol: 'titular' }, { jugador_id: otros[0], rol: 'titular' }, { jugador_id: otros[1], rol: 'suplente' }] });
   const r = (await llamar('GET', `/api/convocatorias/partido/${partido.id}`, T.entrenador)).datos.convocatoria;
   assert.equal(r.hora_presentacion, '14:00');
   assert.equal(r.lugar, 'Cancha principal');

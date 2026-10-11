@@ -5,9 +5,10 @@ import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
 import { Esqueleto, EstadoVacio, EstadoError } from '../components/EstadoVista'
 import api from '../services/api'
+import CamposAgenda, { AGENDA_VACIA, agendaDe, resumenAgenda, useEquiposAsignables } from '../components/CamposAgenda'
 import { useAuth } from '../context/AuthContext'
 
-const EMPTY = { fecha: '', tipo: '', descripcion: '' }
+const EMPTY = { fecha: '', tipo: '', descripcion: '', ...AGENDA_VACIA }
 const TIPOS  = ['Resistencia','Fuerza','Táctica','Velocidad','Técnica','Físico General','Recuperación']
 
 export default function Entrenamientos() {
@@ -22,6 +23,7 @@ export default function Entrenamientos() {
   const [editId, setEditId]                 = useState(null)
   const [saving, setSaving]                 = useState(false)
   const [deleteModal, setDeleteModal]       = useState({ isOpen: false, id: null, loading: false })
+  const equipos = useEquiposAsignables(puedeEditar)
 
   const load = () => {
     setLoading(true)
@@ -35,7 +37,7 @@ export default function Entrenamientos() {
   useEffect(() => { load() }, [])
 
   const openCreate = () => { setForm(EMPTY); setEditId(null); setModal(true) }
-  const openEdit   = (e) => { setForm({ fecha: e.fecha?.slice(0,10), tipo: e.tipo, descripcion: e.descripcion || '' }); setEditId(e.id); setModal(true) }
+  const openEdit   = (e) => { setForm({ fecha: e.fecha?.slice(0,10), tipo: e.tipo, descripcion: e.descripcion || '', ...agendaDe(e) }); setEditId(e.id); setModal(true) }
   const closeModal = ()  => setModal(false)
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -125,7 +127,7 @@ export default function Entrenamientos() {
                 {entrenamientos.map(e => (
                   <tr key={e.id}>
                     <td style={{ fontWeight: 600 }}>{new Date(e.fecha).toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric' })}</td>
-                    <td><span className="badge badge-purple">{e.tipo}</span></td>
+                    <td><span className="badge badge-purple">{e.tipo}</span><span className="sub-agenda">{resumenAgenda(e)}</span></td>
                     <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{e.descripcion || '—'}</td>
                     {puedeEditar && (
                       <td>
@@ -177,6 +179,7 @@ export default function Entrenamientos() {
               <textarea name="descripcion" rows="3" value={form.descripcion} onChange={handleChange}
                 placeholder="Describe el contenido del entrenamiento…" style={{ resize: 'vertical' }} />
             </div>
+            <CamposAgenda form={form} onChange={handleChange} equipos={equipos} />
           </div>
         </Modal>
       )}

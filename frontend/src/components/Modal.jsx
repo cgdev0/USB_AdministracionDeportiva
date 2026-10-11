@@ -6,7 +6,7 @@ export default function Modal({ title, onClose, children, footer }) {
       <div className="modal-box">
         <div className="modal-header">
           <h3>{title}</h3>
-          <button className="modal-close" onClick={onClose}>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar" title="Cerrar">
             <X size={16} />
           </button>
         </div>

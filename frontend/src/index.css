@@ -486,6 +486,30 @@ button.ini-dorsal:active { transform: scale(0.97); }
 .ini-nota-toque { margin-top: 10px; font-size: 13px; color: var(--texto-suave); }
 .vista-deportista { display: grid; gap: 16px; }
 
+/* Equipo, lugar y hora debajo del nombre de un entrenamiento o partido (v1.7) */
+.sub-agenda { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 400; color: var(--texto-suave); white-space: normal; }
+.sub-agenda:empty { display: none; }
+
+.instalar-ios { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 6px; background: var(--info-fondo); color: var(--info-texto); font-size: 14px; }
+.instalar-ios > i { margin-top: 3px; }
+
+/* Agregar al calendario (v1.7) */
+.agregar-calendario { position: relative; flex: none; }
+.agregar-calendario-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 230px; display: grid;
+  background: var(--blanco); border: 1px solid var(--borde-claro); border-radius: 6px; box-shadow: var(--shadow-md); overflow: hidden;
+  animation: fadeIn var(--dur-rapida) ease;
+}
+.agregar-calendario-menu button, .agregar-calendario-menu a {
+  display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border: 0; background: none;
+  font: 500 14px var(--font); color: var(--texto); text-align: left; text-decoration: none; cursor: pointer;
+}
+.agregar-calendario-menu > * + * { border-top: 1px solid #EEE; }
+@media (hover: hover) and (pointer: fine) { .agregar-calendario-menu button:hover, .agregar-calendario-menu a:hover { background: #F5F5F5; } }
+.btn-solo-icono { min-width: 36px; padding: 0 10px; }
+.ini-agenda li { align-items: center; }
+.ini-agenda li > .agregar-calendario { margin-left: auto; }
+
 /* Campanita de avisos en la cabecera (v1.6) */
 .cabecera-avisos {
   position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-left: auto;
@@ -777,10 +801,30 @@ button.login-icono { cursor: pointer; }
 .ini-botones { display: grid; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #E5E5E5; }
 
 .ini-avisos { list-style: none; display: grid; gap: 10px; }
+
+/* Avisos del equipo (v1.7) */
+.ini-com-escribir { width: 100%; margin-bottom: 14px; gap: 8px; }
+.ini-com { list-style: none; display: grid; }
+.ini-com li { padding: 12px 0; border-top: 1px solid #E5E5E5; }
+.ini-com li:first-child { padding-top: 0; border-top: 0; }
+.ini-com-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ini-com-cabeza .btn-icon { flex: none; margin: -6px -8px -6px 0; }
+.ini-com-titulo { font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+.ini-com-mensaje { margin-top: 4px; font-size: 14px; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+.ini-com-meta { margin-top: 6px; font-size: 13px; color: var(--texto-suave); }
+.ini-com-mas { min-height: 40px; margin-top: 4px; padding: 0; border: 0; background: none; color: var(--verde-texto); font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Reconocimientos (v1.7) */
+.ini-rcn { list-style: none; display: grid; gap: 14px; }
+.ini-rcn li { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; }
+.ini-rcn li > i { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--ok-fondo); color: var(--verde-texto); font-size: 17px; }
+.ini-rcn-titulo { font-size: 14px; color: var(--texto-suave); }
+.ini-rcn-nombres { font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+.ini-rcn-detalle { margin-top: 2px; font-size: 14px; color: var(--texto-suave); font-variant-numeric: tabular-nums; }
 .ini-avisos a { display: inline-flex; align-items: center; min-height: 32px; font-weight: 700; color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 
 .ini-agenda { list-style: none; }
-.ini-agenda li { display: grid; grid-template-columns: 54px 1fr; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #EEE; }
+.ini-agenda li { display: grid; grid-template-columns: 54px 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid #EEE; }
 .ini-agenda li:first-child { padding-top: 0; }
 .ini-agenda li:last-child { border-bottom: 0; padding-bottom: 0; }
 .ini-agenda-fecha { display: grid; justify-items: center; line-height: 1; padding: 6px 0; border: 1px solid var(--borde-claro); border-radius: 4px; background: #F8F8F8; }

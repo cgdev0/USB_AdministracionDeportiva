@@ -134,3 +134,25 @@ test('CP-UI-INI-002 [RF-18] Tocar un número del plantel muestra el inicio de es
   await page.keyboard.press('Escape');
   await page.context().close();
 });
+
+test('CP-UI-AGE-001 [RF-10] El entrenador programa un entrenamiento con equipo, hora y lugar', async ({ browser }) => {
+  const { paginaEn } = require('./ayuda');
+  const page = await paginaEn(browser, 'celular');
+  await entrar(page, 'entrenador');
+  await page.goto('/entrenamientos');
+  await page.getByRole('button', { name: /Nuevo Entrenamiento/ }).click();
+  const hoja = page.locator('.modal-box, .modal').first();
+  await hoja.locator('input[name="fecha"]').fill('2026-12-10');
+  await hoja.locator('select[name="tipo"]').selectOption('Táctica');
+  const opcion = hoja.getByLabel('Equipo').locator('option', { hasText: 'Unisimón Rugby (demo)' });
+  await expect(opcion).toHaveCount(1);
+  await hoja.getByLabel('Equipo').selectOption(await opcion.getAttribute('value'));
+  await hoja.getByLabel('Hora').fill('17:30');
+  await hoja.getByLabel('Lugar').fill('Cancha UI prueba');
+  await hoja.getByRole('button', { name: 'Crear' }).click();
+  await expect(page.locator('table')).toContainText('Unisimón Rugby (demo) · Cancha UI prueba · 17:30');
+  // El botón de cerrar de los modales tiene nombre para lectores de pantalla
+  await page.getByRole('button', { name: /Nuevo Entrenamiento/ }).click();
+  await expect(page.getByRole('button', { name: 'Cerrar' })).toBeVisible();
+  await page.context().close();
+});

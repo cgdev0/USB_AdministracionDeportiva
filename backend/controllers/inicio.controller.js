@@ -1,6 +1,7 @@
 const db = require('../config/db');
 
 const { responderError } = require('../utils/errores');
+const { condicionEquipos } = require('../utils/alcance');
 // Restringe los jugadores visibles según el rol (mismas reglas que /api/jugadores)
 // y el deporte elegido. Devuelve condiciones SQL sobre el alias `j`.
 function alcanceJugadores(usuario, disciplinaId, params) {
@@ -126,20 +127,25 @@ exports.getInicio = async (req, res) => {
       if (sinAntro.total > 0) revisar.push({ tipo: 'antropometria', total: sinAntro.total });
     }
 
-    // 3. Próximo partido y agenda de los próximos 7 días
+    // 3. Próximo partido y agenda de los próximos 7 días (v1.7: solo las actividades generales y las de su equipo)
+    const agenda = (alias) => { const pa = []; const c = condicionEquipos(vista, pa, `${alias}.equipo_id`); return { pa, c: c ? ` AND ${c}` : '' }; };
+    const q1 = agenda('p');
     const { rows: [proximo] } = await db.query(
-      `SELECT id, fecha::text AS fecha, rival, tipo, resultado FROM partidos
-       WHERE fecha >= CURRENT_DATE ORDER BY fecha ASC, id ASC LIMIT 1`);
+      `SELECT p.id, p.fecha::text AS fecha, p.rival, p.tipo, p.resultado, p.hora, p.lugar FROM partidos p
+       WHERE p.fecha >= CURRENT_DATE${q1.c} ORDER BY p.fecha ASC, p.hora NULLS LAST, p.id ASC LIMIT 1`, q1.pa);
+    const q2 = agenda('p');
     const { rows: partidos } = await db.query(
-      `SELECT id, fecha::text AS fecha, rival, tipo FROM partidos
-       WHERE fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6 ORDER BY fecha, id`);
+      `SELECT p.id, p.fecha::text AS fecha, p.rival, p.tipo, p.hora, p.lugar FROM partidos p
+       WHERE p.fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6${q2.c} ORDER BY p.fecha, p.hora NULLS LAST, p.id`, q2.pa);
+    const q3 = agenda('e');
     const { rows: entrenos } = await db.query(
-      `SELECT id, fecha::text AS fecha, tipo, descripcion FROM entrenamientos
-       WHERE fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6 ORDER BY fecha, id`);
+      `SELECT e.id, e.fecha::text AS fecha, e.tipo, e.descripcion, e.hora, e.lugar FROM entrenamientos e
+       WHERE e.fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6${q3.c} ORDER BY e.fecha, e.hora NULLS LAST, e.id`, q3.pa);
+    const cuandoDonde = (a) => [a.lugar, a.hora].filter(Boolean).join(' · ') || null;
     const semana = [
-      ...partidos.map(p => ({ clase: 'partido', id: p.id, fecha: p.fecha, titulo: `Unisimón vs. ${p.rival}`, etiqueta: p.tipo === 'liga' ? 'Liga' : 'Amistoso' })),
-      ...entrenos.map(e => ({ clase: 'entrenamiento', id: e.id, fecha: e.fecha, titulo: e.tipo, detalle: e.descripcion })),
-    ].sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.clase === 'partido' ? -1 : 1));
+      ...partidos.map(p => ({ clase: 'partido', id: p.id, fecha: p.fecha, hora: p.hora, lugar: p.lugar, titulo: `Unisimón vs. ${p.rival}`, etiqueta: p.tipo === 'liga' ? 'Liga' : 'Amistoso', detalle: cuandoDonde(p) })),
+      ...entrenos.map(e => ({ clase: 'entrenamiento', id: e.id, fecha: e.fecha, hora: e.hora, lugar: e.lugar, titulo: e.tipo, detalle: cuandoDonde(e) || e.descripcion })),
+    ].sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.hora || '99').localeCompare(b.hora || '99') || (a.clase === 'partido' ? -1 : 1));
 
     // 4. Asistencia de las últimas 4 sesiones (solo jugadores del alcance)
     const p3 = [];
@@ -151,7 +157,7 @@ exports.getInicio = async (req, res) => {
       FROM entrenamientos e
       LEFT JOIN asistencia_entrenamiento ae ON ae.entrenamiento_id = e.id
         AND ae.jugador_id IN (SELECT j.id FROM jugadores j WHERE ${alcance3})
-      WHERE e.fecha <= CURRENT_DATE
+      WHERE e.fecha <= CURRENT_DATE${(() => { const c = condicionEquipos(vista, p3, 'e.equipo_id'); return c ? ` AND ${c}` : ''; })()}
       GROUP BY e.id ORDER BY e.fecha DESC, e.id DESC LIMIT 4`, p3);
 
     // 5. Máximos anotadores
@@ -187,7 +193,54 @@ exports.getInicio = async (req, res) => {
       convocatoria = r ? { partido_id: proximo.id, ...r } : { partido_id: proximo.id, publicada: false, total: 0 };
     }
 
-    res.json({ proximo_partido: proximo || null, plantel, resumen, revisar, semana, asistencia, anotadores, convocatoria });
+    // 7. Reconocimientos (v1.7): sobrios y calculados con los datos que ya existen (las tres consultas en paralelo)
+    const esDeportista = vista.rol === 'jugador';
+    const asistenciaPerfecta = async () => {
+      const pR = [];
+      const alcR = alcanceJugadores(vista, disciplinaId, pR);
+      const { rows: perfectos } = await db.query(`
+        SELECT j.id, j.nombre, j.dorsal, COUNT(*)::int AS sesiones
+        FROM asistencia_entrenamiento ae
+        JOIN entrenamientos e ON e.id = ae.entrenamiento_id
+        JOIN jugadores j ON j.id = ae.jugador_id
+        WHERE ${alcR} AND e.fecha >= date_trunc('month', CURRENT_DATE) AND e.fecha <= CURRENT_DATE
+        GROUP BY j.id, j.nombre, j.dorsal
+        HAVING COUNT(*) >= 3 AND BOOL_AND(ae.asistencia)
+        ORDER BY j.dorsal NULLS LAST, j.nombre`, pR);
+      return perfectos.length
+        ? { tipo: 'asistencia', titulo: 'Asistencia perfecta del mes', icono: 'fa-calendar-check', total: perfectos.length, jugadores: perfectos.slice(0, 8) }
+        : null;
+    };
+    // Líderes de la temporada: para el deportista se comparan contra su equipo y solo se muestran si es él
+    const lider = async (columna, titulo, icono, unidad) => {
+      const pL = [];
+      let alcL;
+      if (esDeportista) {
+        pL.push(vista.jugador_id || 0);
+        alcL = `j.equipo_id = (SELECT equipo_id FROM jugadores WHERE id = $${pL.length})`;
+      } else {
+        alcL = alcanceJugadores(vista, disciplinaId, pL);
+      }
+      const { rows: [l] } = await db.query(`
+        SELECT j.id, j.nombre, j.dorsal, SUM(es.${columna})::int AS total
+        FROM estadisticas_jugador es
+        JOIN jugadores j ON j.id = es.jugador_id
+        LEFT JOIN partidos p ON p.id = es.partido_id
+        WHERE ${alcL} AND COALESCE(p.fecha, es.created_at::date) >= date_trunc('year', CURRENT_DATE)
+        GROUP BY j.id, j.nombre, j.dorsal
+        HAVING SUM(es.${columna}) > 0
+        ORDER BY total DESC, j.nombre LIMIT 1`, pL);
+      return l && (!esDeportista || l.id === vista.jugador_id)
+        ? { tipo: columna, titulo, icono, total: 1, jugadores: [l], detalle: `${l.total} ${unidad}` }
+        : null;
+    };
+    const reconocimientos = (await Promise.all([
+      asistenciaPerfecta(),
+      lider('goles', 'Máximo anotador de la temporada', 'fa-medal', 'goles o puntos'),
+      lider('asistencias', 'Máximo asistidor de la temporada', 'fa-handshake', 'asistencias'),
+    ])).filter(Boolean);
+
+    res.json({ proximo_partido: proximo || null, plantel, resumen, revisar, semana, asistencia, anotadores, convocatoria, reconocimientos });
   } catch (err) {
     responderError(res, err);
   }

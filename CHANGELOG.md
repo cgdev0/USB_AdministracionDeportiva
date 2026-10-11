@@ -3,6 +3,40 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v1.7 — Agenda por equipo, avisos del entrenador, recordatorios y app instalable
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.7`
+
+Funciones para que el plantel use la app a diario, antes de publicarla en Railway.
+
+Agenda por equipo
+- Cada entrenamiento y partido puede tener equipo, hora y lugar. Sin equipo es general y la ven todos; con equipo la ven solo quienes tienen ese equipo a su cargo y sus deportistas.
+- El administrador asigna cualquier equipo; el entrenador, solo los equipos donde tiene deportistas (el servidor aplica la misma regla).
+- "Esta semana" en el inicio muestra el lugar y la hora de cada actividad.
+
+Avisos del entrenador
+- Panel "Avisos del equipo" en el inicio: el entrenador escribe a un equipo o a todos sus deportistas; el administrador, a un equipo o a todo el sistema.
+- Cada destinatario recibe el aviso en la campanita y lo ve en su inicio. El autor (o el administrador) puede eliminarlo.
+
+Recordatorios automáticos
+- Al deportista: entrenamientos y partidos del día siguiente con hora y lugar, convocatoria sin responder (3 horas después de publicada, para no repetir el aviso) y control médico próximo o vencido.
+- Al entrenador: partido de mañana sin convocatoria publicada o con convocados que aún no responden.
+- Se generan al abrir la app, sin tareas programadas, y nunca se repiten. Cuando el sistema esté publicado con HTTPS podrán enviarse como notificación push.
+
+Reconocimientos
+- Panel sobrio en el inicio: asistencia perfecta del mes (mínimo 3 sesiones), máximo anotador y máximo asistidor de la temporada. El deportista solo ve los reconocimientos propios.
+
+Agregar al calendario e instalar como app
+- Cada actividad de "Esta semana" y la convocatoria se pueden agregar al calendario del celular (archivo .ics, con recordatorio 2 horas antes) o a Google Calendar.
+- La app se puede instalar: en Android y PC con el botón "Instalar la app"; en iPhone, desde Safari con Compartir → Agregar a pantalla de inicio (el panel "Mi sesión" muestra los pasos).
+
+Velocidad
+- El servidor envía los archivos comprimidos y el navegador guarda un año los que no cambian: en celular con 4G lento el inicio carga en 1,9 s (antes 3,0 s).
+
+Datos: migraciones `006_agenda_equipos.sql` (equipo, hora y lugar en entrenamientos y partidos) y `007_comunicados_recordatorios.sql` (comunicados, destinatarios y clave única de recordatorios). Nuevos requisitos RF-21, RF-22 y RF-23.
+
+Pruebas: CP-AGE-001 a 006, CP-COM-001 a 002, CP-REC-001 a 003, CP-RCN-001, CP-UNI-015 y 016 (API y unitarias, 116 de 116); CP-UI-AGE-001, CP-UI-COM-001 y 002, CP-UI-RCN-001 (navegador, 43 de 43).
+
 ## v1.6 — Convocatoria de partidos y avisos
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.6`

@@ -49,7 +49,7 @@ export default function Avisos() {
           footer={sinLeer > 0 ? <button type="button" className="btn btn-secondary" onClick={leerTodo}>Marcar todo como leído</button> : null}>
           {error ? <EstadoError compacto mensaje={error} onReintentar={cargar} />
             : !datos ? <Esqueleto tipo="panel" filas={4} etiqueta="Cargando avisos…" />
-            : datos.avisos.length === 0 ? <EstadoVacio compacto icono="fa-bell" titulo="No tienes avisos" descripcion="Aquí llegan las convocatorias y sus cambios." />
+            : datos.avisos.length === 0 ? <EstadoVacio compacto icono="fa-bell" titulo="No tienes avisos" descripcion="Aquí llegan las convocatorias, los avisos del entrenador y los recordatorios." />
             : (
               <ul className="avisos-lista">
                 {datos.avisos.map(a => (
