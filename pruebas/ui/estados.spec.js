@@ -61,3 +61,17 @@ test('CP-UI-EST-004 [RNF-07] La interfaz no usa emojis', async ({ page }) => {
     expect(texto.match(emoji), `${ruta} sin emojis`).toBeNull();
   }
 });
+
+test('CP-UI-EST-005 [RNF-08] Si la descarga de un módulo falla, se explica y se ofrece reintentar', async ({ page }) => {
+  await page.setViewportSize(ANCHOS.pc);
+  await entrar(page, 'administrador');
+  await page.goto('/');
+  await expect(page.locator('.ini-banner')).toBeVisible();
+  // El módulo de Lesiones se descarga aparte (carga por partes): se simula que esa descarga falla
+  await page.route(/\/assets\/Lesiones-[^/]+\.js$/, route => route.abort());
+  await page.locator('.pestanas a', { hasText: 'Lesiones' }).click();
+  const alerta = page.getByRole('alert').filter({ hasText: 'No se pudo abrir esta sección' });
+  await expect(alerta).toBeVisible();
+  await expect(alerta.getByRole('button', { name: 'Reintentar' })).toBeVisible();
+  await expect(page.locator('.pestanas')).toBeVisible(); // el menú sigue disponible
+});

@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
 import { MENU_INFERIOR, ROLES, iniciales, modulosDelRol } from '../config/navegacion'
+import { intencion } from '../config/paginas'
 
 const claseActiva = ({ isActive }) => (isActive ? 'activo' : undefined)
 
@@ -54,7 +55,7 @@ function Pestanas() {
         <ul>
           {modulos.map(m => (
             <li key={m.ruta}>
-              <NavLink to={m.ruta} end={m.ruta === '/'} className={claseActiva}>{m.etiqueta}</NavLink>
+              <NavLink to={m.ruta} end={m.ruta === '/'} className={claseActiva} {...intencion(m.ruta)}>{m.etiqueta}</NavLink>
             </li>
           ))}
         </ul>
@@ -86,7 +87,7 @@ function MenuInferior() {
     <>
       <nav className="menu-inferior" aria-label="Menú principal">
         {fijas.map(m => (
-          <NavLink key={m.ruta} to={m.ruta} end={m.ruta === '/'} className={claseActiva}>
+          <NavLink key={m.ruta} to={m.ruta} end={m.ruta === '/'} className={claseActiva} {...intencion(m.ruta)}>
             <i className={m.icono} aria-hidden="true"></i>{m.corto}
           </NavLink>
         ))}
@@ -107,7 +108,7 @@ function MenuInferior() {
                 <ul className="hoja-lista">
                   {resto.map(m => (
                     <li key={m.ruta}>
-                      <NavLink to={m.ruta} end={m.ruta === '/'} className={claseActiva}>
+                      <NavLink to={m.ruta} end={m.ruta === '/'} className={claseActiva} {...intencion(m.ruta)}>
                         <i className={m.icono} aria-hidden="true"></i>{m.etiqueta}
                       </NavLink>
                     </li>
