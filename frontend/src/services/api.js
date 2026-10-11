@@ -41,7 +41,10 @@ api.interceptors.response.use(
         }
       }
     }
-    const msg = error.response?.data?.error || error.message || 'Error de conexión'
+    // Sin respuesta (servidor apagado, sin internet o tiempo agotado): mensaje claro en español
+    const msg = error.response?.data?.error
+      || (!error.response ? 'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.' : error.message)
+      || 'Error de conexión'
     const err = new Error(msg)
     err.status = error.response?.status
     return Promise.reject(err)

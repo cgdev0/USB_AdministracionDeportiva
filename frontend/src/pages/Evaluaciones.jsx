@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
@@ -28,11 +28,12 @@ const EMPTY = {
 export default function Evaluaciones() {
   const { tienePermiso } = useAuth()
   const puedeEditar = tienePermiso(['administrador', 'entrenador', 'personal_salud'])
-  const { selectedSportId, selectedSport } = useDeporte()
+  const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
 
   const [evals, setEvals] = useState([])
   const [jugadores, setJugadores] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
@@ -40,11 +41,12 @@ export default function Evaluaciones() {
 
   const load = async () => {
     setLoading(true)
+    setError(null)
     try {
       const [eRes, jRes] = await Promise.all([api.get('/evaluaciones'), api.get('/jugadores')])
       setEvals(eRes.data)
       setJugadores(jRes.data)
-    } catch (e) { toast.error(e.message) }
+    } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }
 
@@ -124,7 +126,7 @@ export default function Evaluaciones() {
       </div>
 
       <div className="page-toolbar">
-        <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>{evalsFiltradas.length} evaluaciones registradas</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>{!loading && !error && `${evalsFiltradas.length} evaluaciones registradas`}</span>
         {puedeEditar && (
           <button className="btn btn-primary" onClick={() => { setForm(EMPTY); setModal(true) }}>
             <Plus size={16} /> Nueva Evaluación
@@ -132,8 +134,30 @@ export default function Evaluaciones() {
         )}
       </div>
 
-      <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(450px, 1fr))' }}>
-        {loading ? <LoadingSpinner /> : evalsFiltradas.map(ev => (
+      {loading ? <Esqueleto tipo="tarjetas" filas={2} /> : error ? (
+        <div className="card"><EstadoError mensaje={error} onReintentar={load} /></div>
+      ) : evals.length === 0 ? (
+        <div className="card">
+          <EstadoVacio
+            icono="fa-bullseye"
+            titulo="Aún no hay evaluaciones físicas"
+            descripcion={puedeEditar
+              ? 'Registra la primera evaluación (sprint, salto, resistencia y composición corporal) para ver el radar de rendimiento de cada deportista.'
+              : 'Cuando se registre una evaluación física, aparecerá aquí con su radar de rendimiento.'}
+            accion={puedeEditar ? { texto: 'Nueva evaluación', icono: 'fa-plus', onClick: () => { setForm(EMPTY); setModal(true) } } : null}
+          />
+        </div>
+      ) : evalsFiltradas.length === 0 ? (
+        <div className="card">
+          <EstadoSinResultados
+            descripcion={`No hay evaluaciones de deportistas de ${selectedSport?.nombre || 'este deporte'}.`}
+            onLimpiar={() => setSelectedSportId('todos')}
+            textoLimpiar="Ver todos los deportes"
+          />
+        </div>
+      ) : (
+      <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(450px, 100%), 1fr))' }}>
+        {evalsFiltradas.map(ev => (
           <div key={ev.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
@@ -182,6 +206,7 @@ export default function Evaluaciones() {
           </div>
         ))}
       </div>
+      )}
 
       {modal && (
         <Modal title="Nueva Evaluación" onClose={() => setModal(false)} footer={

@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
@@ -17,12 +17,13 @@ const EMPTY = { jugador_id: '', partido_id: '', goles: 0, asistencias: 0, minuto
 export default function EstadisticasJugador() {
   const { tienePermiso } = useAuth()
   const puedeEditar = tienePermiso(['administrador', 'entrenador'])
-  const { selectedSportId, selectedSport } = useDeporte()
+  const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
 
   const [stats, setStats]         = useState([])
   const [jugadores, setJugadores] = useState([])
   const [partidos, setPartidos]   = useState([])
   const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState(null)
   const [modal, setModal]         = useState(false)
   const [form, setForm]           = useState(EMPTY)
   const [editId, setEditId]       = useState(null)
@@ -31,12 +32,13 @@ export default function EstadisticasJugador() {
 
   const load = async () => {
     setLoading(true)
+    setError(null)
     try {
       const [sRes, jRes, pRes] = await Promise.all([
         api.get('/estadisticas'), api.get('/jugadores'), api.get('/partidos'),
       ])
       setStats(sRes.data); setJugadores(jRes.data); setPartidos(pRes.data)
-    } catch (e) { toast.error(e.message) }
+    } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }
 
@@ -146,7 +148,7 @@ export default function EstadisticasJugador() {
 
       <div className="page-toolbar">
         <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-          {statsFiltradas.length} registros estadísticos
+          {!loading && !error && `${statsFiltradas.length} registros estadísticos`}
         </span>
         {puedeEditar && (
           <button className="btn btn-primary" onClick={openCreate}>
@@ -156,18 +158,30 @@ export default function EstadisticasJugador() {
       </div>
 
       <div className="card" style={{ padding: 0 }}>
-        {loading ? <LoadingSpinner /> : statsFiltradas.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">📈</div>
-            <p>No hay estadísticas registradas</p>
-          </div>
+        {loading ? <Esqueleto tipo="tabla" columnas={6} /> : error ? (
+          <EstadoError mensaje={error} onReintentar={load} />
+        ) : stats.length === 0 ? (
+          <EstadoVacio
+            icono="fa-chart-column"
+            titulo="Aún no hay estadísticas registradas"
+            descripcion={puedeEditar
+              ? 'Después de cada partido, registra goles o anotaciones, asistencias y minutos de cada deportista para ver la gráfica y los máximos anotadores.'
+              : 'Cuando un entrenador registre estadísticas de un partido, aparecerán aquí.'}
+            accion={puedeEditar ? { texto: 'Agregar estadística', icono: 'fa-plus', onClick: openCreate } : null}
+          />
+        ) : statsFiltradas.length === 0 ? (
+          <EstadoSinResultados
+            descripcion={`No hay estadísticas de deportistas de ${selectedSport?.nombre || 'este deporte'}.`}
+            onLimpiar={() => setSelectedSportId('todos')}
+            textoLimpiar="Ver todos los deportes"
+          />
         ) : (
           <div className="table-wrapper">
             <table>
               <thead>
                 <tr>
                   <th>Jugador</th><th>Partido</th><th>Rival</th>
-                  <th>⚽ Goles / Puntos</th><th>🎯 Asistencias</th><th>⏱ Minutos</th>
+                  <th>Goles / Puntos</th><th>Asistencias</th><th>Minutos</th>
                   {puedeEditar && <th>Acciones</th>}
                 </tr>
               </thead>

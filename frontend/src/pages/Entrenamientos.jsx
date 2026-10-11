@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Dumbbell } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { Esqueleto, EstadoVacio, EstadoError } from '../components/EstadoVista'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 
@@ -16,6 +16,7 @@ export default function Entrenamientos() {
 
   const [entrenamientos, setEntrenamientos] = useState([])
   const [loading, setLoading]               = useState(true)
+  const [error, setError]                   = useState(null)
   const [modal, setModal]                   = useState(false)
   const [form, setForm]                     = useState(EMPTY)
   const [editId, setEditId]                 = useState(null)
@@ -24,9 +25,10 @@ export default function Entrenamientos() {
 
   const load = () => {
     setLoading(true)
+    setError(null)
     api.get('/entrenamientos')
       .then(r => setEntrenamientos(r.data))
-      .catch(e => toast.error(e.message))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }
 
@@ -84,8 +86,10 @@ export default function Entrenamientos() {
 
       <div className="page-toolbar">
         <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-          <Dumbbell size={15} style={{ display: 'inline', marginRight: 6 }} />
-          {entrenamientos.length} sesiones registradas
+          {!loading && !error && <>
+            <Dumbbell size={15} style={{ display: 'inline', marginRight: 6 }} />
+            {entrenamientos.length} sesiones registradas
+          </>}
         </span>
         {puedeEditar && (
           <button className="btn btn-primary" onClick={openCreate}>
@@ -95,11 +99,17 @@ export default function Entrenamientos() {
       </div>
 
       <div className="card" style={{ padding: 0 }}>
-        {loading ? <LoadingSpinner /> : entrenamientos.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">🏋️</div>
-            <p>No hay entrenamientos registrados</p>
-          </div>
+        {loading ? <Esqueleto tipo="tabla" columnas={puedeEditar ? 4 : 3} /> : error ? (
+          <EstadoError mensaje={error} onReintentar={load} />
+        ) : entrenamientos.length === 0 ? (
+          <EstadoVacio
+            icono="fa-dumbbell"
+            titulo="Aún no hay entrenamientos registrados"
+            descripcion={puedeEditar
+              ? 'Crea la primera sesión para poder tomar asistencia y ver la agenda de la semana en el inicio.'
+              : 'Cuando un entrenador programe una sesión, aparecerá aquí.'}
+            accion={puedeEditar ? { texto: 'Nuevo entrenamiento', icono: 'fa-plus', onClick: openCreate } : null}
+          />
         ) : (
           <div className="table-wrapper">
             <table>
