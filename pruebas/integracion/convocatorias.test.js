@@ -32,7 +32,11 @@ test.after(async () => {
   await cerrar(__filename);
 });
 
-const avisos = async (t) => (await llamar('GET', '/api/notificaciones', t)).datos;
+// Los recordatorios automáticos (v1.7) se prueban en comunicacion.test.js; aquí solo cuentan los avisos de la convocatoria
+const avisos = async (t) => {
+  const propios = (await llamar('GET', '/api/notificaciones', t)).datos.avisos.filter(a => a.tipo !== 'recordatorio');
+  return { avisos: propios, sin_leer: propios.filter(a => !a.leida).length };
+};
 const guardar = (t, cuerpo) => llamar('PUT', `/api/convocatorias/partido/${partido.id}`, t, cuerpo);
 
 test('CP-CNV-001 [RF-20] El entrenador guarda un borrador que solo ve el cuerpo técnico', async () => {

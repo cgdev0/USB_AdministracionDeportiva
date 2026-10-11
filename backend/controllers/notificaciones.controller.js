@@ -1,10 +1,13 @@
 // Avisos dentro de la app para cualquier rol (campanita de la cabecera). v1.6.
 const db = require('../config/db');
 const { responderError } = require('../utils/errores');
+const { generarRecordatorios } = require('../utils/recordatorios');
 
 // GET /api/notificaciones → los últimos 50 avisos del usuario y cuántos no ha leído
 exports.listar = async (req, res) => {
   try {
+    // Recordatorios automáticos (v1.7): se crean al consultar, sin duplicarse; si fallan, los avisos igual se muestran
+    await generarRecordatorios(db, req.usuario).catch(err => console.error('[recordatorios]', err.message));
     const { rows } = await db.query(
       `SELECT id, titulo, mensaje, tipo, enlace, leida, created_at FROM notificaciones
        WHERE usuario_id = $1 ORDER BY created_at DESC, id DESC LIMIT 50`, [req.usuario.id]);

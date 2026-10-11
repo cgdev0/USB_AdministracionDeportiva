@@ -17,9 +17,9 @@ const leerJSON = (f, def = null) => { try { return JSON.parse(fs.readFileSync(f,
 const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : null);
 
 // ── Requisitos y módulos ──────────────────────────────────────
-const RF = Array.from({ length: 20 }, (_, i) => `RF-${String(i + 1).padStart(2, '0')}`);
+const RF = Array.from({ length: 23 }, (_, i) => `RF-${String(i + 1).padStart(2, '0')}`);
 const MODULOS = {
-  Inicio: ['RF-18'], Supervisión: ['RF-19'], Equipos: ['RF-07'], Partidos: ['RF-12', 'RF-20'], Deportistas: ['RF-08', 'RF-09'],
+  Inicio: ['RF-18', 'RF-21', 'RF-22', 'RF-23'], Supervisión: ['RF-19'], Equipos: ['RF-07'], Partidos: ['RF-12', 'RF-20'], Deportistas: ['RF-08', 'RF-09'],
   Entrenamientos: ['RF-10'], Asistencia: ['RF-11'], Estadísticas: ['RF-13'],
   Lesiones: ['RF-14'], Salud: ['RF-15'], Evaluaciones: ['RF-16'], Antropometría: ['RF-17'], Usuarios: ['RF-03'],
 };

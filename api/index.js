@@ -2,12 +2,16 @@
 // backend/server.js (solo API) y las pruebas automáticas.
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const path = require('path');
 require('dotenv').config();
 const { manejadorFinal, validarId } = require('../backend/utils/errores');
 
 const app = express();
 app.disable('x-powered-by');
+
+// Respuestas comprimidas (gzip): el paquete principal pasa de ~300 KB a ~100 KB en redes móviles lentas
+app.use(compression());
 
 // CORS: en producción el frontend se sirve desde el mismo origen; FRONTEND_URL permite otros (separados por coma)
 const origenes = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(s => s.trim()) : null;
@@ -39,7 +43,7 @@ const RUTAS = {
   lesiones: 'lesiones', evaluaciones: 'evaluaciones', partidos: 'partidos',
   estadisticas: 'estadisticas', dashboard: 'dashboard', settings: 'settings',
   antropometria: 'antropometria', 'head-coach': 'headcoach', salud: 'salud',
-  convocatorias: 'convocatorias', notificaciones: 'notificaciones',
+  convocatorias: 'convocatorias', notificaciones: 'notificaciones', comunicados: 'comunicados',
 };
 for (const [prefijo, archivo] of Object.entries(RUTAS)) {
   const router = require(`../backend/routes/${archivo}.routes`);

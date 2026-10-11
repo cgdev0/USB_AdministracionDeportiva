@@ -1,11 +1,17 @@
 # Catálogo de casos de prueba
 
-Generado automáticamente por `npm run test:reporte` el 2026-10-11 (versión v1.6). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
+Generado automáticamente por `npm run test:reporte` el 2026-10-11 (versión v1.7). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
 
 Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 
 | ID | Caso | Requisitos | Tipo | Característica ISO 9126 | Archivo | Navegadores | Último resultado |
 |---|---|---|---|---|---|---|---|
+| CP-AGE-001 | Un entrenamiento del equipo lo ven solo quienes tienen ese equipo en su alcance | RF-10 | Otro | — | `pruebas/integracion/agenda.test.js` | — | ✔ Aprobado |
+| CP-AGE-002 | Una actividad sin equipo es general y la ven todos | RF-10 | Otro | — | `pruebas/integracion/agenda.test.js` | — | ✔ Aprobado |
+| CP-AGE-003 | Un entrenador solo asigna equipos donde tiene deportistas | RF-05 | Otro | — | `pruebas/integracion/agenda.test.js` | — | ✔ Aprobado |
+| CP-AGE-004 | Hora con formato inválido devuelve 400 | RNF-03 | Otro | — | `pruebas/integracion/agenda.test.js` | — | ✔ Aprobado |
+| CP-AGE-005 | Editar sin enviar equipo, hora ni lugar los conserva | RF-10 | Otro | — | `pruebas/integracion/agenda.test.js` | — | ✔ Aprobado |
+| CP-AGE-006 | "Esta semana" muestra lugar y hora, y otro entrenador no ve la agenda del equipo | RF-18 | Otro | — | `pruebas/integracion/agenda.test.js` | — | ✔ Aprobado |
 | CP-AUT-001 | Inicio de sesión válido devuelve tokens y el rol | RF-01 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/autenticacion.test.js` | — | ✔ Aprobado |
 | CP-AUT-002 | Contraseña incorrecta devuelve 401 con mensaje | RF-01 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/autenticacion.test.js` | — | ✔ Aprobado |
 | CP-AUT-003 | Usuario inexistente devuelve 401 (sin revelar si existe) | RF-01 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/autenticacion.test.js` | — | ✔ Aprobado |
@@ -17,7 +23,7 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-AUT-009 | Cambiar contraseña exige la actual y permite volver a entrar | RF-02 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/autenticacion.test.js` | — | ✔ Aprobado |
 | CP-CNV-001 | El entrenador guarda un borrador que solo ve el cuerpo técnico | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
 | CP-CNV-002 | Al publicar, los convocados reciben el aviso y ven la plantilla | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
-| CP-CNV-003 | Otro entrenador no convoca ni retira deportistas ajenos | RF-05 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
+| CP-CNV-003 | Otro entrenador no ve el partido de otro equipo ni puede tocar su convocatoria | RF-05 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
 | CP-CNV-004 | El deportista confirma o avisa que no puede, y el entrenador se entera | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
 | CP-CNV-005 | Editar la convocatoria publicada avisa a los afectados | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
 | CP-CNV-006 | No se puede responder una convocatoria de un partido que ya pasó | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
@@ -25,6 +31,8 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-CNV-008 | El inicio muestra la convocatoria: la propia al deportista y el resumen al entrenador | RF-18 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
 | CP-CNV-009 | Los avisos se marcan como leídos y nadie ve los de otro | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
 | CP-CNV-010 | Guardar sin hora ni lugar no borra los que ya estaban | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
+| CP-COM-001 | El entrenador envía un aviso a su equipo y le llega a cada deportista | RF-21 | Otro | — | `pruebas/integracion/comunicacion.test.js` | — | ✔ Aprobado |
+| CP-COM-002 | Solo se escribe a equipos propios, con título y mensaje, y solo el autor lo borra | RF-21 | Otro | — | `pruebas/integracion/comunicacion.test.js` | — | ✔ Aprobado |
 | CP-CSV-001 | Importa las filas válidas y reporta las inválidas | RF-08 | Integración | Funcionalidad · Interoperabilidad | `pruebas/integracion/csv.test.js` | — | ✔ Aprobado |
 | CP-CSV-002 | Dorsal repetido o inválido: se importa sin dorsal y se avisa | RF-09 | Integración | Funcionalidad · Interoperabilidad | `pruebas/integracion/csv.test.js` | — | ✔ Aprobado |
 | CP-CSV-003 | Carga de usuarios por CSV: crea los válidos y reporta errores | RF-03 | Integración | Funcionalidad · Interoperabilidad | `pruebas/integracion/csv.test.js` | — | ✔ Aprobado |
@@ -74,6 +82,10 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-PER-010 | La asistencia solo muestra los deportistas del alcance de cada rol | RNF-02 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
 | CP-PER-011 | Las evaluaciones físicas solo las ve quien tiene al deportista en su alcance | RNF-02 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
 | CP-PER-012 | Las medidas antropométricas de un deportista no se ven fuera de su alcance | RNF-02 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
+| CP-RCN-001 | Reconocimientos: el entrenador ve a los líderes; el deportista solo los suyos | RF-23 | Otro | — | `pruebas/integracion/comunicacion.test.js` | — | ✔ Aprobado |
+| CP-REC-001 | El deportista recibe un recordatorio del entrenamiento de mañana, una sola vez | RF-22 | Otro | — | `pruebas/integracion/comunicacion.test.js` | — | ✔ Aprobado |
+| CP-REC-002 | Convocatoria sin responder: recordatorio al deportista y al entrenador | RF-22 | Otro | — | `pruebas/integracion/comunicacion.test.js` | — | ✔ Aprobado |
+| CP-REC-003 | Control médico próximo: recordatorio al deportista | RF-22 | Otro | — | `pruebas/integracion/comunicacion.test.js` | — | ✔ Aprobado |
 | CP-SEG-001 | Inyección en el inicio de sesión no da acceso | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
 | CP-SEG-002 | Inyección en filtros de búsqueda no altera la consulta | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
 | CP-SEG-003 | Nombres de columna en el cuerpo no se inyectan (lista blanca) | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
@@ -94,10 +106,12 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-SEG-018 | La API envía cabeceras de seguridad y no revela la tecnología | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
 | CP-SEG-019 | El código no contiene contraseñas ni secretos por defecto | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
 | CP-SEG-020 | Un token firmado con el secreto por defecto antiguo es rechazado | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
+| CP-UI-AGE-001 | El entrenador programa un entrenamiento con equipo, hora y lugar | RF-10 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-CNV-001 | El entrenador arma y publica la convocatoria desde el inicio | RF-20 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/convocatoria.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-CNV-002 | El deportista recibe el aviso, abre la convocatoria y confirma | RF-20 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/convocatoria.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-CNV-003 | El entrenador ve la confirmación y el registro de cambios | RF-20 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/convocatoria.spec.js` | chromium | ✔ Aprobado |
-| CP-UI-COM-001 | Deportistas y lesiones se ven bien en celular y computador | RNF-05 | Compatibilidad | Portabilidad · Adaptabilidad | `pruebas/ui/mediciones.spec.js` | chromium, firefox, webkit | ✔ Aprobado |
+| CP-UI-COM-001 | El entrenador envía un aviso al equipo desde el inicio | RF-21 | Compatibilidad | Portabilidad · Adaptabilidad | `pruebas/ui/comunicacion.spec.js` | chromium, chromium, firefox, webkit | ✔ Aprobado |
+| CP-UI-COM-002 | El deportista ve el aviso en el inicio y en la campanita | RF-21 | Compatibilidad | Portabilidad · Adaptabilidad | `pruebas/ui/comunicacion.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-DOR-001 | Cambiar el dorsal con un clic en la tabla (celular) | RF-09 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-DOR-002 | Cambiar el dorsal con un clic en la tabla (pc) | RF-09 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-EST-001 | Sin servidor se explica el error y Reintentar recupera la pantalla | RNF-03 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/estados.spec.js` | chromium | ✔ Aprobado |
@@ -119,6 +133,7 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-UI-MOV-003 | Los chips de deporte indican cuál está activo y cambian el filtro | RF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/movimiento.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-NAV-001 | Hoja "Más" en celular: módulos del rol, cierra con Escape y navega | RF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-NAV-002 | El selector de deporte filtra el inicio | RF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-RCN-001 | El entrenador ve los reconocimientos del plantel | RF-23 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/comunicacion.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-REC-001 | Recorrido de administrador: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-REC-002 | Recorrido de head_coach: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-REC-003 | Recorrido de entrenador: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
@@ -143,3 +158,5 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-UNI-012 | Las claves aleatorias iniciales son distintas y de largo suficiente | RNF-01 | Unitaria | Funcionalidad · Seguridad de acceso | `pruebas/unitarias/seguridad.test.js` | — | ✔ Aprobado |
 | CP-UNI-013 | En producción el servidor no arranca sin secretos JWT válidos | RNF-01 | Unitaria | Funcionalidad · Seguridad de acceso | `pruebas/unitarias/seguridad.test.js` | — | ✔ Aprobado |
 | CP-UNI-014 | En desarrollo, sin secretos se usa uno temporal aleatorio y se avisa | RNF-01 | Unitaria | Funcionalidad · Seguridad de acceso | `pruebas/unitarias/seguridad.test.js` | — | ✔ Aprobado |
+| CP-UNI-015 | El .ics lleva hora local de Colombia, duración, lugar y recordatorio | RF-10 | Unitaria | Funcionalidad · Seguridad de acceso | `pruebas/unitarias/calendario.test.js` | — | ✔ Aprobado |
+| CP-UNI-016 | Sin hora es un evento de todo el día; Google Calendar recibe las mismas fechas | RF-10 | Unitaria | Funcionalidad · Seguridad de acceso | `pruebas/unitarias/calendario.test.js` | — | ✔ Aprobado |

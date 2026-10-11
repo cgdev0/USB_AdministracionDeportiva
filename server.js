@@ -18,6 +18,9 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(__dirname, 'dist');
+    // Los archivos de /assets llevan un hash en el nombre: el navegador puede guardarlos un año sin volver a pedirlos.
+    // index.html, sw.js y el manifiesto se revalidan siempre para que cada versión nueva llegue de inmediato.
+    app.use('/assets', express.static(path.join(distPath, 'assets'), { immutable: true, maxAge: '1y', fallthrough: false }));
     app.use(express.static(distPath));
     app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));

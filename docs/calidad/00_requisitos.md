@@ -40,6 +40,9 @@ Prioridad: **A** = imprescindible para el uso del sistema, **M** = importante, *
 | RF-18 | Mostrar en el inicio el próximo partido, la disponibilidad del plantel, los avisos para revisar, la agenda de la semana, la asistencia reciente y los máximos anotadores, según el rol. | Todos | A |
 | RF-19 | Mostrar al head coach el panel de supervisión con sus entrenadores y los deportistas de ellos. | Head coach | M |
 | RF-20 | Armar y publicar la convocatoria de cada partido (titulares y suplentes), avisar a los convocados dentro de la app, recibir su confirmación hasta el día del partido y guardar el registro de cada cambio y respuesta. | Entrenador, administrador; consulta: todos | A |
+| RF-21 | Enviar avisos del entrenador (o del administrador) a un equipo o a todos sus deportistas, con aviso en la campanita y registro en el inicio. | Entrenador, administrador; reciben: deportistas | M |
+| RF-22 | Recordar automáticamente las actividades del día siguiente, las convocatorias sin responder y los controles médicos próximos, y permitir agregar entrenamientos y partidos al calendario del dispositivo. | Todos | M |
+| RF-23 | Mostrar reconocimientos del plantel: asistencia perfecta del mes, máximo anotador y máximo asistidor de la temporada. | Todos | B |
 
 ## Requisitos no funcionales
 

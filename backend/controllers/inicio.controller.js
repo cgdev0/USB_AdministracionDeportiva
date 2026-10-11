@@ -193,7 +193,54 @@ exports.getInicio = async (req, res) => {
       convocatoria = r ? { partido_id: proximo.id, ...r } : { partido_id: proximo.id, publicada: false, total: 0 };
     }
 
-    res.json({ proximo_partido: proximo || null, plantel, resumen, revisar, semana, asistencia, anotadores, convocatoria });
+    // 7. Reconocimientos (v1.7): sobrios y calculados con los datos que ya existen (las tres consultas en paralelo)
+    const esDeportista = vista.rol === 'jugador';
+    const asistenciaPerfecta = async () => {
+      const pR = [];
+      const alcR = alcanceJugadores(vista, disciplinaId, pR);
+      const { rows: perfectos } = await db.query(`
+        SELECT j.id, j.nombre, j.dorsal, COUNT(*)::int AS sesiones
+        FROM asistencia_entrenamiento ae
+        JOIN entrenamientos e ON e.id = ae.entrenamiento_id
+        JOIN jugadores j ON j.id = ae.jugador_id
+        WHERE ${alcR} AND e.fecha >= date_trunc('month', CURRENT_DATE) AND e.fecha <= CURRENT_DATE
+        GROUP BY j.id, j.nombre, j.dorsal
+        HAVING COUNT(*) >= 3 AND BOOL_AND(ae.asistencia)
+        ORDER BY j.dorsal NULLS LAST, j.nombre`, pR);
+      return perfectos.length
+        ? { tipo: 'asistencia', titulo: 'Asistencia perfecta del mes', icono: 'fa-calendar-check', total: perfectos.length, jugadores: perfectos.slice(0, 8) }
+        : null;
+    };
+    // Líderes de la temporada: para el deportista se comparan contra su equipo y solo se muestran si es él
+    const lider = async (columna, titulo, icono, unidad) => {
+      const pL = [];
+      let alcL;
+      if (esDeportista) {
+        pL.push(vista.jugador_id || 0);
+        alcL = `j.equipo_id = (SELECT equipo_id FROM jugadores WHERE id = $${pL.length})`;
+      } else {
+        alcL = alcanceJugadores(vista, disciplinaId, pL);
+      }
+      const { rows: [l] } = await db.query(`
+        SELECT j.id, j.nombre, j.dorsal, SUM(es.${columna})::int AS total
+        FROM estadisticas_jugador es
+        JOIN jugadores j ON j.id = es.jugador_id
+        LEFT JOIN partidos p ON p.id = es.partido_id
+        WHERE ${alcL} AND COALESCE(p.fecha, es.created_at::date) >= date_trunc('year', CURRENT_DATE)
+        GROUP BY j.id, j.nombre, j.dorsal
+        HAVING SUM(es.${columna}) > 0
+        ORDER BY total DESC, j.nombre LIMIT 1`, pL);
+      return l && (!esDeportista || l.id === vista.jugador_id)
+        ? { tipo: columna, titulo, icono, total: 1, jugadores: [l], detalle: `${l.total} ${unidad}` }
+        : null;
+    };
+    const reconocimientos = (await Promise.all([
+      asistenciaPerfecta(),
+      lider('goles', 'Máximo anotador de la temporada', 'fa-medal', 'goles o puntos'),
+      lider('asistencias', 'Máximo asistidor de la temporada', 'fa-handshake', 'asistencias'),
+    ])).filter(Boolean);
+
+    res.json({ proximo_partido: proximo || null, plantel, resumen, revisar, semana, asistencia, anotadores, convocatoria, reconocimientos });
   } catch (err) {
     responderError(res, err);
   }

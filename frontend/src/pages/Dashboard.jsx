@@ -10,6 +10,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import Convocatoria from '../components/Convocatoria'
 import InstalarApp from '../components/InstalarApp'
 import AgregarCalendario from '../components/AgregarCalendario'
+import AvisosEquipo from '../components/AvisosEquipo'
 import { ROLES, iniciales } from '../config/navegacion'
 import { capitalizar, diaCorto, fechaCorta, fechaLarga, fechaRelativa, numeroDia } from '../utils/fechas'
 import { nombreConDorsal, tieneDorsal } from '../utils/jugador'
@@ -83,11 +84,13 @@ export default function Dashboard() {
           ? <MiEstado jugador={datos.plantel[0]} revisar={datos.revisar} />
           : <Disponibilidad plantel={datos.plantel} resumen={datos.resumen} deporte={deporte} rol={usuario?.rol} />}
         <Asistencia sesiones={datos.asistencia} esJugador={esJugador} />
+        <Reconocimientos lista={datos.reconocimientos || []} />
         <Anotadores lista={datos.anotadores} esJugador={esJugador} />
       </div>
       <div className="inicio-columna">
         <MiSesion usuario={usuario} onSalir={logout} />
         {!esJugador && <ParaRevisar items={datos.revisar} />}
+        <AvisosEquipo />
         <EstaSemana items={datos.semana} />
         <Deportes />
       </div>
@@ -322,6 +325,33 @@ function Asistencia({ sesiones, esJugador, idTitulo = 't-asis' }) {
             {!esJugador && <p className="ini-nota"><span aria-hidden="true"></span>Sesiones con menos del 75 % de asistencia.</p>}
           </>
         )}
+      </div>
+    </section>
+  )
+}
+
+/* ── Reconocimientos (v1.7): sobrios, con los datos que ya registra el cuerpo técnico ── */
+function Reconocimientos({ lista }) {
+  if (!lista.length) return null
+  return (
+    <section className="panel orden-5" aria-labelledby="t-rcn">
+      <div className="panel-cabecera"><h2 id="t-rcn">Reconocimientos</h2></div>
+      <div className="panel-cuerpo">
+        <ul className="ini-rcn">
+          {lista.map(r => (
+            <li key={r.tipo}>
+              <i className={`fa-solid ${r.icono}`} aria-hidden="true"></i>
+              <div>
+                <p className="ini-rcn-titulo">{r.titulo}</p>
+                <p className="ini-rcn-nombres">
+                  {r.jugadores.map(j => nombreConDorsal(j.nombre, j.dorsal)).join(', ')}
+                  {r.total > r.jugadores.length && ` y ${r.total - r.jugadores.length} más`}
+                </p>
+                {r.detalle && <p className="ini-rcn-detalle">{r.detalle}</p>}
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   )

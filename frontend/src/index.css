@@ -801,6 +801,26 @@ button.login-icono { cursor: pointer; }
 .ini-botones { display: grid; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #E5E5E5; }
 
 .ini-avisos { list-style: none; display: grid; gap: 10px; }
+
+/* Avisos del equipo (v1.7) */
+.ini-com-escribir { width: 100%; margin-bottom: 14px; gap: 8px; }
+.ini-com { list-style: none; display: grid; }
+.ini-com li { padding: 12px 0; border-top: 1px solid #E5E5E5; }
+.ini-com li:first-child { padding-top: 0; border-top: 0; }
+.ini-com-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ini-com-cabeza .btn-icon { flex: none; margin: -6px -8px -6px 0; }
+.ini-com-titulo { font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+.ini-com-mensaje { margin-top: 4px; font-size: 14px; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+.ini-com-meta { margin-top: 6px; font-size: 13px; color: var(--texto-suave); }
+.ini-com-mas { min-height: 40px; margin-top: 4px; padding: 0; border: 0; background: none; color: var(--verde-texto); font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Reconocimientos (v1.7) */
+.ini-rcn { list-style: none; display: grid; gap: 14px; }
+.ini-rcn li { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; }
+.ini-rcn li > i { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--ok-fondo); color: var(--verde-texto); font-size: 17px; }
+.ini-rcn-titulo { font-size: 14px; color: var(--texto-suave); }
+.ini-rcn-nombres { font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+.ini-rcn-detalle { margin-top: 2px; font-size: 14px; color: var(--texto-suave); font-variant-numeric: tabular-nums; }
 .ini-avisos a { display: inline-flex; align-items: center; min-height: 32px; font-weight: 700; color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 
 .ini-agenda { list-style: none; }
