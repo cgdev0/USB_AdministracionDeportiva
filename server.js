@@ -29,9 +29,21 @@ async function startServer() {
 
   // HOST=127.0.0.1 limita el servidor a este equipo (útil para pruebas locales)
   const HOST = process.env.HOST || '0.0.0.0';
-  app.listen(PORT, HOST, () => {
+  const servidor = app.listen(PORT, HOST, () => {
     console.log(`🚀 Administración Deportiva corriendo en http://${HOST}:${PORT}`);
   });
+
+  // Apagado ordenado: Railway (y Ctrl+C) envían una señal antes de detener el proceso. Se dejan de aceptar
+  // conexiones, se terminan las peticiones en curso y se cierra la base; si tarda más de 10 s, se sale igual.
+  const apagar = (senal) => {
+    console.log(`${senal} recibido: cerrando el servidor…`);
+    setTimeout(() => process.exit(0), 10000).unref();
+    servidor.close(() => {
+      require('./backend/config/db').end().catch(() => {}).finally(() => process.exit(0));
+    });
+  };
+  process.once('SIGTERM', () => apagar('SIGTERM'));
+  process.once('SIGINT', () => apagar('SIGINT'));
 }
 
 startServer().catch(err => {

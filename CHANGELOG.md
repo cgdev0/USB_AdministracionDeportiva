@@ -3,6 +3,13 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v1.8.2 — Apagado limpio en Railway y lista para el tester
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.8.2`
+
+- Railway enviaba un correo de "crash" en cada despliegue: al apagar la versión anterior con SIGTERM, npm lo reportaba como "command failed". Ahora la app arranca directamente con Node (`backend/config/iniciar_railway.js`) y el servidor cierra ordenadamente (termina las peticiones en curso, cierra la base y sale con código 0).
+- `docs/calidad/casos/lista-tester.html`: lista de 60 pruebas manuales por rol (PC, celular o ambos), con casillas que se guardan en el navegador, formulario de fallas (rol, dispositivo, pantalla, pasos, resultado, gravedad y captura) e informe descargable.
+
 ## v1.8 — Publicación en Railway
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.8`
