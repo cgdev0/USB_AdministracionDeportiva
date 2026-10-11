@@ -1,6 +1,6 @@
 # Catálogo de casos de prueba
 
-Generado automáticamente por `npm run test:reporte` el 2026-10-11 (versión v1.5). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
+Generado automáticamente por `npm run test:reporte` el 2026-10-11 (versión v1.6). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
 
 Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 
@@ -15,6 +15,16 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-AUT-007 | Token alterado devuelve 401 | RNF-01 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/autenticacion.test.js` | — | ✔ Aprobado |
 | CP-AUT-008 | El token de refresco genera un nuevo token de acceso | RF-01 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/autenticacion.test.js` | — | ✔ Aprobado |
 | CP-AUT-009 | Cambiar contraseña exige la actual y permite volver a entrar | RF-02 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/autenticacion.test.js` | — | ✔ Aprobado |
+| CP-CNV-001 | El entrenador guarda un borrador que solo ve el cuerpo técnico | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
+| CP-CNV-002 | Al publicar, los convocados reciben el aviso y ven la plantilla | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
+| CP-CNV-003 | Otro entrenador no convoca ni retira deportistas ajenos | RF-05 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
+| CP-CNV-004 | El deportista confirma o avisa que no puede, y el entrenador se entera | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
+| CP-CNV-005 | Editar la convocatoria publicada avisa a los afectados | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
+| CP-CNV-006 | No se puede responder una convocatoria de un partido que ya pasó | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
+| CP-CNV-007 | El registro digital guarda cada acción con quién la hizo | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
+| CP-CNV-008 | El inicio muestra la convocatoria: la propia al deportista y el resumen al entrenador | RF-18 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
+| CP-CNV-009 | Los avisos se marcan como leídos y nadie ve los de otro | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
+| CP-CNV-010 | Guardar sin hora ni lugar no borra los que ya estaban | RF-20 | Otro | — | `pruebas/integracion/convocatorias.test.js` | — | ✔ Aprobado |
 | CP-CSV-001 | Importa las filas válidas y reporta las inválidas | RF-08 | Integración | Funcionalidad · Interoperabilidad | `pruebas/integracion/csv.test.js` | — | ✔ Aprobado |
 | CP-CSV-002 | Dorsal repetido o inválido: se importa sin dorsal y se avisa | RF-09 | Integración | Funcionalidad · Interoperabilidad | `pruebas/integracion/csv.test.js` | — | ✔ Aprobado |
 | CP-CSV-003 | Carga de usuarios por CSV: crea los válidos y reporta errores | RF-03 | Integración | Funcionalidad · Interoperabilidad | `pruebas/integracion/csv.test.js` | — | ✔ Aprobado |
@@ -35,6 +45,8 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-INI-007 | El head coach ve el plantel de sus entrenadores | RF-05 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
 | CP-INI-008 | El jugador solo se ve a sí mismo | RF-05 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
 | CP-INI-009 | Máximos anotadores ordenados por anotaciones | RF-18 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
+| CP-INI-010 | El personal ve el inicio de un deportista de su alcance, como lo ve ese deportista | RF-18 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
+| CP-INI-011 | Nadie ve la vista de un deportista fuera de su alcance | RF-05 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
 | CP-MIG-001 | database.sql crea el esquema completo en una base vacía y se puede repetir | RNF-09 | Migración | Portabilidad · Instalabilidad y reemplazo | `pruebas/integracion/migraciones.test.js` | — | ✔ Aprobado |
 | CP-MIG-002 | Una base de la versión original se migra sin perder datos | RNF-09 | Migración | Portabilidad · Instalabilidad y reemplazo | `pruebas/integracion/migraciones.test.js` | — | ✔ Aprobado |
 | CP-MOD-001 | Todos los módulos responden a la lectura (administrador) | RF-18 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/modulos.test.js` | — | ✔ Aprobado |
@@ -59,6 +71,9 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-PER-007 | El jugador solo ve sus propios controles médicos | RNF-02 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
 | CP-PER-008 | Panel del head coach: solo head coach (y administrador) | RF-19 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
 | CP-PER-009 | El head coach consulta equipos pero no los modifica | RF-07 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
+| CP-PER-010 | La asistencia solo muestra los deportistas del alcance de cada rol | RNF-02 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
+| CP-PER-011 | Las evaluaciones físicas solo las ve quien tiene al deportista en su alcance | RNF-02 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
+| CP-PER-012 | Las medidas antropométricas de un deportista no se ven fuera de su alcance | RNF-02 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
 | CP-SEG-001 | Inyección en el inicio de sesión no da acceso | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
 | CP-SEG-002 | Inyección en filtros de búsqueda no altera la consulta | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
 | CP-SEG-003 | Nombres de columna en el cuerpo no se inyectan (lista blanca) | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/robustez.test.js` | — | ✔ Aprobado |
@@ -79,6 +94,9 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-SEG-018 | La API envía cabeceras de seguridad y no revela la tecnología | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
 | CP-SEG-019 | El código no contiene contraseñas ni secretos por defecto | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
 | CP-SEG-020 | Un token firmado con el secreto por defecto antiguo es rechazado | RNF-01 | Seguridad | Funcionalidad · Seguridad de acceso | `pruebas/integracion/seguridad.test.js` | — | ✔ Aprobado |
+| CP-UI-CNV-001 | El entrenador arma y publica la convocatoria desde el inicio | RF-20 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/convocatoria.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-CNV-002 | El deportista recibe el aviso, abre la convocatoria y confirma | RF-20 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/convocatoria.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-CNV-003 | El entrenador ve la confirmación y el registro de cambios | RF-20 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/convocatoria.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-COM-001 | Deportistas y lesiones se ven bien en celular y computador | RNF-05 | Compatibilidad | Portabilidad · Adaptabilidad | `pruebas/ui/mediciones.spec.js` | chromium, firefox, webkit | ✔ Aprobado |
 | CP-UI-DOR-001 | Cambiar el dorsal con un clic en la tabla (celular) | RF-09 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-DOR-002 | Cambiar el dorsal con un clic en la tabla (pc) | RF-09 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
@@ -88,6 +106,7 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-UI-EST-004 | La interfaz no usa emojis | RNF-07 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/estados.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-EST-005 | Si la descarga de un módulo falla, se explica y se ofrece reintentar | RNF-08 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/estados.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-INI-001 | El inicio del entrenador muestra el plantel con sus 23 dorsales y el resumen | RF-18 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-INI-002 | Tocar un número del plantel muestra el inicio de ese deportista | RF-18 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-LOG-001 | Inicio de sesión por formulario lleva al inicio con el nombre del usuario | RF-01 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium, firefox, webkit | ✔ Aprobado |
 | CP-UI-LOG-002 | Credenciales incorrectas muestran un aviso en la página | RF-01 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-LOG-003 | Cerrar sesión vuelve al login y protege las páginas | RF-01 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |

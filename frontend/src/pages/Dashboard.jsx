@@ -7,6 +7,7 @@ import { useDeporte } from '../context/DeporteContext'
 import { Esqueleto, EstadoError } from '../components/EstadoVista'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
+import Convocatoria from '../components/Convocatoria'
 import { ROLES, iniciales } from '../config/navegacion'
 import { capitalizar, diaCorto, fechaCorta, fechaLarga, fechaRelativa, numeroDia } from '../utils/fechas'
 import { nombreConDorsal, tieneDorsal } from '../utils/jugador'
@@ -74,7 +75,8 @@ export default function Dashboard() {
     <div className="inicio">
       <h1 className="sr-only">Inicio</h1>
       <div className="inicio-columna">
-        <BannerPartido partido={datos.proximo_partido} resumen={datos.resumen} esJugador={esJugador} rol={usuario?.rol} />
+        <BannerPartido partido={datos.proximo_partido} resumen={datos.resumen} esJugador={esJugador} rol={usuario?.rol}
+          convocatoria={datos.convocatoria} onCambio={cargar} />
         {esJugador
           ? <MiEstado jugador={datos.plantel[0]} revisar={datos.revisar} />
           : <Disponibilidad plantel={datos.plantel} resumen={datos.resumen} deporte={deporte} rol={usuario?.rol} />}
@@ -92,8 +94,14 @@ export default function Dashboard() {
 }
 
 /* ── Banner del próximo partido ─────────────────────────── */
-function BannerPartido({ partido, resumen, esJugador, rol }) {
+function BannerPartido({ partido, resumen, esJugador, rol, convocatoria, onCambio }) {
   const puedeProgramar = ['administrador', 'entrenador', 'head_coach'].includes(rol)
+  const puedeConvocar = ['administrador', 'entrenador'].includes(rol)
+  const [abierta, setAbierta] = useState(null)
+  // El deportista ve su próxima convocatoria (puede ser de otro partido que no es el más cercano)
+  const partidoConv = esJugador && convocatoria
+    ? { id: convocatoria.partido_id, rival: convocatoria.rival, fecha: convocatoria.fecha }
+    : partido
   return (
     <section className="ini-banner orden-1" aria-labelledby="t-partido">
       <img className="ini-marca-agua" src="/brand/monograma-u-blanco-256.png" alt="" />
@@ -102,8 +110,15 @@ function BannerPartido({ partido, resumen, esJugador, rol }) {
           <p className="ini-banner-tipo">Próximo partido {partido.tipo === 'liga' ? 'de liga' : 'amistoso'}</p>
           <h2 id="t-partido">Unisimón vs. {partido.rival}</h2>
           <p className="ini-banner-dato"><i className="fa-regular fa-calendar" aria-hidden="true"></i> {capitalizar(fechaRelativa(partido.fecha))}{fechaRelativa(partido.fecha) !== fechaLarga(partido.fecha) ? `, ${fechaLarga(partido.fecha)}` : ''}</p>
+          <ResumenConvocatoria convocatoria={convocatoria} esJugador={esJugador} />
           <div className="ini-banner-acciones">
-            <Link className="btn btn-naranja" to="/partidos">Ver partidos</Link>
+            {(convocatoria?.publicada || esJugador ? convocatoria : puedeConvocar) ? (
+              <button type="button" className="btn btn-naranja" onClick={() => setAbierta(partidoConv)}>
+                <i className="fa-solid fa-clipboard-list" aria-hidden="true"></i>
+                {esJugador ? (convocatoria?.confirmacion === 'pendiente' ? 'Responder convocatoria' : 'Ver convocatoria')
+                  : convocatoria?.publicada ? 'Ver convocatoria' : convocatoria?.total ? 'Seguir convocatoria' : 'Armar convocatoria'}
+              </button>
+            ) : <Link className="btn btn-naranja" to="/partidos">Ver partidos</Link>}
             {!esJugador && resumen.total > 0 && (
               <span className="ini-banner-disponibles">
                 <i className="fa-solid fa-user-check" aria-hidden="true"></i>
@@ -120,7 +135,29 @@ function BannerPartido({ partido, resumen, esJugador, rol }) {
           {puedeProgramar && <div className="ini-banner-acciones"><Link className="btn btn-naranja" to="/partidos">Programar partido</Link></div>}
         </>
       )}
+      {abierta && <Convocatoria partido={abierta} onCerrar={() => setAbierta(null)} onCambio={onCambio} />}
     </section>
+  )
+}
+
+/* ── Convocatoria en el banner (v1.6) ───────────────────── */
+function ResumenConvocatoria({ convocatoria: c, esJugador }) {
+  if (!c) return null
+  if (esJugador) {
+    const textos = { pendiente: 'Confirma tu asistencia', confirmado: 'Confirmaste tu asistencia', no_puede: 'Avisaste que no puedes ir' }
+    return (
+      <p className={`ini-convocado ${c.confirmacion}`}>
+        <i className="fa-solid fa-bullhorn" aria-hidden="true"></i>
+        <span>Estás convocado como <b>{c.rol}</b>{c.hora_presentacion ? ` · presentación ${c.hora_presentacion}` : ''}. {textos[c.confirmacion]}.</span>
+      </p>
+    )
+  }
+  if (!c.publicada) return c.total ? <p className="ini-banner-dato">Convocatoria en borrador ({c.total} deportistas), sin publicar.</p> : null
+  return (
+    <p className="ini-banner-dato ini-banner-convocatoria">
+      <i className="fa-solid fa-clipboard-list" aria-hidden="true"></i>
+      Convocatoria: <b>{c.confirmados}</b> confirmaron · <b>{c.pendientes}</b> sin responder · <b>{c.no_pueden}</b> no pueden
+    </p>
   )
 }
 
