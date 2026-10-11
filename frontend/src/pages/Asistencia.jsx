@@ -151,6 +151,7 @@ export default function Asistencia() {
                 <ClipboardList size={18} color="var(--accent)" style={{ flexShrink: 0 }} />
                 <select
                   id="select-entrenamiento"
+                  aria-label="Entrenamiento para tomar asistencia"
                   value={selectedId}
                   onChange={e => setSelectedId(e.target.value)}
                   style={{

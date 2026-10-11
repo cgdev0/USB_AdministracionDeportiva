@@ -256,16 +256,17 @@ export default function Jugadores() {
       {/* Selector de Deporte / Disciplina interactivo */}
       <div className="card" style={{ padding: '16px 20px', marginBottom: 24, background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 260px', minWidth: 0 }}>
+            <div style={{ flex: 'none', width: 38, height: 38, borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
               <Trophy size={20} />
             </div>
-            <div>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent2)' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span id="t-deporte-gestion" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent2)' }}>
                 Deporte en Gestión
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
                 <select
+                  aria-labelledby="t-deporte-gestion"
                   value={selectedSportId}
                   onChange={e => setSelectedSportId(e.target.value)}
                   style={{
@@ -277,7 +278,9 @@ export default function Jugadores() {
                     color: 'var(--text-primary)',
                     border: '1px solid var(--border-hover)',
                     cursor: 'pointer',
-                    minWidth: 200
+                    width: '100%',
+                    maxWidth: 360,
+                    minWidth: 0
                   }}
                 >
                   <option value="todos">Todos los deportes{loading || error ? '' : ` (${jugadores.length})`}</option>
@@ -511,10 +514,10 @@ export default function Jugadores() {
                         </button>
                         {puedeEditar && (
                           <>
-                            <button className="btn btn-ghost btn-sm" onClick={() => openEdit(j)}>
+                            <button className="btn btn-ghost btn-sm" onClick={() => openEdit(j)} aria-label={`Editar a ${j.nombre}`} title="Editar">
                               <Pencil size={13} />
                             </button>
-                            <button className="btn btn-danger btn-sm" onClick={() => handleDelete(j.id, j.nombre)}>
+                            <button className="btn btn-danger btn-sm" onClick={() => handleDelete(j.id, j.nombre)} aria-label={`Eliminar a ${j.nombre}`} title="Eliminar">
                               <Trash2 size={13} />
                             </button>
                           </>

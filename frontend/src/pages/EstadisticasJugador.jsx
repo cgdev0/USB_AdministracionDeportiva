@@ -177,7 +177,7 @@ export default function EstadisticasJugador() {
             textoLimpiar="Ver todos los deportes"
           />
         ) : (
-          <div className="table-wrapper">
+          <div className="table-wrapper" tabIndex={0} role="region" aria-label="Estadísticas por partido">
             <table>
               <thead>
                 <tr>
@@ -205,7 +205,7 @@ export default function EstadisticasJugador() {
                           <button className="btn btn-ghost btn-sm" onClick={() => openEdit(s)}>
                             <Pencil size={13} /> Editar
                           </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(s.id)}>
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(s.id)} aria-label={`Eliminar la estadística de ${s.jugador_nombre || "este deportista"}`} title="Eliminar">
                             <Trash2 size={13} />
                           </button>
                         </div>

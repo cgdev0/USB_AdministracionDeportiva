@@ -731,4 +731,10 @@ button.login-icono { cursor: pointer; }
   .modal-form input, .modal-form select, .modal-form textarea { min-height: 44px; font-size: 16px; }
   .pie ul a, .ini-avisos a { min-height: 44px; }
   .chip-filtro { min-height: 44px; padding: 0 16px; }
+  /* Controles dentro de tablas y campos con estilos propios de cada página */
+  td button, .segmento-boton, .ini-deporte-nombre { min-height: 44px; }
+  .dorsal-editable { min-width: 44px; min-height: 44px; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea { min-height: 44px; font-size: 16px !important; }
 }
+/* El botón del escudo es un círculo pequeño sobre el logo: su área de toque se amplía sin cambiar el dibujo */
+.boton-escudo::after { content: ''; position: absolute; inset: -10px; }

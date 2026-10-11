@@ -166,16 +166,10 @@ export default function Usuarios() {
         {['todos', ...ROLES].map(r => (
           <button
             key={r}
+            type="button"
+            className="chip-filtro"
+            aria-pressed={filtroRol === r}
             onClick={() => setFiltroRol(r)}
-            style={{
-              padding: '0.3rem 0.8rem',
-              borderRadius: '20px',
-              border: 'none',
-              cursor: 'pointer',
-              background: filtroRol === r ? 'var(--accent)' : 'var(--bg-card)',
-              color: filtroRol === r ? '#fff' : 'var(--text)',
-              fontSize: '0.85rem',
-            }}
           >
             {r === 'todos' ? 'Todos' : ROLE_LABELS[r]}
           </button>
