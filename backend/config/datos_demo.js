@@ -3,7 +3,7 @@
 // Las fechas se calculan desde hoy, así el inicio siempre se ve con información actual.
 //   npm run demo        (después de npm run db:init y npm run seed)
 // Es seguro ejecutarlo varias veces: si el equipo de demostración ya existe, no hace nada.
-// NO usar en producción.
+// No usar con usuarios reales. En Railway se carga solo si DATOS_DEMO=1 (versión para el tester).
 const pool = require('./db');
 const { crearUsuario, informar } = require('./seed');
 

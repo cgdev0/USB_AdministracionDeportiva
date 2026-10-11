@@ -9,7 +9,8 @@ function crearPool() {
   if (process.env.DATABASE_URL) {
     return new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      // DB_SSL=false para conexiones por red privada que no usan SSL
+      ssl: process.env.NODE_ENV === 'production' && process.env.DB_SSL !== 'false' ? { rejectUnauthorized: false } : false,
       connectionTimeoutMillis: 10000,
     });
   }

@@ -6,9 +6,13 @@ const compression = require('compression');
 const path = require('path');
 require('dotenv').config();
 const { manejadorFinal, validarId } = require('../backend/utils/errores');
+const { UPLOADS_DIR } = require('../backend/config/archivos');
 
 const app = express();
 app.disable('x-powered-by');
+// En Railway la app está detrás de un proxy: así req.ip es la dirección real de cada usuario (el freno de
+// intentos de login no bloquea a todos a la vez) y req.protocol reconoce HTTPS. TRUST_PROXY=0 lo desactiva.
+if (process.env.NODE_ENV === 'production' && process.env.TRUST_PROXY !== '0') app.set('trust proxy', 1);
 
 // Respuestas comprimidas (gzip): el paquete principal pasa de ~300 KB a ~100 KB en redes móviles lentas
 app.use(compression());
@@ -34,7 +38,7 @@ app.use('/uploads', (req, res, next) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
-}, express.static(path.join(__dirname, '..', 'backend', 'uploads')));
+}, express.static(UPLOADS_DIR));
 
 // Rutas API (cada router valida que sus parámetros :id sean enteros positivos)
 const RUTAS = {

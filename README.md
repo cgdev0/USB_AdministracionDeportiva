@@ -83,6 +83,26 @@ Abrir la dirección `Local` que indique Vite en la terminal. Si los puertos habi
 
 Este comando inicia el **frontend**. No garantiza por sí solo que el backend ni la base de datos estén funcionando. Si la interfaz muestra errores de red o HTTP, verificar el proceso del servidor, la configuración de API y la base de datos antes de concluir que los registros se guardan.
 
+## Publicar en Railway
+
+El repositorio trae `railway.json`: Railway compila el frontend (`npm run build`), prepara la base antes de cada despliegue (`npm run railway:preparar`) y arranca con `npm start`, verificando `/api/health`.
+
+1. En Railway, crear un proyecto con dos servicios: **PostgreSQL** y la aplicación desde este repositorio de GitHub (rama `main`).
+2. En la aplicación, agregar un **volumen** montado en `/data` (fotos de deportistas y logos).
+3. Variables de la aplicación:
+
+| Variable | Valor |
+|---|---|
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (referencia al servicio de PostgreSQL) |
+| `JWT_SECRET` y `JWT_REFRESH_SECRET` | dos valores distintos de al menos 32 caracteres (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) |
+| `SEED_CLAVE_INICIAL` | clave inicial de las cuentas base; cada usuario la cambia en Inicio → Mi sesión |
+| `UPLOADS_DIR` | `/data/uploads` |
+| `DATOS_DEMO` | `1` solo en la versión de pruebas (carga el plantel de demostración una vez) |
+
+4. En **Settings → Networking**, generar un dominio público. Railway entrega HTTPS, necesario para instalar la app en el celular.
+
+Cada vez que se fusiona un cambio en `main`, Railway vuelve a desplegar. El esquema se actualiza solo (`database.sql` es idempotente) y los datos existentes se conservan. Si la preparación de la base falla, el despliegue se detiene y la versión anterior sigue en línea.
+
 ## Archivos de documentación y configuración
 
 - `DOCUMENTACION.html`: documentación visual general del sistema.
@@ -104,7 +124,7 @@ npm test                 # API (unitarias e integración) y navegador; usa una b
 npm run test:reporte -- v1.4   # regenera el catálogo y escribe el informe de esa versión
 ```
 
-Detalle de los comandos y de cómo agregar casos: `pruebas/README.md`. Último informe: `docs/calidad/informes/v1.3.1.md`.
+Detalle de los comandos y de cómo agregar casos: `pruebas/README.md`. Último informe: `docs/calidad/informes/v1.7.md`.
 
 ## Alcance de esta versión
 

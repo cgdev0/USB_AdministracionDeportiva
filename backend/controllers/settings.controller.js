@@ -1,9 +1,10 @@
 const path = require('path')
 const fs = require('fs')
 const multer = require('multer')
+const { UPLOADS_DIR } = require('../config/archivos')
 
 const ensureUploadsDir = () => {
-  const dir = path.join(__dirname, '..', 'uploads')
+  const dir = UPLOADS_DIR
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   return dir
 }

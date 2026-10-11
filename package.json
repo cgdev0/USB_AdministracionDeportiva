@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Sistema de Gestión Deportiva",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "node server.js",
     "build": "vite build",
@@ -11,6 +14,7 @@
     "db:init": "node backend/config/init_db.js",
     "seed": "node backend/config/seed.js",
     "demo": "node backend/config/datos_demo.js",
+    "railway:preparar": "node backend/config/preparar_despliegue.js",
     "test:api": "node pruebas/ejecutar-api.js",
     "test:ui": "playwright test",
     "test": "npm run test:api && npm run test:ui",

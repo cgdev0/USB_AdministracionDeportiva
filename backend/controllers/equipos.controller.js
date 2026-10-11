@@ -4,6 +4,7 @@ const fs     = require('fs');
 const multer = require('multer');
 
 const { responderError } = require('../utils/errores');
+const { UPLOADS_DIR } = require('../config/archivos');
 // Configuración de Multer para imágenes de equipos (logos/escudos)
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -23,7 +24,7 @@ exports.uploadLogo = async (req, res) => {
     let logo_url;
     // Intentar almacenar en disco si el sistema de archivos es de escritura
     try {
-      const uploadsDir = path.join(__dirname, '..', 'uploads', 'teams');
+      const uploadsDir = path.join(UPLOADS_DIR, 'teams');
       if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
       const ext = path.extname(req.file.originalname).toLowerCase() || '.png';
       const filename = `team-${id || Date.now()}-${Date.now()}${ext}`;
