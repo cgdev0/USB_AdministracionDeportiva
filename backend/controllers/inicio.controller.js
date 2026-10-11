@@ -1,6 +1,7 @@
 const db = require('../config/db');
 
 const { responderError } = require('../utils/errores');
+const { condicionEquipos } = require('../utils/alcance');
 // Restringe los jugadores visibles según el rol (mismas reglas que /api/jugadores)
 // y el deporte elegido. Devuelve condiciones SQL sobre el alias `j`.
 function alcanceJugadores(usuario, disciplinaId, params) {
@@ -126,20 +127,25 @@ exports.getInicio = async (req, res) => {
       if (sinAntro.total > 0) revisar.push({ tipo: 'antropometria', total: sinAntro.total });
     }
 
-    // 3. Próximo partido y agenda de los próximos 7 días
+    // 3. Próximo partido y agenda de los próximos 7 días (v1.7: solo las actividades generales y las de su equipo)
+    const agenda = (alias) => { const pa = []; const c = condicionEquipos(vista, pa, `${alias}.equipo_id`); return { pa, c: c ? ` AND ${c}` : '' }; };
+    const q1 = agenda('p');
     const { rows: [proximo] } = await db.query(
-      `SELECT id, fecha::text AS fecha, rival, tipo, resultado FROM partidos
-       WHERE fecha >= CURRENT_DATE ORDER BY fecha ASC, id ASC LIMIT 1`);
+      `SELECT p.id, p.fecha::text AS fecha, p.rival, p.tipo, p.resultado, p.hora, p.lugar FROM partidos p
+       WHERE p.fecha >= CURRENT_DATE${q1.c} ORDER BY p.fecha ASC, p.hora NULLS LAST, p.id ASC LIMIT 1`, q1.pa);
+    const q2 = agenda('p');
     const { rows: partidos } = await db.query(
-      `SELECT id, fecha::text AS fecha, rival, tipo FROM partidos
-       WHERE fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6 ORDER BY fecha, id`);
+      `SELECT p.id, p.fecha::text AS fecha, p.rival, p.tipo, p.hora, p.lugar FROM partidos p
+       WHERE p.fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6${q2.c} ORDER BY p.fecha, p.hora NULLS LAST, p.id`, q2.pa);
+    const q3 = agenda('e');
     const { rows: entrenos } = await db.query(
-      `SELECT id, fecha::text AS fecha, tipo, descripcion FROM entrenamientos
-       WHERE fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6 ORDER BY fecha, id`);
+      `SELECT e.id, e.fecha::text AS fecha, e.tipo, e.descripcion, e.hora, e.lugar FROM entrenamientos e
+       WHERE e.fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6${q3.c} ORDER BY e.fecha, e.hora NULLS LAST, e.id`, q3.pa);
+    const cuandoDonde = (a) => [a.lugar, a.hora].filter(Boolean).join(' · ') || null;
     const semana = [
-      ...partidos.map(p => ({ clase: 'partido', id: p.id, fecha: p.fecha, titulo: `Unisimón vs. ${p.rival}`, etiqueta: p.tipo === 'liga' ? 'Liga' : 'Amistoso' })),
-      ...entrenos.map(e => ({ clase: 'entrenamiento', id: e.id, fecha: e.fecha, titulo: e.tipo, detalle: e.descripcion })),
-    ].sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.clase === 'partido' ? -1 : 1));
+      ...partidos.map(p => ({ clase: 'partido', id: p.id, fecha: p.fecha, hora: p.hora, titulo: `Unisimón vs. ${p.rival}`, etiqueta: p.tipo === 'liga' ? 'Liga' : 'Amistoso', detalle: cuandoDonde(p) })),
+      ...entrenos.map(e => ({ clase: 'entrenamiento', id: e.id, fecha: e.fecha, hora: e.hora, titulo: e.tipo, detalle: cuandoDonde(e) || e.descripcion })),
+    ].sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.hora || '99').localeCompare(b.hora || '99') || (a.clase === 'partido' ? -1 : 1));
 
     // 4. Asistencia de las últimas 4 sesiones (solo jugadores del alcance)
     const p3 = [];
@@ -151,7 +157,7 @@ exports.getInicio = async (req, res) => {
       FROM entrenamientos e
       LEFT JOIN asistencia_entrenamiento ae ON ae.entrenamiento_id = e.id
         AND ae.jugador_id IN (SELECT j.id FROM jugadores j WHERE ${alcance3})
-      WHERE e.fecha <= CURRENT_DATE
+      WHERE e.fecha <= CURRENT_DATE${(() => { const c = condicionEquipos(vista, p3, 'e.equipo_id'); return c ? ` AND ${c}` : ''; })()}
       GROUP BY e.id ORDER BY e.fecha DESC, e.id DESC LIMIT 4`, p3);
 
     // 5. Máximos anotadores

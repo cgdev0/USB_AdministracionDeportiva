@@ -84,8 +84,9 @@ async function run() {
     const pasados = [[8, 'Resistencia', 21], [6, 'Fuerza', 20], [3, 'Táctica', 18], [1, 'Resistencia', 22]];
     for (const [haceDias, tipo, presentes] of pasados) {
       const { rows: [e] } = await client.query(
-        `INSERT INTO entrenamientos (fecha, tipo, descripcion) VALUES (CURRENT_DATE - $1::int, $2, 'Sesión del plantel de rugby') RETURNING id`,
-        [haceDias, tipo]);
+        `INSERT INTO entrenamientos (fecha, tipo, descripcion, equipo_id, hora, lugar)
+         VALUES (CURRENT_DATE - $1::int, $2, 'Sesión del plantel de rugby', $3, '17:30', 'Cancha sintética') RETURNING id`,
+        [haceDias, tipo, equipo.id]);
       for (const [dorsal] of JUGADORES) {
         await client.query(
           'INSERT INTO asistencia_entrenamiento (jugador_id, entrenamiento_id, asistencia) VALUES ($1, $2, $3)',
@@ -94,11 +95,12 @@ async function run() {
     }
 
     // Próximos días: partido y entrenamientos
-    await client.query(`INSERT INTO partidos (fecha, rival, tipo) VALUES (CURRENT_DATE + 1, 'Deportivo Sur', 'liga')`);
-    await client.query(`INSERT INTO entrenamientos (fecha, tipo, descripcion) VALUES
-      (CURRENT_DATE + 2, 'Fuerza y recuperación', 'Gimnasio, 6:00 a. m.'),
-      (CURRENT_DATE + 4, 'Táctica: salidas y line-out', 'Cancha sintética, 5:30 p. m.'),
-      (CURRENT_DATE + 6, 'Resistencia', 'Pista atlética, 5:30 p. m.')`);
+    await client.query(`INSERT INTO partidos (fecha, rival, tipo, equipo_id, hora, lugar)
+      VALUES (CURRENT_DATE + 1, 'Deportivo Sur', 'liga', $1, '15:00', 'Estadio General Santander')`, [equipo.id]);
+    await client.query(`INSERT INTO entrenamientos (fecha, tipo, descripcion, equipo_id, hora, lugar) VALUES
+      (CURRENT_DATE + 2, 'Fuerza y recuperación', 'Trabajo de fuerza y movilidad', $1, '06:00', 'Gimnasio'),
+      (CURRENT_DATE + 4, 'Táctica: salidas y line-out', 'Salidas de juego y line-out', $1, '17:30', 'Cancha sintética'),
+      (CURRENT_DATE + 6, 'Resistencia', 'Intervalos de resistencia', $1, '17:30', 'Pista atlética')`, [equipo.id]);
 
     // Estadísticas de anotación
     for (const [dorsal, goles, asist] of [[10, 4, 6], [11, 5, 1], [15, 3, 2], [9, 1, 5], [12, 2, 2]]) {

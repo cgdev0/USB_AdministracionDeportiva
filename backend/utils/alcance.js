@@ -28,4 +28,27 @@ async function puedeVerJugador(db, usuario, jugadorId) {
   return rows.length > 0;
 }
 
-module.exports = { condicionAlcance, puedeVerJugador };
+// Agenda por equipo (v1.7): un entrenamiento o partido sin equipo es general y lo ven todos;
+// con equipo, lo ven quienes tienen deportistas de ese equipo en su alcance (el deportista, el de su propio equipo).
+// `columna` es la columna equipo_id de la actividad (por ejemplo 'e.equipo_id'). Devuelve null si el rol ve todo.
+function condicionEquipos(usuario, params, columna) {
+  const sub = [];
+  const cond = condicionAlcance(usuario, sub, 'jx');
+  if (!cond) return null;
+  // Renumera los parámetros de la subconsulta para encadenarlos con los de la consulta principal
+  let texto = cond;
+  sub.forEach((valor, i) => { params.push(valor); texto = texto.replace(`$${i + 1}`, `$${params.length}`); });
+  return `(${columna} IS NULL OR ${columna} IN (SELECT jx.equipo_id FROM jugadores jx WHERE ${texto} AND jx.equipo_id IS NOT NULL))`;
+}
+
+// ¿Puede este usuario asignar actividades a este equipo? (administrador: cualquiera; entrenador: equipos de sus deportistas)
+async function puedeUsarEquipo(db, usuario, equipoId) {
+  if (!equipoId) return true;
+  const params = [equipoId];
+  const cond = condicionAlcance(usuario, params, 'j');
+  if (!cond) return true;
+  const { rows } = await db.query(`SELECT 1 FROM jugadores j WHERE j.equipo_id = $1 AND ${cond} LIMIT 1`, params);
+  return rows.length > 0;
+}
+
+module.exports = { condicionAlcance, puedeVerJugador, condicionEquipos, puedeUsarEquipo };

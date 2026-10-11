@@ -67,7 +67,7 @@ test('CP-MIG-002 [RNF-09] Una base de la versión original se migra sin perder d
   await c.end();
 
   assert.deepEqual(despues, antes, 'se conservan todas las filas');
-  assert.equal(r.n, 10, 'rangos válidos de las migraciones 004 y 005');
+  assert.equal(r.n, 12, 'rangos válidos de las migraciones 004 a 006');
   assert.deepEqual(cols.map(x => x.c).sort(),
     ['equipos.logo_url', 'jugadores.dorsal', 'jugadores.entrenador_id', 'jugadores.genero', 'usuarios.head_coach_id']);
   assert.equal(t.n, 19, 'queda con las mismas tablas que una instalación nueva');

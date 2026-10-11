@@ -5,6 +5,7 @@ const db = require('../config/db');
 const { responderError } = require('../utils/errores');
 const { condicionAlcance } = require('../utils/alcance');
 const { notificarDeportistas, notificarUsuarios } = require('../utils/notificar');
+const { buscar } = require('../utils/agenda');
 
 const CUERPO_TECNICO = ['administrador', 'entrenador', 'head_coach'];
 const ROLES_CONVOCADO = ['titular', 'suplente'];
@@ -12,9 +13,13 @@ const ROLES_CONVOCADO = ['titular', 'suplente'];
 const fechaLegible = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
 const enlacePartido = (partidoId) => `/partidos?convocatoria=${partidoId}`;
 
-async function cargarPartido(cliente, id) {
-  const { rows } = await cliente.query('SELECT id, fecha::text AS fecha, rival, tipo FROM partidos WHERE id = $1', [id]);
-  return rows[0] || null;
+// El partido, solo si el usuario puede verlo (v1.7: partidos por equipo)
+async function cargarPartido(cliente, id, usuario) {
+  const p = await buscar('partidos', usuario, id, cliente);
+  if (!p) return null;
+  const f = p.fecha instanceof Date ? p.fecha : new Date(p.fecha);
+  const fecha = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+  return { id: p.id, fecha, rival: p.rival, tipo: p.tipo, hora: p.hora, lugar: p.lugar };
 }
 
 // Convocatoria completa de un partido, adaptada a quien la pide
@@ -67,7 +72,7 @@ function hoyISO() {
 // GET /api/convocatorias/partido/:id
 exports.ver = async (req, res) => {
   try {
-    const partido = await cargarPartido(db, req.params.id);
+    const partido = await cargarPartido(db, req.params.id, req.usuario);
     if (!partido) return res.status(404).json({ error: 'Partido no encontrado' });
     res.json(await armarRespuesta(db, partido, req.usuario));
   } catch (err) { responderError(res, err); }
@@ -98,7 +103,7 @@ exports.guardar = async (req, res) => {
   const cliente = await db.connect();
   try {
     await cliente.query('BEGIN');
-    const partido = await cargarPartido(cliente, req.params.id);
+    const partido = await cargarPartido(cliente, req.params.id, req.usuario);
     if (!partido) { await cliente.query('ROLLBACK'); return res.status(404).json({ error: 'Partido no encontrado' }); }
 
     // El entrenador solo convoca y retira a sus propios deportistas
@@ -220,7 +225,7 @@ exports.responder = async (req, res) => {
   const cliente = await db.connect();
   try {
     await cliente.query('BEGIN');
-    const partido = await cargarPartido(cliente, req.params.id);
+    const partido = await cargarPartido(cliente, req.params.id, req.usuario);
     const { rows: [fila] } = partido ? await cliente.query(`
       SELECT c.id, c.confirmacion, v.id AS convocatoria_id, v.creada_por, j.nombre
       FROM convocatorias v JOIN convocados c ON c.convocatoria_id = v.id JOIN jugadores j ON j.id = c.jugador_id

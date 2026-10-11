@@ -17,6 +17,8 @@ const RESTRICCIONES = {
   jugadores_genero_check: 'El género debe ser "masculino" o "femenino".',
   jugadores_dorsal_check: 'El dorsal debe estar entre 0 y 99.',
   chk_convocatorias_hora: 'La hora de presentación debe tener el formato HH:MM.',
+  chk_entrenamientos_hora: 'La hora debe tener el formato HH:MM.',
+  chk_partidos_hora: 'La hora debe tener el formato HH:MM.',
   chk_convocados_rol: 'Cada convocado debe ser titular o suplente.',
   chk_convocados_confirmacion: 'La respuesta debe ser confirmado o no puede.',
 };

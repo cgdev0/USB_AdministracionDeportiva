@@ -7,9 +7,10 @@ import ConfirmModal from '../components/ConfirmModal'
 import { Esqueleto, EstadoVacio, EstadoError } from '../components/EstadoVista'
 import api from '../services/api'
 import Convocatoria from '../components/Convocatoria'
+import CamposAgenda, { AGENDA_VACIA, agendaDe, resumenAgenda, useEquiposAsignables } from '../components/CamposAgenda'
 import { useAuth } from '../context/AuthContext'
 
-const EMPTY = { fecha: '', rival: '', tipo: 'liga', resultado: '' }
+const EMPTY = { fecha: '', rival: '', tipo: 'liga', resultado: '', ...AGENDA_VACIA }
 
 export default function Partidos() {
   const { tienePermiso } = useAuth()
@@ -24,6 +25,7 @@ export default function Partidos() {
   const [saving, setSaving]     = useState(false)
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, loading: false })
   const [convocatoriaDe, setConvocatoriaDe] = useState(null)
+  const equipos = useEquiposAsignables(puedeEditar)
   const [params, setParams] = useSearchParams()
 
   const load = () => {
@@ -49,7 +51,7 @@ export default function Partidos() {
 
   const openCreate = () => { setForm(EMPTY); setEditId(null); setModal(true) }
   const openEdit   = (p) => {
-    setForm({ fecha: p.fecha?.slice(0,10) || '', rival: p.rival, tipo: p.tipo, resultado: p.resultado || '' })
+    setForm({ fecha: p.fecha?.slice(0,10) || '', rival: p.rival, tipo: p.tipo, resultado: p.resultado || '', ...agendaDe(p) })
     setEditId(p.id); setModal(true)
   }
   const closeModal   = () => setModal(false)
@@ -147,7 +149,7 @@ export default function Partidos() {
                 {partidos.map(p => (
                   <tr key={p.id}>
                     <td style={{ fontWeight: 600 }}>{new Date(p.fecha).toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric' })}</td>
-                    <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.rival}</td>
+                    <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.rival}<span className="sub-agenda">{resumenAgenda(p)}</span></td>
                     <td>
                       <span className={`badge ${p.tipo === 'liga' ? 'badge-green' : 'badge-orange'}`}>{p.tipo}</span>
                     </td>
@@ -208,6 +210,7 @@ export default function Partidos() {
               <label>Rival *</label>
               <input name="rival" value={form.rival} onChange={handleChange} placeholder="Nombre del equipo rival" />
             </div>
+            <CamposAgenda form={form} onChange={handleChange} equipos={equipos} lugarEjemplo="Ej. Estadio General Santander" />
             <div className="form-group">
               <label>Resultado (ej: 2-1)</label>
               <input name="resultado" value={form.resultado} onChange={handleChange} placeholder="Dejar vacío si aún no se jugó" />
