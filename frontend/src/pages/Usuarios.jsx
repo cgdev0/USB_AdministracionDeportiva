@@ -15,11 +15,11 @@ const ROLE_LABELS = {
   jugador: 'Jugador',
 }
 const ROLE_COLORS = {
-  administrador: '#C9302C',
+  administrador: '#B52B27',
   head_coach: '#6A3F9E',
-  entrenador: '#218D45',
+  entrenador: '#107233',
   personal_salud: '#31708F',
-  jugador: '#A86A07',
+  jugador: '#8A5A06',
 }
 
 export default function Usuarios() {

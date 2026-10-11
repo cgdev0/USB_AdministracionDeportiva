@@ -51,7 +51,8 @@ function resumenAxe(rol, ruta, r) {
 test('CP-UI-MED-002 [RNF-06] Medición de objetivos táctiles de 44 px en celular', async ({ browser }) => {
   const filas = [];
   for (const [rol, rutas] of PANTALLAS) {
-    const page = await browser.newPage({ viewport: ANCHOS.celular });
+    // Se mide como un celular real: pantalla táctil (los tamaños de 44 px aplican con pointer: coarse)
+    const page = await browser.newPage({ viewport: ANCHOS.celular, hasTouch: true });
     await entrar(page, rol);
     for (const ruta of rutas) {
       await page.goto(ruta);

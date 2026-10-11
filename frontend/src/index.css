@@ -9,12 +9,14 @@
   /* ── Marca Unisimón (medida en sus plataformas) ── */
   --verde-logo: #09843B;
   --verde-panel: #088732;
-  --verde-boton: #218D45;
-  --verde-boton-hover: #1A7238;
-  --verde-texto: #148E40;
+  /* v1.5: botón y texto verdes oscurecidos lo mínimo para contraste AA (antes #218D45 y #148E40) */
+  --verde-boton: #1E7F3E;
+  --verde-boton-hover: #186A33;
+  --verde-texto: #107233;
   --verde-noche: #00470A;
   --naranja: #F0AD4E;
   --naranja-hover: #EC971F;
+  --naranja-texto: #212121; /* texto sobre naranja: el blanco no llega a AA (1,95:1) */
   --franja-naranja: linear-gradient(90deg, #F18700, #FFB31F);
   --franja-verde: linear-gradient(90deg,
       #00642D 0%, #00642D 71%,
@@ -32,7 +34,7 @@
   --fondo: #EEEEEE;
   --blanco: #FFFFFF;
   --texto: #333333;
-  --texto-suave: #6B6B6B;
+  --texto-suave: #5E5E5E;
   --borde-claro: #DDDDDD;
   --pestana: #F8F8F8;
   --pestana-activa: #E7E7E7;
@@ -51,19 +53,19 @@
 
   --accent:        var(--verde-boton);
   --accent-light:  #2BA455;
-  --accent-glow:   rgba(33, 141, 69, 0.18);
+  --accent-glow:   rgba(30, 127, 62, 0.18);
   --accent2:       var(--verde-texto);
   --accent2-light: #2BA455;
   --accent2-glow:  rgba(20, 142, 64, 0.14);
 
-  --danger:        #C9302C;
+  --danger:        #B52B27;
   --danger-glow:   rgba(201, 48, 44, 0.14);
-  --warning:       #A86A07;
+  --warning:       #8A5A06;
   --success:       var(--verde-boton);
 
   --text-primary:  #333333;
   --text-secondary:#555555;
-  --text-muted:    #6B6B6B;
+  --text-muted:    #5E5E5E;
   --text:          #333333;
 
   --font: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
@@ -75,9 +77,17 @@
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.10);
   --shadow-md: 0 2px 8px rgba(0,0,0,0.12);
   --shadow-lg: 0 8px 28px rgba(0,0,0,0.18);
-  --shadow-accent: 0 2px 8px rgba(33,141,69,0.25);
+  --shadow-accent: 0 2px 8px rgba(30,127,62,0.25);
 
-  --transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+  /* ── Movimiento (v1.5). Ver docs/diseno/DESIGN.md, sección Movimiento ── */
+  --dur-rapida: 120ms;   /* hover y respuesta al presionar */
+  --dur-media: 200ms;    /* entrada de hojas, modales y menús */
+  --dur-lenta: 280ms;    /* cambios grandes (barras, paneles que se expanden) */
+  --curva-salida: cubic-bezier(0.23, 1, 0.32, 1);      /* entradas y respuestas: arranca rápido y frena suave */
+  --curva-movimiento: cubic-bezier(0.77, 0, 0.175, 1); /* algo que ya está en pantalla y cambia de lugar */
+  --transition: background-color var(--dur-rapida) ease, border-color var(--dur-rapida) ease,
+                color var(--dur-rapida) ease, box-shadow var(--dur-rapida) ease,
+                transform var(--dur-rapida) var(--curva-salida);
   --transition-slow: all 0.3s ease;
 
   --alto-menu-inferior: 64px;
@@ -100,7 +110,11 @@ img { display: block; max-width: 100%; }
 button { cursor: pointer; font-family: var(--font); }
 input, select, textarea { font-family: var(--font); }
 [hidden] { display: none !important; }
-:focus-visible { outline: 3px solid var(--naranja); outline-offset: 2px; }
+/* Foco de teclado: anillo naranja (identidad) rodeado de uno oscuro, visible sobre blanco, gris y verde */
+:focus-visible { outline: 2px solid #1A1A1A; outline-offset: 2px; box-shadow: 0 0 0 2px var(--naranja); }
+
+/* Táctil: sin el destello gris al tocar (lo reemplaza la respuesta al presionar) y sin la espera del doble toque */
+a, button, select, summary, label, [role="button"] { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
@@ -147,7 +161,7 @@ input, select, textarea { font-family: var(--font); }
 /* Footer negro */
 .pie { background: var(--negro); color: var(--blanco); font-size: 14px; }
 .pie a { color: var(--blanco); }
-.pie a:hover { text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) { .pie a:hover { text-decoration: underline; } }
 .pie-in { max-width: 1440px; margin: 0 auto; padding: 28px 16px 12px; display: grid; gap: 24px; }
 .pie-logo { width: 140px; }
 .pie h3 { font-size: 14px; font-weight: 700; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--linea-negra); }
@@ -170,6 +184,8 @@ input, select, textarea { font-family: var(--font); }
   color: #666; font-size: 11.5px; font-weight: 500; text-decoration: none; text-align: center;
 }
 .menu-inferior i { font-size: 19px; }
+.menu-inferior a:active i, .menu-inferior button:active i { transform: scale(0.9); }
+.menu-inferior i { transition: transform var(--dur-rapida) var(--curva-salida); }
 .menu-inferior .activo { color: var(--verde-panel); font-weight: 700; }
 .menu-inferior .activo::before {
   content: ''; position: absolute; top: -1px; left: 20%; right: 20%; height: 3px;
@@ -196,6 +212,8 @@ input, select, textarea { font-family: var(--font); }
   color: var(--texto); font-size: 12.5px; text-align: center; line-height: 1.2;
 }
 .hoja-lista a i { font-size: 20px; color: var(--verde-panel); }
+.hoja-lista a { transition: var(--transition); }
+.hoja-lista a:active { transform: scale(0.97); background: var(--pestana-activa); }
 .hoja-lista a.activo { background: var(--ok-fondo); border-color: var(--ok-borde); color: var(--ok-texto); font-weight: 700; }
 .hoja-seccion { margin-top: 16px; padding-top: 12px; border-top: 1px solid #EEE; display: grid; gap: 10px; }
 
@@ -224,7 +242,7 @@ input, select, textarea { font-family: var(--font); }
     display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-left: 8px;
     border: 1px solid #CCC; border-radius: 4px; background: #F8F8F8; color: #555;
   }
-  .cabecera-salir:hover { background: #EEE; color: #111; }
+  @media (hover: hover) and (pointer: fine) { .cabecera-salir:hover { background: #EEE; color: #111; } }
 
   .pestanas { display: block; background: var(--pestana); border-bottom: 1px solid var(--borde-claro); }
   .pestanas-in { display: flex; align-items: center; max-width: 1440px; margin: 0 auto; padding: 0 32px; }
@@ -234,7 +252,7 @@ input, select, textarea { font-family: var(--font); }
     border-right: 1px solid var(--borde-claro); color: #555; font-size: 15px;
   }
   .pestanas li:first-child a { border-left: 1px solid var(--borde-claro); }
-  .pestanas a:hover { background: #EFEFEF; color: #222; }
+  @media (hover: hover) and (pointer: fine) { .pestanas a:hover { background: #EFEFEF; color: #222; } }
   .pestanas a.activo { background: var(--pestana-activa); color: #111; font-weight: 500; box-shadow: inset 0 -3px 0 var(--verde-panel); }
   .pestanas .selector-deporte { margin-left: auto; padding-left: 16px; }
 
@@ -260,7 +278,7 @@ input, select, textarea { font-family: var(--font); }
   min-height: 48px; padding: 10px 16px; background: var(--verde-panel); color: var(--blanco);
 }
 .panel-cabecera h2, .panel-cabecera h3 { font-size: 18px; font-weight: 700; line-height: 1.25; }
-.panel-contador { padding: 2px 10px; border-radius: 12px; background: rgba(255,255,255,0.18); font-size: 14px; font-weight: 700; white-space: nowrap; }
+.panel-contador { padding: 2px 10px; border-radius: 12px; background: rgba(0,0,0,0.2); font-size: 14px; font-weight: 700; white-space: nowrap; }
 .panel-cuerpo { padding: 16px; }
 
 /* Tarjetas genéricas: si empiezan con .card-title, ese título se vuelve barra verde */
@@ -304,11 +322,11 @@ th {
 }
 td { padding: 11px 14px; color: #333; border-top: 1px solid var(--borde-claro); vertical-align: middle; }
 tbody tr:nth-child(even) td { background: #FAFAFA; }
-tbody tr:hover td { background: #F0F7F2; }
+@media (hover: hover) and (pointer: fine) { tbody tr:hover td { background: #F0F7F2; } }
 .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .data-table th { background: #F5F5F5; padding: 11px 14px; font-size: 13px; color: #333; border-bottom: 2px solid var(--borde-claro); text-transform: none; }
 .data-table td { padding: 11px 14px; border-bottom: 1px solid var(--borde-claro); }
-.data-table tr:hover td { background: #F0F7F2; }
+@media (hover: hover) and (pointer: fine) { .data-table tr:hover td { background: #F0F7F2; } }
 
 /* Botones */
 .btn, .btn-primary, .btn-secondary {
@@ -318,25 +336,30 @@ tbody tr:hover td { background: #F0F7F2; }
   transition: var(--transition);
 }
 .btn:disabled, .btn-primary:disabled, .btn-secondary:disabled { opacity: .6; cursor: not-allowed; }
+/* Respuesta al presionar: el botón cede un poco bajo el dedo o el clic */
+.btn:active:not(:disabled), .btn-primary:active:not(:disabled), .btn-secondary:active:not(:disabled),
+.btn-icon:active:not(:disabled), .modal-close:active { transform: scale(0.97); }
 .btn-primary { background: var(--verde-boton); color: var(--blanco); }
-.btn-primary:hover:not(:disabled) { background: var(--verde-boton-hover); }
+@media (hover: hover) and (pointer: fine) { .btn-primary:hover:not(:disabled) { background: var(--verde-boton-hover); } }
 .btn-success { background: var(--verde-boton); color: var(--blanco); }
-.btn-success:hover:not(:disabled) { background: var(--verde-boton-hover); }
-.btn-naranja { background: var(--naranja); color: var(--blanco); }
-.btn-naranja:hover:not(:disabled) { background: var(--naranja-hover); }
+@media (hover: hover) and (pointer: fine) { .btn-success:hover:not(:disabled) { background: var(--verde-boton-hover); } }
+.btn-naranja { background: var(--naranja); color: var(--naranja-texto); }
+@media (hover: hover) and (pointer: fine) { .btn-naranja:hover:not(:disabled) { background: var(--naranja-hover); } }
 .btn-secondary, .btn-ghost { background: #F2F2F2; color: var(--texto); border-color: #CCCCCC; }
-.btn-secondary:hover:not(:disabled), .btn-ghost:hover:not(:disabled) { background: #E6E6E6; border-color: #ADADAD; }
+@media (hover: hover) and (pointer: fine) { .btn-secondary:hover:not(:disabled), .btn-ghost:hover:not(:disabled) { background: #E6E6E6; border-color: #ADADAD; } }
 .btn-danger { background: var(--blanco); color: var(--danger); border-color: #D9534F; }
-.btn-danger:hover:not(:disabled) { background: #D9534F; color: var(--blanco); }
+@media (hover: hover) and (pointer: fine) { .btn-danger:hover:not(:disabled) { background: var(--danger); color: var(--blanco); } }
 .btn-sm { min-height: 32px; padding: 0 10px; font-size: 13px; }
 .btn-bloque { width: 100%; }
 .btn-icon {
   background: none; border: 0; cursor: pointer; color: var(--texto-suave);
   min-width: 36px; min-height: 36px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center;
+  transition: var(--transition);
 }
-.btn-icon:hover { background: #F0F0F0; color: var(--texto); }
+.btn-icon:disabled { opacity: .45; cursor: not-allowed; }
+@media (hover: hover) and (pointer: fine) { .btn-icon:hover { background: #F0F0F0; color: var(--texto); } }
 .btn-icon.btn-danger { border: 0; background: none; }
-.btn-icon.btn-danger:hover { color: var(--danger); background: var(--error-fondo); }
+@media (hover: hover) and (pointer: fine) { .btn-icon.btn-danger:hover { color: var(--danger); background: var(--error-fondo); } }
 
 /* Formularios */
 .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
@@ -353,7 +376,7 @@ tbody tr:hover td { background: #F0F7F2; }
 .form-group textarea, .modal-form textarea { min-height: 80px; }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus,
 .modal-form input:focus, .modal-form select:focus, .modal-form textarea:focus {
-  border-color: var(--verde-boton); box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 0 3px rgba(33,141,69,0.2);
+  border-color: var(--verde-boton); box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 0 3px rgba(30,127,62,0.2);
 }
 .form-group select option { background: var(--blanco); color: var(--texto); }
 
@@ -383,7 +406,7 @@ tbody tr:hover td { background: #F0F7F2; }
   display: inline-flex; align-items: center; justify-content: center;
   background: rgba(255,255,255,0.15); color: var(--blanco); cursor: pointer;
 }
-.modal-close:hover, .modal-header .btn-icon:hover { background: rgba(255,255,255,0.28); color: var(--blanco); }
+@media (hover: hover) and (pointer: fine) { .modal-close:hover, .modal-header .btn-icon:hover { background: rgba(255,255,255,0.28); color: var(--blanco); } }
 .modal-footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #E5E5E5; }
 .modal-form { padding: 20px 24px 24px; }
 .modal-form .form-group { margin-bottom: 14px; }
@@ -409,7 +432,7 @@ tbody tr:hover td { background: #F0F7F2; }
 }
 .dorsal-chip.vacio { background: #F2F2F2; color: #999; border: 1px dashed #BBB; font-weight: 500; }
 .dorsal-editable { border: 0; cursor: pointer; }
-.dorsal-editable:hover { box-shadow: 0 0 0 2px var(--naranja); }
+@media (hover: hover) and (pointer: fine) { .dorsal-editable:hover { box-shadow: 0 0 0 2px var(--naranja); } }
 .dorsal-input {
   width: 64px; min-height: 32px; padding: 0 6px; text-align: center;
   border: 2px solid var(--verde-boton); border-radius: 4px; font-size: 14px; font-weight: 700;
@@ -463,8 +486,6 @@ tbody tr:hover td { background: #F0F7F2; }
   .modal-box { padding: 0 16px 20px; }
   .modal-header { margin: 0 -16px 16px; padding: 12px 12px 12px 16px; }
   .modal-form { padding: 16px; }
-  .btn, .btn-primary, .btn-secondary { min-height: 44px; }
-  .btn-sm { min-height: 36px; }
 }
 
 /* ============================================================
@@ -506,7 +527,7 @@ button.login-icono { cursor: pointer; }
   align-items: center; padding: 6px 10px; border: 1px solid var(--info-borde); border-radius: 4px; background: var(--blanco);
   color: var(--texto); text-align: left; font-size: 13px;
 }
-.login-demo button:hover { border-color: var(--info-texto); }
+@media (hover: hover) and (pointer: fine) { .login-demo button:hover { border-color: var(--info-texto); } }
 .login-demo button span { color: var(--texto-suave); }
 .login-pie { display: grid; gap: 20px; padding: 24px 24px 8px; }
 .login-pie .pie-logo { width: 150px; }
@@ -582,7 +603,7 @@ button.login-icono { cursor: pointer; }
 .ini-pista div {
   height: 100%; min-width: 2.6em; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;
   color: var(--blanco); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
-  background: linear-gradient(180deg, #2BA455 0%, var(--verde-boton) 55%, #1C7A3C 100%);
+  background: linear-gradient(180deg, #2A9A4F 0%, var(--verde-boton) 55%, #186A33 100%);
   box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.18);
   text-shadow: 0 1px 0 rgba(0,0,0,0.2); transform-origin: left center;
 }
@@ -612,7 +633,7 @@ button.login-icono { cursor: pointer; }
 .ini-agenda-fecha small { font-size: 11px; color: var(--texto-suave); }
 .ini-agenda-fecha b { font-size: 22px; margin-top: 2px; font-variant-numeric: tabular-nums; }
 .ini-agenda .partido .ini-agenda-fecha { background: var(--verde-boton); border-color: var(--verde-boton); color: var(--blanco); }
-.ini-agenda .partido .ini-agenda-fecha small { color: #D7EEDD; }
+.ini-agenda .partido .ini-agenda-fecha small { color: var(--blanco); }
 .ini-agenda-titulo { font-weight: 700; }
 .ini-agenda-detalle { font-size: 14px; color: var(--texto-suave); }
 .ini-etiqueta { display: inline-block; padding: 1px 7px; margin-left: 4px; border-radius: 3px; background: var(--verde-boton); color: var(--blanco); font-size: 12px; font-weight: 700; vertical-align: 1px; }
@@ -646,4 +667,15 @@ button.login-icono { cursor: pointer; }
   .cabecera .selector-deporte { display: flex; margin-left: auto; }
   .cabecera .selector-deporte + .cabecera-bienvenida { margin-left: 24px; }
   .pestanas a { padding: 0 14px; font-size: 14.5px; }
+}
+
+/* Va al final para tener prioridad sobre los tamaños de cada componente */
+/* ── Pantallas táctiles: objetivos de 44 px y campos de 16 px (evita el zoom automático de iOS) ── */
+@media (pointer: coarse) {
+  .btn, .btn-primary, .btn-secondary, .btn-sm { min-height: 44px; }
+  .btn-icon, .modal-close, .modal-header .btn-icon { min-width: 44px; min-height: 44px; }
+  .selector-deporte select { min-height: 44px; }
+  .form-group input, .form-group select, .form-group textarea,
+  .modal-form input, .modal-form select, .modal-form textarea { min-height: 44px; font-size: 16px; }
+  .pie ul a, .ini-avisos a { min-height: 44px; }
 }

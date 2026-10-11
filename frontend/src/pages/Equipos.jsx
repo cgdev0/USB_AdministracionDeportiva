@@ -560,7 +560,7 @@ export default function Equipos() {
                   <span style={{
                     fontSize: 13,
                     fontWeight: 700,
-                    color: 'var(--accent)',
+                    color: 'var(--verde-texto)',
                     background: 'var(--ok-fondo)',
                     padding: '2px 8px',
                     borderRadius: 12

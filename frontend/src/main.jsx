@@ -21,8 +21,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             fontSize: '14px',
             fontFamily: "'Roboto', Arial, sans-serif",
           },
-          success: { iconTheme: { primary: '#218D45', secondary: '#FFFFFF' } },
-          error:   { iconTheme: { primary: '#C9302C', secondary: '#FFFFFF' } },
+          success: { iconTheme: { primary: '#1E7F3E', secondary: '#FFFFFF' } },
+          error:   { iconTheme: { primary: '#B52B27', secondary: '#FFFFFF' } },
         }}
       />
     </BrowserRouter>
