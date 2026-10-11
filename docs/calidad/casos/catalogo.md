@@ -1,6 +1,6 @@
 # Catálogo de casos de prueba
 
-Generado automáticamente por `npm run test:reporte` el 2026-10-11 (versión v1.7). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
+Generado automáticamente por `npm run test:reporte` el 2026-10-11 (versión v1.8). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
 
 Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 
@@ -111,7 +111,7 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-UI-CNV-002 | El deportista recibe el aviso, abre la convocatoria y confirma | RF-20 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/convocatoria.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-CNV-003 | El entrenador ve la confirmación y el registro de cambios | RF-20 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/convocatoria.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-COM-001 | El entrenador envía un aviso al equipo desde el inicio | RF-21 | Compatibilidad | Portabilidad · Adaptabilidad | `pruebas/ui/comunicacion.spec.js` | chromium, chromium, firefox, webkit | ✔ Aprobado |
-| CP-UI-COM-002 | El deportista ve el aviso en el inicio y en la campanita | RF-21 | Compatibilidad | Portabilidad · Adaptabilidad | `pruebas/ui/comunicacion.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-COM-002 | El deportista ve el aviso en el inicio y en la campanita, sin desbordes en celular | RF-21 | Compatibilidad | Portabilidad · Adaptabilidad | `pruebas/ui/comunicacion.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-DOR-001 | Cambiar el dorsal con un clic en la tabla (celular) | RF-09 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-DOR-002 | Cambiar el dorsal con un clic en la tabla (pc) | RF-09 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-EST-001 | Sin servidor se explica el error y Reintentar recupera la pantalla | RNF-03 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/estados.spec.js` | chromium | ✔ Aprobado |

@@ -3,6 +3,25 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v1.8 — Publicación en Railway
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.8`
+
+El sistema queda publicado con HTTPS en https://app-production-d293.up.railway.app (versión de pruebas, con el plantel de demostración), para que el tester y el equipo lo usen desde cualquier celular.
+
+Despliegue
+- `railway.json`: Railway compila el frontend, arranca con `npm run railway:iniciar` (prepara la base y luego inicia el servidor) y verifica `/api/health` antes de dirigir el tráfico a la versión nueva.
+- La preparación es idempotente: crea o actualiza el esquema, crea las cuentas base y, con `DATOS_DEMO=1`, carga el plantel de demostración una sola vez. Si falla, Railway mantiene la versión anterior.
+- Railway no ejecutó el `preDeployCommand` en el primer despliegue (la base quedó sin tablas); por eso la preparación pasó al arranque.
+- Detrás del proxy de Railway el freno de intentos de login funciona por usuario y se reconoce HTTPS. Fotos y logos se guardan en un volumen (`UPLOADS_DIR=/data/uploads`).
+- Cada fusión en `main` despliega una versión nueva sin perder los datos.
+
+Interfaz
+- Lista de avisos de la campanita sin la franja de color al borde: filas con separador y el ícono del tipo de aviso (convocatoria, aviso del entrenador, recordatorio); los no leídos van en negrita con el ícono en verde y la marca "Nuevo".
+- DEF-030: en celular, al abrir la campanita la página se desbordaba 27 px y el botón de cerrar quedaba cortado.
+
+Pendiente: Railway reemplazará `railway.json` por su formato nuevo (`.railway/railway.ts`) el 2026-12-01; hay que migrarlo antes.
+
 ## v1.7 — Agenda por equipo, avisos del entrenador, recordatorios y app instalable
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.7`
