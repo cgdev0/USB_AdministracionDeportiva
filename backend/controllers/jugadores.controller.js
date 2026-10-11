@@ -4,6 +4,7 @@ const fs   = require('fs');
 const multer = require('multer');
 
 const { responderError } = require('../utils/errores');
+const { UPLOADS_DIR } = require('../config/archivos');
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -23,7 +24,7 @@ exports.uploadPhoto = async (req, res) => {
   try {
     let foto_url;
     try {
-      const dir = path.join(__dirname, '..', 'uploads', 'players');
+      const dir = path.join(UPLOADS_DIR, 'players');
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       const ext = path.extname(req.file.originalname).toLowerCase() || '.png';
       const filename = `player-${id || Date.now()}${ext}`;
