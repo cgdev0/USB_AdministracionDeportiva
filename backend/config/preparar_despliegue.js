@@ -1,4 +1,4 @@
-// Se ejecuta al iniciar cada despliegue en Railway, antes de arrancar el servidor (npm run railway:iniciar).
+// Se ejecuta al iniciar cada despliegue en Railway, antes de arrancar el servidor (iniciar_railway.js).
 // Railway no ejecutó el preDeployCommand de railway.json, por eso la preparación va en el arranque.
 //   1. Crea o actualiza el esquema con database.sql (idempotente: no borra datos).
 //   2. Crea los usuarios base si no existen (con la clave de SEED_CLAVE_INICIAL).

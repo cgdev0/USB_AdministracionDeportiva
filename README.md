@@ -85,7 +85,7 @@ Este comando inicia el **frontend**. No garantiza por sí solo que el backend ni
 
 ## Publicar en Railway
 
-El repositorio trae `railway.json`: Railway compila el frontend (`npm run build`) y arranca con `npm run railway:iniciar`, que primero prepara la base (`npm run railway:preparar`) y luego inicia el servidor; Railway verifica `/api/health` antes de dirigir el tráfico a la versión nueva.
+El repositorio trae `railway.json`: Railway compila el frontend (`npm run build`) y arranca con `node backend/config/iniciar_railway.js`, que primero prepara la base (`npm run railway:preparar`) y luego inicia el servidor en el mismo proceso (sin npm, para que el apagado de cada versión anterior no se reporte como crash); Railway verifica `/api/health` antes de dirigir el tráfico a la versión nueva.
 
 1. En Railway, crear un proyecto con dos servicios: **PostgreSQL** y la aplicación desde este repositorio de GitHub (rama `main`).
 2. En la aplicación, agregar un **volumen** montado en `/data` (fotos de deportistas y logos).

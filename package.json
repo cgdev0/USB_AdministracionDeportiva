@@ -15,7 +15,7 @@
     "seed": "node backend/config/seed.js",
     "demo": "node backend/config/datos_demo.js",
     "railway:preparar": "node backend/config/preparar_despliegue.js",
-    "railway:iniciar": "node backend/config/preparar_despliegue.js && npm start",
+    "railway:iniciar": "node backend/config/iniciar_railway.js",
     "test:api": "node pruebas/ejecutar-api.js",
     "test:ui": "playwright test",
     "test": "npm run test:api && npm run test:ui",

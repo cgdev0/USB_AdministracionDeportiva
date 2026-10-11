@@ -4,6 +4,10 @@ Casos que necesitan personas y no se pueden automatizar. Alimentan las métricas
 
 Cómo registrar una ejecución: completar las columnas *Resultado obtenido*, *Estado* y *Evidencia* de cada caso y guardar las hojas o capturas en `informes/evidencias/<versión>/manuales/`.
 
+## Lista para el tester
+
+`lista-tester.html` (en esta carpeta) recorre el sistema por rol con 60 pruebas marcadas como PC, celular o ambos. Las marcas y las fallas se guardan en el navegador del tester; el informe descargado se registra en `defectos.md` (una fila por falla confirmada).
+
 ## Prueba con usuarios
 
 **Precondiciones comunes:** base con datos de demostración (`npm run demo`), celular del participante con el sistema abierto en la pantalla de inicio de sesión, cuenta asignada según el perfil y cronómetro. No se explica el sistema antes de empezar; si el participante pide ayuda, la tarea cuenta como "con ayuda".
