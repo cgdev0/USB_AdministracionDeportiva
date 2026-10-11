@@ -467,7 +467,7 @@ tbody tr:nth-child(even) td { background: #FAFAFA; }
 .estado-vista.compacto .estado-vista-icono { width: 44px; height: 44px; font-size: 19px; }
 .estado-vista-titulo { font-size: 16px; font-weight: 700; color: var(--texto); }
 .estado-vista-texto { font-size: 14px; color: var(--texto-suave); line-height: 1.5; }
-.estado-vista .btn { margin-top: 8px; }
+.estado-vista-acciones { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 8px; }
 .estado-error .estado-vista-icono { background: var(--error-fondo); color: var(--error-texto); }
 
 /* Esqueletos de carga: reservan el espacio del contenido para que nada salte al llegar los datos.
@@ -623,7 +623,8 @@ button.login-icono { cursor: pointer; }
 .l-ok { color: var(--verde-boton); } .l-aviso { color: #E08E0B; } .l-error { color: var(--error-texto); }
 
 .ini-vacio { display: grid; justify-items: center; gap: 10px; padding: 20px 8px; text-align: center; color: var(--texto-suave); }
-.ini-vacio i { font-size: 32px; color: #BBB; }
+.ini-vacio > i { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--ok-fondo); color: var(--verde-texto); font-size: 20px; }
+.ini-esqueleto-banner { min-height: 190px; }
 .ini-texto-suave { color: var(--texto-suave); font-size: 14px; }
 
 .ini-mi-estado { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { CheckCircle2, XCircle, ClipboardList, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
@@ -11,35 +11,37 @@ import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
 export default function Asistencia() {
   const { tienePermiso } = useAuth()
   const puedeEditar = tienePermiso(['administrador', 'entrenador'])
-  const { selectedSportId, selectedSport } = useDeporte()
+  const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
   const [entrenamientos, setEntrenamientos] = useState([])
   const [jugadores, setJugadores]           = useState([])
   const [asistencia, setAsistencia]         = useState([])
   const [selectedId, setSelectedId]         = useState('')
   const [loading, setLoading]               = useState(true)
   const [loadingAsist, setLoadingAsist]     = useState(false)
+  const [error, setError]                   = useState(null)
+  const [errorAsist, setErrorAsist]         = useState(null)
   const [saving, setSaving]                 = useState(null) // id guardando
 
   // Cargar datos iniciales
-  useEffect(() => {
-    const fetchBase = async () => {
-      setLoading(true)
-      try {
-        const [eRes, jRes] = await Promise.all([
-          api.get('/entrenamientos'),
-          api.get('/jugadores'),
-        ])
-        setEntrenamientos(eRes.data)
-        setJugadores(jRes.data)
-        if (eRes.data.length > 0) setSelectedId(String(eRes.data[0].id))
-      } catch (e) {
-        toast.error(e.message)
-      } finally {
-        setLoading(false)
-      }
+  const fetchBase = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [eRes, jRes] = await Promise.all([
+        api.get('/entrenamientos'),
+        api.get('/jugadores'),
+      ])
+      setEntrenamientos(eRes.data)
+      setJugadores(jRes.data)
+      if (eRes.data.length > 0) setSelectedId(String(eRes.data[0].id))
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
     }
-    fetchBase()
   }, [])
+
+  useEffect(() => { fetchBase() }, [fetchBase])
 
   // Filtrar jugadores por disciplina seleccionada
   const jugadoresFiltrados = jugadores.filter(j => {
@@ -53,11 +55,12 @@ export default function Asistencia() {
   const loadAsistencia = useCallback(async (id) => {
     if (!id) return
     setLoadingAsist(true)
+    setErrorAsist(null)
     try {
       const res = await api.get(`/asistencia?entrenamiento_id=${id}`)
       setAsistencia(res.data)
     } catch (e) {
-      toast.error(e.message)
+      setErrorAsist(e.message)
     } finally {
       setLoadingAsist(false)
     }
@@ -137,7 +140,9 @@ export default function Asistencia() {
         </p>
       </div>
 
-      {loading ? <LoadingSpinner /> : (
+      {loading ? <Esqueleto tipo="tabla" columnas={5} filas={6} /> : error ? (
+        <div className="card"><EstadoError mensaje={error} onReintentar={fetchBase} /></div>
+      ) : (
         <>
           {/* Selector de entrenamiento */}
           <div className="card" style={{ marginBottom: 20, padding: '20px 24px' }}>
@@ -195,7 +200,7 @@ export default function Asistencia() {
           </div>
 
           {/* Resumen */}
-          {selectedId && jugadores.length > 0 && (
+          {selectedId && jugadores.length > 0 && !loadingAsist && !errorAsist && (
             <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', marginBottom: 20 }}>
               <div className="card" style={{ padding: 20, textAlign: 'center' }}>
                 <div style={{ fontSize: 36, fontWeight: 800, color: 'var(--accent2)' }}>{presentes}</div>
@@ -220,7 +225,7 @@ export default function Asistencia() {
           )}
 
           {/* Barra de progreso */}
-          {selectedId && jugadores.length > 0 && (
+          {selectedId && jugadores.length > 0 && !loadingAsist && !errorAsist && (
             <div className="card" style={{ marginBottom: 20, padding: '16px 24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
                 <span>Progreso de asistencia</span>
@@ -243,12 +248,33 @@ export default function Asistencia() {
           {/* Lista de jugadores */}
           {!selectedId ? (
             <div className="card">
-              <div className="empty-state">
-                <div className="empty-state-icon">📋</div>
-                <p>No hay entrenamientos disponibles aún.<br />Crea uno en la sección Entrenamientos.</p>
-              </div>
+              <EstadoVacio
+                icono="fa-clipboard-check"
+                titulo="Aún no hay entrenamientos para tomar asistencia"
+                descripcion="La asistencia se toma sobre una sesión de entrenamiento. Crea la primera en Entrenamientos y vuelve aquí."
+                accion={puedeEditar ? { texto: 'Ir a Entrenamientos', icono: 'fa-dumbbell', a: '/entrenamientos' } : null}
+              />
             </div>
-          ) : loadingAsist ? <LoadingSpinner /> : (
+          ) : loadingAsist ? <div className="card" style={{ padding: 0 }}><Esqueleto tipo="tabla" columnas={5} filas={6} /></div> : errorAsist ? (
+            <div className="card"><EstadoError mensaje={errorAsist} onReintentar={() => loadAsistencia(selectedId)} /></div>
+          ) : jugadores.length === 0 ? (
+            <div className="card">
+              <EstadoVacio
+                icono="fa-people-group"
+                titulo="Aún no hay deportistas en el plantel"
+                descripcion="Registra deportistas en el módulo Deportistas para poder marcar su asistencia."
+                accion={{ texto: 'Ir a Deportistas', icono: 'fa-people-group', a: '/jugadores' }}
+              />
+            </div>
+          ) : jugadoresFiltrados.length === 0 ? (
+            <div className="card">
+              <EstadoSinResultados
+                descripcion={`No hay deportistas de ${selectedSport?.nombre || 'este deporte'}.`}
+                onLimpiar={() => setSelectedSportId('todos')}
+                textoLimpiar="Ver todos los deportes"
+              />
+            </div>
+          ) : (
             <div className="card" style={{ padding: 0 }}>
               <div className="table-wrapper">
                 <table>
@@ -285,7 +311,7 @@ export default function Asistencia() {
                                   background: 'var(--surface-hover)',
                                   display: 'flex', alignItems: 'center',
                                   justifyContent: 'center', fontSize: 14
-                                }}>👤</div>
+                                }}><i className="fa-solid fa-user" aria-hidden="true" /></div>
                               )}
                               <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{etiquetaJugador(j)}</span>
                             </div>

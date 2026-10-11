@@ -54,13 +54,18 @@ function Accion({ accion }) {
     : <button type="button" className={clase} onClick={accion.onClick}>{contenido}</button>
 }
 
-export function EstadoVacio({ icono = 'fa-folder-open', titulo, descripcion, accion, compacto = false }) {
+export function EstadoVacio({ icono = 'fa-folder-open', titulo, descripcion, accion, accionSecundaria, compacto = false }) {
   return (
     <div className={`estado-vista ${compacto ? 'compacto' : ''}`}>
       <span className="estado-vista-icono" aria-hidden="true"><i className={`fa-solid ${icono}`} /></span>
       <p className="estado-vista-titulo">{titulo}</p>
       {descripcion && <p className="estado-vista-texto">{descripcion}</p>}
-      <Accion accion={accion} />
+      {(accion || accionSecundaria) && (
+        <div className="estado-vista-acciones">
+          <Accion accion={accion} />
+          <Accion accion={accionSecundaria && { ...accionSecundaria, secundaria: true }} />
+        </div>
+      )}
     </div>
   )
 }

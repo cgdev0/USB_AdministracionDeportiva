@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import ConfirmModal from '../components/ConfirmModal'
 import Modal from '../components/Modal'
+import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
 
 const ROLES = ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador']
 const ROLE_LABELS = {
@@ -26,6 +27,7 @@ export default function Usuarios() {
   const { usuario: yo } = useAuth()
   const [usuarios, setUsuarios] = useState([])
   const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [csvOpen, setCsvOpen] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -39,11 +41,12 @@ export default function Usuarios() {
 
   const cargar = async () => {
     setCargando(true)
+    setError(null)
     try {
       const { data } = await api.get('/usuarios')
       setUsuarios(data)
     } catch (err) {
-      toast.error(err.message)
+      setError(err.message)
     } finally {
       setCargando(false)
     }
@@ -182,7 +185,17 @@ export default function Usuarios() {
       {/* Tabla */}
       <div className="table-container">
         {cargando ? (
-          <div className="loading">Cargando usuarios...</div>
+          <Esqueleto tipo="tabla" columnas={6} filas={6} etiqueta="Cargando usuarios…" />
+        ) : error ? (
+          <EstadoError mensaje={error} onReintentar={cargar} />
+        ) : usuarios.length === 0 ? (
+          <EstadoVacio icono="fa-user-gear" titulo="Aún no hay usuarios" descripcion="Crea el primer usuario o importa varios desde un archivo CSV." />
+        ) : usuariosFiltrados.length === 0 ? (
+          <EstadoSinResultados
+            descripcion={`No hay usuarios con el rol ${ROLE_LABELS[filtroRol] || filtroRol}.`}
+            onLimpiar={() => setFiltroRol('todos')}
+            textoLimpiar="Ver todos los roles"
+          />
         ) : (
           <table className="data-table">
             <thead>
@@ -217,7 +230,9 @@ export default function Usuarios() {
                       {u.activo ? <Check size={16} /> : <X size={16} />}
                     </span>
                   </td>
-                  <td>{u.primer_login ? '⚠️ Pendiente' : '✅ Completado'}</td>
+                  <td>{u.primer_login
+                    ? <span className="badge badge-orange"><i className="fa-solid fa-clock" aria-hidden="true" /> Pendiente</span>
+                    : <span className="badge badge-green"><i className="fa-solid fa-check" aria-hidden="true" /> Completado</span>}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
                       <button className="btn-icon" onClick={() => abrirEditar(u)} title="Editar">
@@ -309,10 +324,10 @@ export default function Usuarios() {
                 </form>
               ) : (
                 <div>
-                  <p style={{ color: 'var(--ok-texto)' }}>✅ Usuarios creados: <strong>{csvResultado.creados}</strong></p>
+                  <p style={{ color: 'var(--ok-texto)' }}><i className="fa-solid fa-circle-check" aria-hidden="true" /> Usuarios creados: <strong>{csvResultado.creados}</strong></p>
                   {csvResultado.errores.length > 0 && (
                     <>
-                      <p style={{ color: 'var(--error-texto)' }}>❌ Errores: {csvResultado.errores.length}</p>
+                      <p style={{ color: 'var(--error-texto)' }}><i className="fa-solid fa-circle-xmark" aria-hidden="true" /> Errores: {csvResultado.errores.length}</p>
                       <ul style={{ fontSize: '0.85rem', color: 'var(--error-texto)' }}>
                         {csvResultado.errores.map((e, i) => (
                           <li key={i}>Fila {e.fila}: {e.error}</li>

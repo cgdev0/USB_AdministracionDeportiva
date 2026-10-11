@@ -32,7 +32,7 @@ const Somatocarta = ({ data, average = null }) => {
           borderRadius: 'var(--radius-md)'
         }}>
           <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: isAvg ? 'var(--warning)' : 'var(--text-primary)' }}>
-            {isAvg ? '📌 PROMEDIO GRUPO' : p.nombre}
+            {isAvg ? 'Promedio del grupo' : p.nombre}
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
             Posición: <span style={{ color: 'var(--text-primary)' }}>{p.posicion}</span>
