@@ -84,3 +84,45 @@ test('CP-PER-009 [RF-07] El head coach consulta equipos pero no los modifica', a
   assert.equal((await llamar('GET', '/api/equipos', T.head_coach)).status, 200);
   assert.equal((await llamar('POST', '/api/equipos', T.head_coach, { nombre: 'No debería' })).status, 403);
 });
+
+// ── Privacidad de datos de rendimiento y salud (v1.5.2: DEF-027 a DEF-029) ──
+const datosDe = async () => {
+  const { rows: [propio] } = await sql(`SELECT jugador_id AS id FROM usuarios WHERE email = 'jugador@dtdeportivo.com'`);
+  const { rows: [deCesar] } = await sql(`SELECT j.id FROM jugadores j JOIN usuarios u ON u.id = j.entrenador_id
+    WHERE u.email = 'cesar_dt@dtdeportivo.com' AND j.id <> $1 ORDER BY j.id LIMIT 1`, [propio.id || 0]);
+  return { propio: propio.id, deCesar: deCesar.id };
+};
+
+test('CP-PER-010 [RNF-02] La asistencia solo muestra los deportistas del alcance de cada rol', async () => {
+  const { propio } = await datosDe();
+  const r = await llamar('GET', '/api/asistencia', T.jugador);
+  assert.equal(r.status, 200);
+  assert.ok(r.datos.every(a => a.jugador_id === propio), 'el deportista solo ve su propia asistencia');
+  const ent2 = await llamar('GET', '/api/asistencia', await token('entrenador2'));
+  const { rows } = await sql(`SELECT j.id FROM jugadores j JOIN usuarios u ON u.id = j.entrenador_id WHERE u.email = 'juan_moreno@dtdeportivo.com'`);
+  const suyos = new Set(rows.map(x => x.id));
+  assert.ok(ent2.datos.every(a => suyos.has(a.jugador_id)), 'otro entrenador no ve la asistencia del plantel de Cesar');
+  const admin = await llamar('GET', '/api/asistencia', T.administrador);
+  assert.ok(admin.datos.length >= r.datos.length, 'el administrador ve todo');
+});
+
+test('CP-PER-011 [RNF-02] Las evaluaciones físicas solo las ve quien tiene al deportista en su alcance', async () => {
+  const { deCesar } = await datosDe();
+  const c = await llamar('POST', '/api/evaluaciones', T.administrador, { jugador_id: deCesar, fecha: '2026-10-01', sprint_30m: 4.4, peso: 80 });
+  assert.equal(c.status, 201, JSON.stringify(c.datos));
+  const ve = async (t) => (await llamar('GET', '/api/evaluaciones', t)).datos.some(e => e.jugador_id === deCesar);
+  assert.equal(await ve(T.entrenador), true, 'su entrenador la ve');
+  assert.equal(await ve(T.salud), true, 'salud la ve');
+  assert.equal(await ve(T.jugador), false, 'otro deportista no la ve');
+  assert.equal(await ve(await token('entrenador2')), false, 'otro entrenador no la ve');
+  await sql('DELETE FROM evaluaciones_rugby WHERE jugador_id = $1 AND fecha = $2', [deCesar, '2026-10-01']);
+});
+
+test('CP-PER-012 [RNF-02] Las medidas antropométricas de un deportista no se ven fuera de su alcance', async () => {
+  const { deCesar, propio } = await datosDe();
+  assert.equal((await llamar('GET', `/api/antropometria/jugador/${deCesar}`, T.entrenador)).status, 200, 'su entrenador');
+  assert.equal((await llamar('GET', `/api/antropometria/jugador/${deCesar}`, T.salud)).status, 200, 'salud');
+  assert.equal((await llamar('GET', `/api/antropometria/jugador/${deCesar}`, T.jugador)).status, 404, 'otro deportista');
+  assert.equal((await llamar('GET', `/api/antropometria/jugador/${deCesar}`, await token('entrenador2'))).status, 404, 'otro entrenador');
+  if (propio) assert.equal((await llamar('GET', `/api/antropometria/jugador/${propio}`, T.jugador)).status, 200, 'el deportista ve las suyas');
+});

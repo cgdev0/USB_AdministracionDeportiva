@@ -1,6 +1,7 @@
 const db = require('../config/db');
 
 const { responderError } = require('../utils/errores');
+const { condicionAlcance } = require('../utils/alcance');
 exports.getAll = async (req, res) => {
   try {
     const { entrenamiento_id } = req.query;
@@ -11,10 +12,15 @@ exports.getAll = async (req, res) => {
       JOIN entrenamientos e ON ae.entrenamiento_id = e.id
     `;
     const params = [];
+    const condiciones = [];
     if (entrenamiento_id) {
       params.push(entrenamiento_id);
-      query += ` WHERE ae.entrenamiento_id = $${params.length}`;
+      condiciones.push(`ae.entrenamiento_id = $${params.length}`);
     }
+    // Cada rol ve solo la asistencia de los deportistas de su alcance (DEF-027)
+    const alcance = condicionAlcance(req.usuario, params);
+    if (alcance) condiciones.push(alcance);
+    if (condiciones.length) query += ` WHERE ${condiciones.join(' AND ')}`;
     query += ' ORDER BY e.fecha DESC, j.nombre ASC';
     const { rows } = await db.query(query, params);
     res.json(rows);
