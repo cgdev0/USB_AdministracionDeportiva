@@ -39,6 +39,7 @@ const RUTAS = {
   lesiones: 'lesiones', evaluaciones: 'evaluaciones', partidos: 'partidos',
   estadisticas: 'estadisticas', dashboard: 'dashboard', settings: 'settings',
   antropometria: 'antropometria', 'head-coach': 'headcoach', salud: 'salud',
+  convocatorias: 'convocatorias', notificaciones: 'notificaciones',
 };
 for (const [prefijo, archivo] of Object.entries(RUTAS)) {
   const router = require(`../backend/routes/${archivo}.routes`);

@@ -42,7 +42,7 @@ test('CP-MIG-001 [RNF-09] database.sql crea el esquema completo en una base vac�
   const { rows: [t] } = await c.query(`SELECT COUNT(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public'`);
   const { rows: [j] } = await c.query('SELECT COUNT(*)::int AS n FROM jugadores');
   await c.end();
-  assert.equal(t.n, 16, 'tablas creadas');
+  assert.equal(t.n, 19, 'tablas creadas');
   assert.equal(j.n, 5, 'las semillas no se duplican al repetir');
 });
 
@@ -67,8 +67,8 @@ test('CP-MIG-002 [RNF-09] Una base de la versión original se migra sin perder d
   await c.end();
 
   assert.deepEqual(despues, antes, 'se conservan todas las filas');
-  assert.equal(r.n, 7, 'rangos válidos de la migración 004');
+  assert.equal(r.n, 10, 'rangos válidos de las migraciones 004 y 005');
   assert.deepEqual(cols.map(x => x.c).sort(),
     ['equipos.logo_url', 'jugadores.dorsal', 'jugadores.entrenador_id', 'jugadores.genero', 'usuarios.head_coach_id']);
-  assert.equal(t.n, 16, 'queda con las mismas tablas que una instalación nueva');
+  assert.equal(t.n, 19, 'queda con las mismas tablas que una instalación nueva');
 });
