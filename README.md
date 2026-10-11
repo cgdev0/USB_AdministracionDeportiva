@@ -85,7 +85,7 @@ Este comando inicia el **frontend**. No garantiza por sí solo que el backend ni
 
 ## Publicar en Railway
 
-El repositorio trae `railway.json`: Railway compila el frontend (`npm run build`), prepara la base antes de cada despliegue (`npm run railway:preparar`) y arranca con `npm start`, verificando `/api/health`.
+El repositorio trae `railway.json`: Railway compila el frontend (`npm run build`) y arranca con `npm run railway:iniciar`, que primero prepara la base (`npm run railway:preparar`) y luego inicia el servidor; Railway verifica `/api/health` antes de dirigir el tráfico a la versión nueva.
 
 1. En Railway, crear un proyecto con dos servicios: **PostgreSQL** y la aplicación desde este repositorio de GitHub (rama `main`).
 2. En la aplicación, agregar un **volumen** montado en `/data` (fotos de deportistas y logos).
@@ -101,7 +101,7 @@ El repositorio trae `railway.json`: Railway compila el frontend (`npm run build`
 
 4. En **Settings → Networking**, generar un dominio público. Railway entrega HTTPS, necesario para instalar la app en el celular.
 
-Cada vez que se fusiona un cambio en `main`, Railway vuelve a desplegar. El esquema se actualiza solo (`database.sql` es idempotente) y los datos existentes se conservan. Si la preparación de la base falla, el despliegue se detiene y la versión anterior sigue en línea.
+Cada vez que se fusiona un cambio en `main`, Railway vuelve a desplegar. El esquema se actualiza solo (`database.sql` es idempotente) y los datos existentes se conservan. Si la preparación de la base falla, el servidor no arranca, el health check no pasa y la versión anterior sigue en línea.
 
 ## Archivos de documentación y configuración
 

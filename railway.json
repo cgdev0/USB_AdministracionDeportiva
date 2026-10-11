@@ -4,8 +4,7 @@
     "buildCommand": "npm run build"
   },
   "deploy": {
-    "preDeployCommand": ["npm run railway:preparar"],
-    "startCommand": "npm start",
+    "startCommand": "npm run railway:iniciar",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
