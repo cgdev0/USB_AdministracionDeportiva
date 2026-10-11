@@ -77,6 +77,10 @@ Componente único: `frontend/src/components/EstadoVista.jsx`. Cada pantalla dist
 
 Dentro de paneles y fichas se usa la variante `compacto`. Nunca emojis.
 
+### Tablas anchas (v1.5)
+
+Las tablas con muchas columnas usan `className="tabla-movil"`. En celular (menos de 720 px) solo quedan las columnas clave; las demás llevan `col-sec` y se resumen en una línea `sub-movil` bajo el nombre o se consultan en la ficha. Las columnas de consulta ocasional llevan además `col-ter` y se ocultan por debajo de 1280 px. Las acciones secundarias (`acc-sec`) se mueven al pie de la ficha. Ninguna información queda sin una vía de acceso.
+
 ### Movimiento (v1.5)
 
 Tokens en `index.css`: `--dur-rapida` 120 ms (hover y presionado), `--dur-media` 200 ms (entradas de hojas, modales y menús), `--dur-lenta` 280 ms (cambios grandes); `--curva-salida` `cubic-bezier(0.23, 1, 0.32, 1)` para entradas y respuestas, `--curva-movimiento` `cubic-bezier(0.77, 0, 0.175, 1)` para algo que cambia de lugar.

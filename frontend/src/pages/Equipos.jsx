@@ -436,7 +436,6 @@ export default function Equipos() {
                 padding: 20,
                 position: 'relative',
                 overflow: 'hidden',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                 border: '1px solid var(--border)'
               }}
             >
