@@ -9,6 +9,7 @@ export default function DorsalEditable({ jugador, puedeEditar, onCambio }) {
   const [editando, setEditando] = useState(false)
   const [valor, setValor] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [recienGuardado, setRecienGuardado] = useState(false)
   const input = useRef(null)
   // Evita guardar dos veces: al desactivar el campo, el navegador dispara blur mientras se guarda
   const enCurso = useRef(false)
@@ -44,6 +45,8 @@ export default function DorsalEditable({ jugador, puedeEditar, onCambio }) {
       onCambio?.(data.dorsal)
       ok = true
       setEditando(false)
+      setRecienGuardado(true)
+      setTimeout(() => setRecienGuardado(false), 450)
     } catch (e) {
       toast.error(e.message)
     } finally {
@@ -76,7 +79,7 @@ export default function DorsalEditable({ jugador, puedeEditar, onCambio }) {
   }
 
   return (
-    <button type="button" className={`dorsal-chip dorsal-editable${tieneDorsal(jugador.dorsal) ? '' : ' vacio'}`}
+    <button type="button" className={`dorsal-chip dorsal-editable${tieneDorsal(jugador.dorsal) ? '' : ' vacio'}${recienGuardado ? ' guardado' : ''}`}
       onClick={abrir} title="Cambiar dorsal" aria-label={`Dorsal de ${jugador.nombre}: ${tieneDorsal(jugador.dorsal) ? jugador.dorsal : 'sin asignar'}. Cambiar`}>
       {tieneDorsal(jugador.dorsal) ? jugador.dorsal : '–'}
     </button>

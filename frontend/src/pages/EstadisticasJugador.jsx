@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
+import { ANIMACION_GRAFICA } from '../utils/movimiento'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
 import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
@@ -139,8 +140,8 @@ export default function EstadisticasJugador() {
               <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} allowDecimals={false} />
               <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border-hover)', borderRadius: 8, color: 'var(--text-primary)' }} />
               <Legend wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }} />
-              <Bar dataKey="goles"       name="Goles / Puntos"       fill="var(--accent)"  radius={[6,6,0,0]} />
-              <Bar dataKey="asistencias" name="Asistencias" fill="var(--naranja)" radius={[6,6,0,0]} />
+              <Bar {...ANIMACION_GRAFICA} dataKey="goles"       name="Goles / Puntos"       fill="var(--accent)"  radius={[6,6,0,0]} />
+              <Bar {...ANIMACION_GRAFICA} dataKey="asistencias" name="Asistencias" fill="var(--naranja)" radius={[6,6,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

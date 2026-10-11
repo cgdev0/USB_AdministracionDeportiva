@@ -334,18 +334,10 @@ export default function Jugadores() {
             Deportes rápidos:
           </span>
           <button
+            type="button"
+            className="chip-filtro"
+            aria-pressed={selectedSportId === 'todos'}
             onClick={() => setSelectedSportId('todos')}
-            style={{
-              padding: '4px 10px',
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: selectedSportId === 'todos' ? 700 : 500,
-              background: selectedSportId === 'todos' ? 'var(--accent)' : 'var(--surface-hover)',
-              color: selectedSportId === 'todos' ? '#fff' : 'var(--text-secondary)',
-              border: '1px solid var(--border)',
-              cursor: 'pointer',
-              transition: 'var(--transition)'
-            }}
           >
             Todos
           </button>
@@ -354,18 +346,10 @@ export default function Jugadores() {
             return (
               <button
                 key={d.id}
+                type="button"
+                className="chip-filtro"
+                aria-pressed={isSelected}
                 onClick={() => setSelectedSportId(String(d.id))}
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontWeight: isSelected ? 700 : 500,
-                  background: isSelected ? 'linear-gradient(135deg, var(--accent), var(--accent2))' : 'var(--surface-hover)',
-                  color: isSelected ? '#fff' : 'var(--text-secondary)',
-                  border: isSelected ? 'none' : '1px solid var(--border)',
-                  cursor: 'pointer',
-                  transition: 'var(--transition)'
-                }}
               >
                 {d.nombre}
               </button>

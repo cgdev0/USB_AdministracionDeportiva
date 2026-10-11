@@ -234,12 +234,14 @@ export default function Asistencia() {
               <div style={{ height: 8, background: 'var(--surface-hover)', borderRadius: 100, overflow: 'hidden' }}>
                 <div style={{
                   height: '100%',
-                  width: `${pct}%`,
+                  width: '100%',
+                  transform: `scaleX(${pct / 100})`,
+                  transformOrigin: 'left center',
                   background: pct >= 70
                     ? 'linear-gradient(90deg, var(--accent2), var(--success))'
                     : 'linear-gradient(90deg, var(--warning), var(--danger))',
                   borderRadius: 100,
-                  transition: 'width 0.4s ease',
+                  transition: 'transform var(--dur-lenta) var(--curva-salida)',
                 }} />
               </div>
             </div>

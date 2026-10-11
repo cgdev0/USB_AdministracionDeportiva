@@ -85,6 +85,7 @@
   --dur-lenta: 280ms;    /* cambios grandes (barras, paneles que se expanden) */
   --curva-salida: cubic-bezier(0.23, 1, 0.32, 1);      /* entradas y respuestas: arranca rápido y frena suave */
   --curva-movimiento: cubic-bezier(0.77, 0, 0.175, 1); /* algo que ya está en pantalla y cambia de lugar */
+  --curva-hoja: cubic-bezier(0.32, 0.72, 0, 1);        /* hojas que suben desde abajo (estilo iOS) */
   --transition: background-color var(--dur-rapida) ease, border-color var(--dur-rapida) ease,
                 color var(--dur-rapida) ease, box-shadow var(--dur-rapida) ease,
                 transform var(--dur-rapida) var(--curva-salida);
@@ -118,6 +119,8 @@ a, button, select, summary, label, [role="button"] { -webkit-tap-highlight-color
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
+  /* Menos movimiento no es cero ayuda: modales y hojas aparecen con un fundido corto, sin desplazarse */
+  .modal-box, .modal, .hoja { animation: fadeIn 150ms ease !important; }
 }
 
 /* ============================================================
@@ -193,16 +196,17 @@ a, button, select, summary, label, [role="button"] { -webkit-tap-highlight-color
 }
 
 /* Hoja "Más" (celular) */
-.hoja-fondo { position: fixed; inset: 0; z-index: 950; background: rgba(0,0,0,0.45); animation: fadeIn .15s ease; }
+.hoja-fondo { position: fixed; inset: 0; z-index: 950; background: rgba(0,0,0,0.45); animation: fadeIn var(--dur-media) ease; }
 .hoja {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 960;
   max-height: 85dvh; overflow-y: auto;
   background: var(--blanco); border-radius: 12px 12px 0 0;
   box-shadow: 0 -8px 30px rgba(0,0,0,0.2);
   padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
-  animation: subirHoja .2s ease;
+  animation: subirHoja 300ms var(--curva-hoja);
 }
-@keyframes subirHoja { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* La hoja entra desde el borde inferior, de donde viene el menú que la abre */
+@keyframes subirHoja { from { transform: translateY(100%); } to { transform: none; } }
 .hoja-agarre { width: 40px; height: 4px; border-radius: 2px; background: #CCC; margin: 4px auto 12px; }
 .hoja h2 { font-size: 16px; font-weight: 700; margin: 8px 0; }
 .hoja-lista { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -384,16 +388,16 @@ tbody tr:nth-child(even) td { background: #FAFAFA; }
 .modal-overlay {
   position: fixed; inset: 0; z-index: 1000;
   display: flex; align-items: center; justify-content: center; padding: 16px;
-  background: rgba(0,0,0,0.5); animation: fadeIn .15s ease;
+  background: rgba(0,0,0,0.5); animation: fadeIn var(--dur-media) ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .modal-box, .modal {
   width: 100%; max-width: 560px; max-height: 90dvh; overflow-y: auto;
   background: var(--blanco); border-radius: 6px; box-shadow: var(--shadow-lg);
-  animation: slideUp .2s ease;
+  animation: slideUp var(--dur-media) var(--curva-salida);
 }
 .modal-box { padding: 0 24px 24px; }
-@keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(12px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
 .modal-header {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   margin: 0 -24px 20px; padding: 12px 16px 12px 24px; min-height: 52px;
@@ -433,6 +437,9 @@ tbody tr:nth-child(even) td { background: #FAFAFA; }
 .dorsal-chip.vacio { background: #F2F2F2; color: #999; border: 1px dashed #BBB; font-weight: 500; }
 .dorsal-editable { border: 0; cursor: pointer; }
 @media (hover: hover) and (pointer: fine) { .dorsal-editable:hover { box-shadow: 0 0 0 2px var(--naranja); } }
+/* Pulso breve al guardar un dorsal: confirma que el cambio quedó hecho */
+.dorsal-chip.guardado { animation: dorsal-guardado 450ms var(--curva-salida); }
+@keyframes dorsal-guardado { 0% { transform: scale(1.18); box-shadow: 0 0 0 3px var(--naranja); } 100% { transform: none; box-shadow: 0 0 0 0 transparent; } }
 .dorsal-input {
   width: 64px; min-height: 32px; padding: 0 6px; text-align: center;
   border: 2px solid var(--verde-boton); border-radius: 4px; font-size: 14px; font-weight: 700;
@@ -453,6 +460,16 @@ tbody tr:nth-child(even) td { background: #FAFAFA; }
 .empty-state { text-align: center; padding: 48px 20px; color: var(--texto-suave); }
 .empty-state-icon { font-size: 44px; margin-bottom: 12px; color: #BBB; }
 .empty-state p { font-size: 15px; }
+
+/* Chips de filtro (deportes rápidos): botones con estado presionado */
+.chip-filtro {
+  display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px;
+  border: 1px solid #CCCCCC; border-radius: 999px; background: #F2F2F2;
+  color: var(--texto); font-size: 13px; font-weight: 500; transition: var(--transition);
+}
+.chip-filtro[aria-pressed="true"] { background: var(--verde-boton); border-color: var(--verde-boton); color: var(--blanco); font-weight: 700; }
+@media (hover: hover) and (pointer: fine) { .chip-filtro:hover:not([aria-pressed="true"]) { background: #E6E6E6; border-color: #ADADAD; } }
+.chip-filtro:active { transform: scale(0.96); }
 
 /* Estados de una vista (v1.5): vacío, sin resultados y error — components/EstadoVista.jsx */
 .estado-vista {
@@ -516,7 +533,7 @@ tbody tr:nth-child(even) td { background: #FAFAFA; }
   .card { padding: 16px; }
   .card > .card-title:first-child { margin: -16px -16px 16px; padding: 12px 16px; }
   .modal-overlay { align-items: flex-end; padding: 0; }
-  .modal-box, .modal { max-width: none; max-height: 92dvh; border-radius: 12px 12px 0 0; }
+  .modal-box, .modal { max-width: none; max-height: 92dvh; border-radius: 12px 12px 0 0; animation: subirHoja 300ms var(--curva-hoja); }
   .modal-box { padding: 0 16px 20px; }
   .modal-header { margin: 0 -16px 16px; padding: 12px 12px 12px 16px; }
   .modal-form { padding: 16px; }
@@ -713,4 +730,5 @@ button.login-icono { cursor: pointer; }
   .form-group input, .form-group select, .form-group textarea,
   .modal-form input, .modal-form select, .modal-form textarea { min-height: 44px; font-size: 16px; }
   .pie ul a, .ini-avisos a { min-height: 44px; }
+  .chip-filtro { min-height: 44px; padding: 0 16px; }
 }
