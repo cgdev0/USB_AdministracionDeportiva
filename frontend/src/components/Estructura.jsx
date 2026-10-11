@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
 import { MENU_INFERIOR, ROLES, iniciales, modulosDelRol } from '../config/navegacion'
 import { intencion } from '../config/paginas'
+import Avisos from './Avisos'
 
 const claseActiva = ({ isActive }) => (isActive ? 'activo' : undefined)
 
@@ -33,6 +34,7 @@ function Cabecera() {
         <span className="cabecera-sistema">ADMINISTRACIÓN<br /> DEPORTIVA</span>
         <SelectorDeporte id="deporte-pc" />
         <span className="cabecera-bienvenida">Bienvenido</span>
+        <Avisos />
         <div className="cabecera-foto" aria-hidden="true">{iniciales(usuario?.nombre)}</div>
         <span className="cabecera-nombre">
           {usuario?.nombre}

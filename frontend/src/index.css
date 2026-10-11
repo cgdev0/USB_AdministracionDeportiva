@@ -486,6 +486,83 @@ button.ini-dorsal:active { transform: scale(0.97); }
 .ini-nota-toque { margin-top: 10px; font-size: 13px; color: var(--texto-suave); }
 .vista-deportista { display: grid; gap: 16px; }
 
+/* Campanita de avisos en la cabecera (v1.6) */
+.cabecera-avisos {
+  position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-left: auto;
+  border: 1px solid #CCC; border-radius: 50%; background: var(--blanco); color: #555; font-size: 18px; transition: var(--transition);
+}
+.cabecera-avisos + .cabecera-foto { margin-left: 8px; }
+@media (hover: hover) and (pointer: fine) { .cabecera-avisos:hover { background: #F2F2F2; color: var(--texto); } }
+.cabecera-avisos:active { transform: scale(0.95); }
+.cabecera-avisos-numero {
+  position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
+  display: grid; place-items: center; background: var(--danger); color: var(--blanco); font-size: 11px; font-weight: 700;
+  box-shadow: 0 0 0 2px var(--blanco);
+}
+@media (min-width: 1024px) { .cabecera-avisos { margin-left: 0; margin-right: 12px; } .cabecera-avisos + .cabecera-foto { margin-left: 0; } }
+/* En celular el círculo con las iniciales es decorativo (la sesión está en el inicio): cede su lugar a la campanita */
+@media (max-width: 1023px) { .cabecera-avisos + .cabecera-foto { display: none; } }
+.avisos-lista { list-style: none; display: grid; gap: 8px; }
+.avisos-lista button {
+  display: grid; gap: 2px; width: 100%; padding: 12px 14px; text-align: left; font: inherit; color: var(--texto); cursor: pointer;
+  border: 1px solid var(--borde-claro); border-radius: 6px; background: var(--blanco); transition: var(--transition);
+}
+.avisos-lista button.sin-leer { border-left: 4px solid var(--verde-boton); background: #F6FBF7; }
+@media (hover: hover) and (pointer: fine) { .avisos-lista button:hover { border-color: var(--verde-boton); } }
+.avisos-lista button:active { transform: scale(0.99); }
+.avisos-titulo { font-weight: 700; font-size: 14.5px; }
+.avisos-mensaje { font-size: 14px; color: var(--texto); }
+.avisos-hora { font-size: 12.5px; color: var(--texto-suave); }
+
+/* Convocatoria (v1.6) */
+.convocatoria { display: grid; gap: 14px; color: var(--texto); }
+.convocatoria-fecha { color: var(--texto-suave); font-size: 14px; }
+.convocatoria-resumen { display: flex; flex-wrap: wrap; gap: 8px; }
+.convocatoria-resumen .badge { font-size: 13px; padding: 4px 10px; }
+.convocatoria-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.convocatoria-notas { grid-column: 1 / -1; }
+.convocatoria-cuenta { font-size: 14px; color: var(--texto-suave); }
+.convocatoria-lista { list-style: none; display: grid; gap: 6px; }
+.convocatoria-lista li {
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center;
+  padding: 8px 10px; border: 1px solid var(--borde-claro); border-radius: 6px; background: var(--blanco);
+}
+.convocatoria-lista li.elegido { border-color: var(--verde-boton); background: #F6FBF7; }
+.convocatoria-jugador { display: grid; gap: 2px; min-width: 0; }
+.convocatoria-nombre { font-weight: 700; font-size: 14.5px; }
+.convocatoria-detalle { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 12.5px; color: var(--texto-suave); }
+.segmento { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #CCC; border-radius: 4px; overflow: hidden; }
+.segmento button { min-height: 36px; border: 0; border-left: 1px solid #CCC; background: #F7F7F7; color: var(--texto); font: 500 13px var(--font); transition: var(--transition); }
+.segmento button:first-child { border-left: 0; }
+.segmento button[aria-pressed="true"] { background: var(--verde-boton); color: var(--blanco); font-weight: 700; }
+.segmento button:first-child[aria-pressed="true"] { background: #6B6B6B; }
+@media (hover: hover) and (pointer: fine) { .segmento button:hover:not([aria-pressed="true"]) { background: #ECECEC; } }
+@media (min-width: 640px) { .convocatoria-lista li { grid-template-columns: auto 1fr 260px; } .segmento { grid-column: auto; } }
+.convocatoria-pie { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.convocatoria-historial { display: grid; gap: 10px; }
+.convocatoria-registro { list-style: none; display: grid; gap: 6px; font-size: 13.5px; }
+.convocatoria-registro li { display: grid; grid-template-columns: 110px 1fr; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid #EEE; }
+.convocatoria-registro time { color: var(--texto-suave); font-variant-numeric: tabular-nums; }
+.convocatoria-mia { display: grid; gap: 10px; padding: 14px; border-radius: 6px; background: var(--ok-fondo); border: 1px solid var(--ok-borde); }
+.convocatoria-mia.no_puede { background: var(--error-fondo); border-color: var(--error-borde); }
+.convocatoria-mia.pendiente { background: var(--aviso-fondo); border-color: var(--aviso-borde); }
+.convocatoria-mia-titulo { font-size: 16px; }
+.convocatoria-logistica { display: grid; gap: 4px; font-size: 14.5px; }
+.convocatoria-logistica i { width: 18px; color: var(--verde-texto); }
+.convocatoria-grupo h3 { font-size: 15px; margin-bottom: 6px; }
+.convocatoria-grupo h3 span { color: var(--texto-suave); font-weight: 400; }
+.convocatoria-grupo ul { list-style: none; display: grid; gap: 6px; }
+.convocatoria-grupo li { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+.convocatoria-grupo li small { color: var(--texto-suave); }
+.convocatoria-grupo li .badge { margin-left: auto; }
+.ini-convocado {
+  position: relative; display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 10px 12px;
+  border-radius: 6px; background: rgba(255,255,255,0.14); color: var(--blanco); font-size: 15px;
+}
+.ini-convocado.pendiente { background: rgba(240,173,78,0.28); }
+.ini-banner-convocatoria i { margin-right: 6px; }
+@media (pointer: coarse) { .segmento button { min-height: 44px; } }
+
 /* Chips de filtro (deportes rápidos): botones con estado presionado */
 .chip-filtro {
   display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px;

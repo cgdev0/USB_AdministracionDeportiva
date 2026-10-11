@@ -3,6 +3,28 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v1.6 — Convocatoria de partidos y avisos
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.6`
+
+Para que el plantel use la app: la convocatoria oficial de cada partido se publica en el sistema.
+
+Convocatoria
+- El entrenador arma la convocatoria desde el partido o desde el inicio: elige titulares y suplentes entre sus deportistas, viendo el estado médico de cada uno (disponible, con restricciones o no disponible), y agrega hora, lugar e indicaciones.
+- Mientras es borrador solo la ve el cuerpo técnico. Al publicarla, la plantilla queda visible en el partido y cada convocado recibe un aviso.
+- Es editable después de publicada: quien entra, sale o cambia de titular a suplente recibe un aviso, y si cambia la hora o el lugar se avisa a todos.
+- Cada convocado confirma o avisa que no puede (con motivo) hasta el día del partido. El entrenador ve las respuestas y recibe un aviso cuando alguien no puede ir.
+- Registro digital: cada acción (publicar, convocar, retirar, cambiar rol, confirmar, no poder ir) queda guardada con quién la hizo y cuándo.
+- Botón para compartir la convocatoria por WhatsApp con el enlace a la app.
+
+Avisos
+- Campanita en la cabecera para todos los roles, con el número de avisos sin leer; cada aviso lleva directo a la convocatoria.
+- Por primera vez el sistema genera avisos (antes la tabla existía pero nada los creaba).
+
+Datos: migración `005_convocatorias.sql` (convocatorias, convocados, convocatoria_historial y enlace en notificaciones). Nuevo requisito RF-20.
+
+Pruebas: CP-CNV-001 a CP-CNV-010 (API) y CP-UI-CNV-001 a 003 (navegador, de punta a punta en celular).
+
 ## v1.5.2 — Privacidad de los datos de los deportistas
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.5.2`

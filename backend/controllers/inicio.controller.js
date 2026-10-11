@@ -166,7 +166,28 @@ exports.getInicio = async (req, res) => {
       HAVING COALESCE(SUM(es.goles), 0) + COALESCE(SUM(es.asistencias), 0) > 0
       ORDER BY anotaciones DESC, asistencias DESC, j.nombre LIMIT 5`, p4);
 
-    res.json({ proximo_partido: proximo || null, plantel, resumen, revisar, semana, asistencia, anotadores });
+    // 6. Convocatoria (v1.6)
+    let convocatoria = null;
+    if (vista.rol === 'jugador') {
+      const { rows: [mia] } = await db.query(`
+        SELECT p.id AS partido_id, p.fecha::text AS fecha, p.rival, p.tipo, v.hora_presentacion, v.lugar,
+               c.rol, c.confirmacion, c.motivo
+        FROM convocados c JOIN convocatorias v ON v.id = c.convocatoria_id JOIN partidos p ON p.id = v.partido_id
+        WHERE c.jugador_id = $1 AND v.publicada AND p.fecha >= CURRENT_DATE
+        ORDER BY p.fecha ASC LIMIT 1`, [vista.jugador_id || 0]);
+      convocatoria = mia || null;
+    } else if (proximo) {
+      const { rows: [r] } = await db.query(`
+        SELECT v.publicada, COUNT(c.id)::int AS total,
+               COUNT(c.id) FILTER (WHERE c.confirmacion = 'confirmado')::int AS confirmados,
+               COUNT(c.id) FILTER (WHERE c.confirmacion = 'no_puede')::int AS no_pueden,
+               COUNT(c.id) FILTER (WHERE c.confirmacion = 'pendiente')::int AS pendientes
+        FROM convocatorias v LEFT JOIN convocados c ON c.convocatoria_id = v.id
+        WHERE v.partido_id = $1 GROUP BY v.id`, [proximo.id]);
+      convocatoria = r ? { partido_id: proximo.id, ...r } : { partido_id: proximo.id, publicada: false, total: 0 };
+    }
+
+    res.json({ proximo_partido: proximo || null, plantel, resumen, revisar, semana, asistencia, anotadores, convocatoria });
   } catch (err) {
     responderError(res, err);
   }

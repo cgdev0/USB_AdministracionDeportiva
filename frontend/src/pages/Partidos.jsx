@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, Trash2, Trophy } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
 import { Esqueleto, EstadoVacio, EstadoError } from '../components/EstadoVista'
 import api from '../services/api'
+import Convocatoria from '../components/Convocatoria'
 import { useAuth } from '../context/AuthContext'
 
 const EMPTY = { fecha: '', rival: '', tipo: 'liga', resultado: '' }
@@ -21,6 +23,8 @@ export default function Partidos() {
   const [editId, setEditId]     = useState(null)
   const [saving, setSaving]     = useState(false)
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, loading: false })
+  const [convocatoriaDe, setConvocatoriaDe] = useState(null)
+  const [params, setParams] = useSearchParams()
 
   const load = () => {
     setLoading(true)
@@ -32,6 +36,16 @@ export default function Partidos() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Un aviso lleva a /partidos?convocatoria=ID: se abre esa convocatoria cuando llegan los partidos
+  useEffect(() => {
+    const id = Number(params.get('convocatoria'))
+    if (!id || !partidos.length) return
+    const p = partidos.find(x => x.id === id)
+    if (p) setConvocatoriaDe(p)
+    params.delete('convocatoria')
+    setParams(params, { replace: true })
+  }, [params, partidos])
 
   const openCreate = () => { setForm(EMPTY); setEditId(null); setModal(true) }
   const openEdit   = (p) => {
@@ -125,6 +139,7 @@ export default function Partidos() {
                   <th>Rival</th>
                   <th>Tipo</th>
                   <th>Resultado</th>
+                  <th>Convocatoria</th>
                   {puedeEditar && <th>Acciones</th>}
                 </tr>
               </thead>
@@ -138,6 +153,11 @@ export default function Partidos() {
                     </td>
                     <td style={{ fontWeight: 700, fontSize: 16, color: resultadoColor(p.resultado) }}>
                       {p.resultado || <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 400 }}>Pendiente</span>}
+                    </td>
+                    <td>
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setConvocatoriaDe(p)} aria-label={`Convocatoria contra ${p.rival}`}>
+                        <i className="fa-solid fa-clipboard-list" aria-hidden="true"></i> Ver
+                      </button>
                     </td>
                     {puedeEditar && (
                       <td>
@@ -208,6 +228,7 @@ export default function Partidos() {
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteModal({ isOpen: false, id: null, loading: false })}
       />
+      {convocatoriaDe && <Convocatoria partido={convocatoriaDe} onCerrar={() => setConvocatoriaDe(null)} />}
     </div>
   )
 }
