@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Trophy } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { Esqueleto, EstadoVacio, EstadoError } from '../components/EstadoVista'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 
@@ -15,6 +15,7 @@ export default function Partidos() {
 
   const [partidos, setPartidos] = useState([])
   const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState(null)
   const [modal, setModal]       = useState(false)
   const [form, setForm]         = useState(EMPTY)
   const [editId, setEditId]     = useState(null)
@@ -23,9 +24,10 @@ export default function Partidos() {
 
   const load = () => {
     setLoading(true)
+    setError(null)
     api.get('/partidos')
       .then(r => setPartidos(r.data))
-      .catch(e => toast.error(e.message))
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }
 
@@ -90,8 +92,10 @@ export default function Partidos() {
 
       <div className="page-toolbar">
         <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-          <Trophy size={15} style={{ display: 'inline', marginRight: 6 }} />
-          {partidos.length} partidos · {partidos.filter(p => p.tipo === 'liga').length} de liga
+          {!loading && !error && <>
+            <Trophy size={15} style={{ display: 'inline', marginRight: 6 }} />
+            {partidos.length} partidos · {partidos.filter(p => p.tipo === 'liga').length} de liga
+          </>}
         </span>
         {puedeEditar && (
           <button className="btn btn-primary" onClick={openCreate}>
@@ -101,11 +105,17 @@ export default function Partidos() {
       </div>
 
       <div className="card" style={{ padding: 0 }}>
-        {loading ? <LoadingSpinner /> : partidos.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">⚽</div>
-            <p>No hay partidos registrados</p>
-          </div>
+        {loading ? <Esqueleto tipo="tabla" columnas={puedeEditar ? 5 : 4} /> : error ? (
+          <EstadoError mensaje={error} onReintentar={load} />
+        ) : partidos.length === 0 ? (
+          <EstadoVacio
+            icono="fa-trophy"
+            titulo="Aún no hay partidos registrados"
+            descripcion={puedeEditar
+              ? 'Registra el próximo partido de liga o amistoso: el inicio mostrará la disponibilidad del plantel para ese día.'
+              : 'Cuando un entrenador registre un partido, aparecerá aquí.'}
+            accion={puedeEditar ? { texto: 'Registrar partido', icono: 'fa-plus', onClick: openCreate } : null}
+          />
         ) : (
           <div className="table-wrapper">
             <table>

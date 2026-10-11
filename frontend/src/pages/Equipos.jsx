@@ -6,7 +6,7 @@ import {
 import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
@@ -37,11 +37,12 @@ const CATEGORIAS_SUGERIDAS = [
 export default function Equipos() {
   const { tienePermiso } = useAuth()
   const puedeEditar = tienePermiso(['administrador', 'entrenador'])
-  const { disciplinas, selectedSportId, selectedSport } = useDeporte()
+  const { disciplinas, selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
 
   const [equipos, setEquipos]             = useState([])
   const [todosJugadores, setTodosJugadores] = useState([])
   const [loading, setLoading]             = useState(true)
+  const [error, setError]                 = useState(null)
   const [searchTerm, setSearchTerm]       = useState('')
 
   // Modal Crear / Editar
@@ -69,6 +70,7 @@ export default function Equipos() {
 
   const cargarEquipos = async () => {
     setLoading(true)
+    setError(null)
     try {
       const [eqRes, jugRes] = await Promise.all([
         api.get('/equipos'),
@@ -77,7 +79,7 @@ export default function Equipos() {
       setEquipos(eqRes.data)
       setTodosJugadores(jugRes.data)
     } catch (e) {
-      toast.error('Error al cargar equipos: ' + e.message)
+      setError(e.message)
     } finally {
       setLoading(false)
     }
@@ -381,8 +383,10 @@ export default function Equipos() {
             )}
           </div>
           <span style={{ color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>
-            <Shield size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-            {equiposFiltrados.length} {equiposFiltrados.length === 1 ? 'equipo' : 'equipos'}
+            {!loading && !error && <>
+              <Shield size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+              {equiposFiltrados.length} {equiposFiltrados.length === 1 ? 'equipo' : 'equipos'}
+            </>}
           </span>
         </div>
 
@@ -395,28 +399,29 @@ export default function Equipos() {
 
       {/* Grid de Equipos */}
       {loading ? (
-        <LoadingSpinner />
+        <Esqueleto tipo="tarjetas" filas={3} />
+      ) : error ? (
+        <div className="card"><EstadoError mensaje={error} onReintentar={cargarEquipos} /></div>
+      ) : equipos.length === 0 ? (
+        <div className="card">
+          <EstadoVacio
+            icono="fa-shield-halved"
+            titulo="Aún no hay equipos"
+            descripcion={puedeEditar
+              ? 'Crea el primer equipo con su categoría y su escudo; después podrás asignarle deportistas.'
+              : 'Cuando se cree un equipo, aparecerá aquí con su plantilla.'}
+            accion={puedeEditar ? { texto: 'Crear equipo', icono: 'fa-plus', onClick: openCreate } : null}
+          />
+        </div>
       ) : equiposFiltrados.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: '50%', background: 'var(--surface-hover)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'
-          }}>
-            <Shield size={32} color="var(--text-muted)" />
-          </div>
-          <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 8px', color: 'var(--text-primary)' }}>
-            No se encontraron equipos
-          </h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 420, margin: '0 auto 20px' }}>
-            {searchTerm
-              ? 'No hay equipos que coincidan con la búsqueda actual.'
-              : 'Aún no se han registrado equipos para esta disciplina o categoría. Comienza creando el primero.'}
-          </p>
-          {puedeEditar && (
-            <button className="btn btn-primary" onClick={openCreate}>
-              <Plus size={16} /> Crear Primer Equipo
-            </button>
-          )}
+        <div className="card">
+          <EstadoSinResultados
+            descripcion={searchTerm
+              ? `Ningún equipo coincide con "${searchTerm}".`
+              : `No hay equipos de ${selectedSport?.nombre || 'este deporte'}.`}
+            onLimpiar={() => { setSearchTerm(''); setSelectedSportId('todos') }}
+            textoLimpiar="Ver todos los equipos"
+          />
         </div>
       ) : (
         <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
@@ -783,7 +788,7 @@ export default function Equipos() {
           }
         >
           {loadingDetalle ? (
-            <LoadingSpinner />
+            <Esqueleto tipo="panel" filas={6} etiqueta="Cargando la plantilla…" />
           ) : equipoDetalle ? (
             <div>
               {/* Resumen del equipo */}
@@ -859,19 +864,18 @@ export default function Equipos() {
 
               {/* Lista / Tabla de deportistas */}
               {deportistasEnEquipo.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '32px 16px', background: 'var(--surface)', borderRadius: 8 }}>
-                  <Users size={32} color="var(--text-muted)" style={{ marginBottom: 8 }} />
-                  <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 12px' }}>
-                    {searchJugador
-                      ? 'No hay deportistas que coincidan con la búsqueda.'
-                      : 'No hay deportistas asignados a este equipo todavía.'}
-                  </p>
-                  {puedeEditar && !searchJugador && (
-                    <button className="btn btn-primary btn-sm" onClick={() => setModalAgregarJugador(true)}>
-                      <UserPlus size={14} /> Agregar Primer Deportista
-                    </button>
-                  )}
-                </div>
+                searchJugador ? (
+                  <EstadoSinResultados compacto
+                    descripcion={`Ningún deportista de este equipo coincide con "${searchJugador}".`}
+                    onLimpiar={() => setSearchJugador('')} textoLimpiar="Limpiar búsqueda" />
+                ) : (
+                  <EstadoVacio compacto
+                    icono="fa-user-plus"
+                    titulo="Este equipo aún no tiene deportistas"
+                    descripcion={puedeEditar ? 'Agrega deportistas ya registrados para armar la plantilla.' : 'Cuando se asignen deportistas, aparecerán aquí.'}
+                    accion={puedeEditar ? { texto: 'Agregar deportista', icono: 'fa-user-plus', onClick: () => setModalAgregarJugador(true) } : null}
+                  />
+                )
               ) : (
                 <div className="table-wrapper" style={{ maxHeight: 380, overflowY: 'auto' }}>
                   <table>

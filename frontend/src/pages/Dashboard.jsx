@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { Esqueleto, EstadoError } from '../components/EstadoVista'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
 import { ROLES, iniciales } from '../config/navegacion'
@@ -48,15 +48,23 @@ export default function Dashboard() {
 
   useEffect(() => { cargar() }, [cargar])
 
-  if (cargando && !datos) return <LoadingSpinner />
-
-  if (error && !datos) {
+  // Mientras carga: la forma de los paneles del inicio, para que nada salte al llegar los datos
+  if (cargando && !datos) {
     return (
-      <div className="alerta alerta-error" role="alert">
-        <i className="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
-        <div>No se pudo cargar el inicio: {error}. <button className="btn btn-sm btn-secondary" onClick={cargar} style={{ marginLeft: 8 }}>Reintentar</button></div>
+      <div className="inicio">
+        <div className="inicio-columna">
+          <div className="panel ini-esqueleto-banner"><Esqueleto tipo="panel" filas={4} etiqueta="Cargando el inicio…" /></div>
+          <div className="panel"><Esqueleto tipo="panel" filas={7} etiqueta="" /></div>
+        </div>
+        <div className="inicio-columna">
+          <div className="panel"><Esqueleto tipo="panel" filas={5} etiqueta="" /></div>
+        </div>
       </div>
     )
+  }
+
+  if (error && !datos) {
+    return <div className="panel"><EstadoError titulo="No se pudo cargar el inicio" mensaje={error} onReintentar={cargar} /></div>
   }
 
   const esJugador = usuario?.rol === 'jugador'
@@ -118,6 +126,7 @@ function BannerPartido({ partido, resumen, esJugador, rol }) {
 
 /* ── Disponibilidad del plantel (dorsales) ──────────────── */
 function Disponibilidad({ plantel, resumen, deporte, rol }) {
+  const { setSelectedSportId } = useDeporte()
   return (
     <section className="panel orden-2" aria-labelledby="t-disp">
       <div className="panel-cabecera">
@@ -130,9 +139,10 @@ function Disponibilidad({ plantel, resumen, deporte, rol }) {
             <i className="fa-solid fa-users" aria-hidden="true"></i>
             <p>
               {deporte
-                ? `No hay deportistas${rol === 'entrenador' ? ' tuyos' : ''} en ${deporte}. Elige "Todos los deportes" en el selector de deporte para ver el plantel completo.`
+                ? `No hay deportistas${rol === 'entrenador' ? ' tuyos' : ''} en ${deporte}.`
                 : rol === 'entrenador' ? 'Todavía no tienes deportistas asignados.' : 'Todavía no hay deportistas registrados.'}
             </p>
+            {deporte && <button type="button" className="btn btn-secondary" onClick={() => setSelectedSportId('todos')}><i className="fa-solid fa-xmark" aria-hidden="true"></i> Ver todos los deportes</button>}
             {!deporte && ['administrador', 'entrenador'].includes(rol) && <Link className="btn btn-primary" to="/jugadores">Registrar deportista</Link>}
           </div>
         ) : (

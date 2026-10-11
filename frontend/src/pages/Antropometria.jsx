@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
 import Somatocarta from '../components/Somatocarta'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -33,13 +33,16 @@ const EMPTY_ANTRO = {
 
 export default function Antropometria() {
   const { tienePermiso } = useAuth()
-  const { selectedSportId, selectedSport } = useDeporte()
+  const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
   const puedeEditar = tienePermiso(['administrador', 'entrenador', 'personal_salud'])
 
   const [jugadores, setJugadores] = useState([])
   const [selectedJugador, setSelectedJugador] = useState('')
   const [registros, setRegistros] = useState([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [cargandoJugadores, setCargandoJugadores] = useState(true)
+  const [errorJugadores, setErrorJugadores] = useState(null)
   const [modal, setModal] = useState(false)
   const [editId, setEditId] = useState(null)
   const [form, setForm] = useState(EMPTY_ANTRO)
@@ -54,11 +57,16 @@ export default function Antropometria() {
   const [filterCat, setFilterCat] = useState('')
   const [showAvg, setShowAvg] = useState(true)
 
-  useEffect(() => {
-    api.get('/jugadores').then(r => {
-      setJugadores(r.data)
-    })
-  }, [])
+  const cargarJugadores = () => {
+    setCargandoJugadores(true)
+    setErrorJugadores(null)
+    api.get('/jugadores')
+      .then(r => setJugadores(r.data))
+      .catch(e => setErrorJugadores(e.message))
+      .finally(() => setCargandoJugadores(false))
+  }
+
+  useEffect(() => { cargarJugadores() }, [])
 
   // Filtrar jugadores por deporte activo si aplica
   const jugadoresDisponibles = jugadores.filter(j => {
@@ -89,11 +97,12 @@ export default function Antropometria() {
 
   const loadRegistros = async (id) => {
     setLoading(true)
+    setError(null)
     try {
       const r = await api.get(`/antropometria/jugador/${id}`)
       setRegistros(r.data)
     } catch (e) {
-      toast.error(e.message)
+      setError(e.message)
     } finally {
       setLoading(false)
     }
@@ -338,7 +347,7 @@ export default function Antropometria() {
                   referrerPolicy="no-referrer"
                   style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }}
                 />
-              ) : '👤'}
+              ) : <i className="fa-solid fa-user" aria-hidden="true" />}
             </div>
             <div style={{ flex: 1 }}>
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent)' }}>
@@ -442,24 +451,42 @@ export default function Antropometria() {
         </div>
       </div>
 
-      {loading ? (
-        <LoadingSpinner />
-      ) : !selectedJugador ? (
-        <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <User size={48} color="var(--text-muted)" style={{ margin: '0 auto 12px' }} />
-          <h3>Selecciona un deportista para ver su perfil antropométrico</h3>
+      {cargandoJugadores || loading ? (
+        <Esqueleto tipo="tarjetas" filas={3} etiqueta="Cargando el perfil antropométrico…" />
+      ) : errorJugadores ? (
+        <div className="card"><EstadoError mensaje={errorJugadores} onReintentar={cargarJugadores} /></div>
+      ) : jugadores.length === 0 ? (
+        <div className="card">
+          <EstadoVacio
+            icono="fa-people-group"
+            titulo="Aún no hay deportistas registrados"
+            descripcion="El perfil antropométrico se lleva por deportista. Registra el plantel en el módulo Deportistas."
+            accion={{ texto: 'Ir a Deportistas', icono: 'fa-people-group', a: '/jugadores' }}
+          />
         </div>
+      ) : jugadoresDisponibles.length === 0 ? (
+        <div className="card">
+          <EstadoSinResultados
+            descripcion={`No hay deportistas de ${selectedSport?.nombre || 'este deporte'}.`}
+            onLimpiar={() => setSelectedSportId('todos')}
+            textoLimpiar="Ver todos los deportes"
+          />
+        </div>
+      ) : !selectedJugador ? (
+        <div className="card">
+          <EstadoVacio icono="fa-user" titulo="Selecciona un deportista" descripcion="Elige un deportista en el selector de arriba para ver su perfil antropométrico." />
+        </div>
+      ) : error ? (
+        <div className="card"><EstadoError mensaje={error} onReintentar={() => loadRegistros(selectedJugador)} /></div>
       ) : registros.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <Activity size={48} color="var(--accent)" style={{ margin: '0 auto 12px' }} />
-          <h3 style={{ marginBottom: 8 }}>Sin registros antropométricos para {jugadorActivo?.nombre}</h3>
-          <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>
-            Realiza la primera evaluación física y antropométrica para habilitar el dashboard individual y la somatocarta.
-          </p>
-          {puedeEditar && (
-            <button
-              className="btn btn-primary"
-              onClick={() => {
+        <div className="card">
+          <EstadoVacio
+            icono="fa-ruler-combined"
+            titulo={`Sin registros antropométricos para ${jugadorActivo?.nombre || 'este deportista'}`}
+            descripcion="Realiza la primera evaluación física y antropométrica para habilitar el dashboard individual y la somatocarta."
+            accion={puedeEditar ? {
+              texto: 'Crear primera evaluación', icono: 'fa-plus',
+              onClick: () => {
                 setForm({
                   ...EMPTY_ANTRO,
                   jugador_id: selectedJugador,
@@ -468,11 +495,9 @@ export default function Antropometria() {
                   posicion_rugby: jugadorActivo?.posicion || ''
                 })
                 setModal(true)
-              }}
-            >
-              <Plus size={16} /> Crear Primera Evaluación
-            </button>
-          )}
+              },
+            } : null}
+          />
         </div>
       ) : activeTab === 'dashboard' ? (
         /* DASHBOARD PRINCIPAL MEJORADO */
@@ -581,7 +606,7 @@ export default function Antropometria() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 40 }}>Sin datos de pliegues</p>
+                <EstadoVacio compacto icono="fa-ruler" titulo="Sin datos de pliegues" descripcion="Se completan al registrar una medición con esos datos." />
               )}
             </div>
           </div>
@@ -630,7 +655,7 @@ export default function Antropometria() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 40 }}>Sin datos evolutivos</p>
+              <EstadoVacio compacto icono="fa-chart-line" titulo="Sin datos evolutivos" descripcion="La evolución aparece desde la segunda medición." />
             )}
           </div>
 
@@ -655,7 +680,7 @@ export default function Antropometria() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 30 }}>Sin perímetros cargados</p>
+                <EstadoVacio compacto icono="fa-ruler-horizontal" titulo="Sin perímetros cargados" descripcion="Se completan al registrar una medición con esos datos." />
               )}
             </div>
 

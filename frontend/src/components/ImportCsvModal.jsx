@@ -148,7 +148,7 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
       if (avisos.length) {
         toast(`${avisos.length} ${avisos.length === 1 ? 'deportista se importó' : 'deportistas se importaron'} sin dorsal:\n` +
           avisos.slice(0, 4).map(a => `Fila ${a.fila}: ${a.aviso}`).join('\n') + (avisos.length > 4 ? '\n…' : ''),
-          { icon: '⚠️', duration: 9000, style: { whiteSpace: 'pre-line', maxWidth: 520 } })
+          { icon: <i className="fa-solid fa-triangle-exclamation" style={{ color: 'var(--warning)' }} aria-hidden="true" />, duration: 9000, style: { whiteSpace: 'pre-line', maxWidth: 520 } })
       }
       onSuccess?.()
       onClose()

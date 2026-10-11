@@ -64,6 +64,19 @@ Radio 4 px (Bootstrap). Paneles con sombra y borde inferior gris, como el portal
 | Deshabilitado | Opacidad 0,6 (botones) o 0,45 (íconos) y cursor `not-allowed`. Los botones de guardar muestran "Guardando…" mientras esperan. |
 | Táctil | Con `@media (pointer: coarse)`: botones, íconos, selectores y campos de al menos 44 px, y campos con letra de 16 px (evita el zoom automático de iOS). En computador se conserva la densidad del portal. Nunca se bloquea el zoom. |
 
+### Estados de cada pantalla (v1.5)
+
+Componente único: `frontend/src/components/EstadoVista.jsx`. Cada pantalla distingue, en este orden:
+
+| Caso | Componente | Contenido |
+|---|---|---|
+| Cargando | `Esqueleto` (tabla, tarjetas o panel) | La forma del contenido que viene, para que nada salte. Aparece tras 150 ms (una carga rápida no parpadea) y pulsa suave. Ningún contador ni cifra mientras carga. |
+| Error | `EstadoError` | Ícono de advertencia en rojo claro, "No se pudo cargar la información", el motivo y el botón **Reintentar**. Nunca se presenta como "no hay datos". |
+| Sin datos | `EstadoVacio` | Ícono de Font Awesome en círculo verde claro, título ("Aún no hay…"), por qué está vacío y qué pasará al llenarlo, y la acción real si el rol puede hacerla. |
+| Filtro sin resultados | `EstadoSinResultados` | "Ningún resultado con estos filtros" y un botón para limpiar el filtro o volver a todos los deportes. |
+
+Dentro de paneles y fichas se usa la variante `compacto`. Nunca emojis.
+
 ### Movimiento (v1.5)
 
 Tokens en `index.css`: `--dur-rapida` 120 ms (hover y presionado), `--dur-media` 200 ms (entradas de hojas, modales y menús), `--dur-lenta` 280 ms (cambios grandes); `--curva-salida` `cubic-bezier(0.23, 1, 0.32, 1)` para entradas y respuestas, `--curva-movimiento` `cubic-bezier(0.77, 0, 0.175, 1)` para algo que cambia de lugar.

@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, HeartPulse } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
@@ -14,11 +14,12 @@ const EMPTY = { jugador_id: '', tipo: '', descripcion: '', fecha_inicio: '', fec
 export default function Lesiones() {
   const { tienePermiso } = useAuth()
   const puedeEditar = tienePermiso(['administrador', 'personal_salud'])
-  const { selectedSportId, selectedSport } = useDeporte()
+  const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
 
   const [lesiones, setLesiones]   = useState([])
   const [jugadores, setJugadores] = useState([])
   const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState(null)
   const [modal, setModal]         = useState(false)
   const [form, setForm]           = useState(EMPTY)
   const [editId, setEditId]       = useState(null)
@@ -27,11 +28,12 @@ export default function Lesiones() {
 
   const load = async () => {
     setLoading(true)
+    setError(null)
     try {
       const [lRes, jRes] = await Promise.all([api.get('/lesiones'), api.get('/jugadores')])
       setLesiones(lRes.data)
       setJugadores(jRes.data)
-    } catch (e) { toast.error(e.message) }
+    } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }
 
@@ -115,10 +117,12 @@ export default function Lesiones() {
 
       <div className="page-toolbar">
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-            <HeartPulse size={15} style={{ display: 'inline', marginRight: 6 }} />
-            {lesionesFiltradas.length} registros · <span style={{ color: 'var(--danger)' }}>{activas.length} activas</span>
-          </span>
+          {!loading && !error && (
+            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+              <HeartPulse size={15} style={{ display: 'inline', marginRight: 6 }} />
+              {lesionesFiltradas.length} registros · <span style={{ color: 'var(--danger)' }}>{activas.length} activas</span>
+            </span>
+          )}
         </div>
         {puedeEditar && (
           <button className="btn btn-primary" onClick={openCreate}>
@@ -128,11 +132,23 @@ export default function Lesiones() {
       </div>
 
       <div className="card" style={{ padding: 0 }}>
-        {loading ? <LoadingSpinner /> : lesionesFiltradas.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">🩺</div>
-            <p>No hay lesiones registradas</p>
-          </div>
+        {loading ? <Esqueleto tipo="tabla" columnas={puedeEditar ? 6 : 5} /> : error ? (
+          <EstadoError mensaje={error} onReintentar={load} />
+        ) : lesiones.length === 0 ? (
+          <EstadoVacio
+            icono="fa-kit-medical"
+            titulo="Aún no hay lesiones registradas"
+            descripcion={puedeEditar
+              ? 'Cuando un deportista se lesione, regístralo aquí para seguir su recuperación y que el inicio lo muestre como no disponible.'
+              : 'Cuando el personal de salud registre una lesión, aparecerá aquí.'}
+            accion={puedeEditar ? { texto: 'Registrar lesión', icono: 'fa-plus', onClick: openCreate } : null}
+          />
+        ) : lesionesFiltradas.length === 0 ? (
+          <EstadoSinResultados
+            descripcion={`No hay lesiones de deportistas de ${selectedSport?.nombre || 'este deporte'}.`}
+            onLimpiar={() => setSelectedSportId('todos')}
+            textoLimpiar="Ver todos los deportes"
+          />
         ) : (
           <div className="table-wrapper">
             <table>

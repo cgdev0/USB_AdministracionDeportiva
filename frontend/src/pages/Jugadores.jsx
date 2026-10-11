@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Users, Eye, Camera, Activity, Target, Upload, Tro
 import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
 import ImportCsvModal from '../components/ImportCsvModal'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -66,16 +66,18 @@ export default function Jugadores() {
   const [modoAsociacion, setModoAsociacion] = useState('disciplina') // default to selected sport
   const fileInputRef = useRef(null)
   const [loading, setLoading]             = useState(true)
+  const [error, setError]                 = useState(null)
 
   const loadData = async () => {
     setLoading(true)
+    setError(null)
     try {
       const [jRes, eRes] = await Promise.all([api.get('/jugadores'), api.get('/equipos')])
       setJugadores(jRes.data)
       setEquipos(eRes.data)
       if (usuario?.rol === 'administrador') { try { const uRes = await api.get('/usuarios'); setEntrenadores(uRes.data.filter(u=>u.rol==='entrenador')) } catch {} }
     } catch (e) {
-      toast.error(e.message)
+      setError(e.message)
     } finally {
       setLoading(false)
     }
@@ -278,12 +280,12 @@ export default function Jugadores() {
                     minWidth: 200
                   }}
                 >
-                  <option value="todos">🌐 Todos los deportes ({jugadores.length})</option>
+                  <option value="todos">Todos los deportes{loading || error ? '' : ` (${jugadores.length})`}</option>
                   {disciplinas.map(d => {
                     const count = jugadores.filter(j => String(j.disciplina_id) === String(d.id)).length
                     return (
                       <option key={d.id} value={d.id}>
-                        🏅 {d.nombre} ({count} deportistas)
+                        {d.nombre}{loading || error ? '' : ` (${count} deportistas)`}
                       </option>
                     )
                   })}
@@ -375,9 +377,11 @@ export default function Jugadores() {
       {/* Barra de herramientas / buscador */}
       <div className="page-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
         <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-          <Users size={15} style={{ display: 'inline', marginRight: 6 }} />
-          Mostrando <strong>{filteredJugadores.length}</strong> deportistas{' '}
-          {currentSport ? `en ${currentSport.nombre}` : 'en total'}
+          {!loading && !error && <>
+            <Users size={15} style={{ display: 'inline', marginRight: 6 }} />
+            Mostrando <strong>{filteredJugadores.length}</strong> deportistas{' '}
+            {currentSport ? `en ${currentSport.nombre}` : 'en total'}
+          </>}
         </span>
 
         <div style={{ maxWidth: 300, width: '100%' }}>
@@ -415,29 +419,27 @@ export default function Jugadores() {
       {/* Tabla de Jugadores */}
       <div className="card" style={{ padding: 0 }}>
         {loading ? (
-          <LoadingSpinner />
+          <Esqueleto tipo="tabla" columnas={6} filas={6} />
+        ) : error ? (
+          <EstadoError mensaje={error} onReintentar={loadData} />
+        ) : jugadores.length === 0 ? (
+          <EstadoVacio
+            icono="fa-people-group"
+            titulo="Aún no hay deportistas registrados"
+            descripcion={puedeEditar
+              ? 'Registra a cada deportista con su dorsal, o importa el plantel completo desde un archivo CSV.'
+              : 'Cuando se registren deportistas, aparecerán aquí.'}
+            accion={puedeEditar ? { texto: 'Registrar deportista', icono: 'fa-plus', onClick: openCreate } : null}
+            accionSecundaria={puedeEditar ? { texto: 'Importar CSV', icono: 'fa-file-arrow-up', onClick: () => setModalCsv(true) } : null}
+          />
         ) : filteredJugadores.length === 0 ? (
-          <div className="empty-state" style={{ padding: '60px 20px', textAlign: 'center' }}>
-            <div className="empty-state-icon" style={{ fontSize: 48, marginBottom: 12 }}>🏃‍♂️</div>
-            <h3 style={{ fontSize: 16, marginBottom: 6 }}>
-              {currentSport ? `No hay deportistas registrados en ${currentSport.nombre}` : 'No se encontraron deportistas'}
-            </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
-              {puedeEditar
-                ? 'Puedes registrar un nuevo deportista manualmente o importar un lote con un archivo CSV.'
-                : 'No hay registros disponibles con el filtro actual.'}
-            </p>
-            {puedeEditar && (
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                <button className="btn btn-primary" onClick={openCreate}>
-                  <Plus size={16} /> Registrar Deportista
-                </button>
-                <button className="btn btn-secondary" onClick={() => setModalCsv(true)}>
-                  <Upload size={16} /> Importar CSV
-                </button>
-              </div>
-            )}
-          </div>
+          <EstadoSinResultados
+            descripcion={searchTerm.trim() || Object.values(filtros).some(Boolean)
+              ? 'Ningún deportista coincide con la búsqueda o los filtros. Revisa el texto o quita los filtros.'
+              : `No hay deportistas registrados en ${currentSport?.nombre || 'este deporte'}.`}
+            onLimpiar={() => { setSearchTerm(''); setFiltros({ edadMin: '', edadMax: '', posicion: '', entrenador: '' }); setSelectedSportId('todos') }}
+            textoLimpiar="Ver todos los deportistas"
+          />
         ) : (
           <div className="table-wrapper">
             <table>
@@ -487,7 +489,7 @@ export default function Jugadores() {
                               fontSize: 14
                             }}
                           >
-                            👤
+                            <i className="fa-solid fa-user" aria-hidden="true" />
                           </div>
                         )}
                         <span>{j.nombre}</span>
@@ -503,14 +505,14 @@ export default function Jugadores() {
                     </td>
                     <td>
                       {j.disciplina_nombre ? (
-                        <span className="badge badge-green">🎯 {j.disciplina_nombre}</span>
+                        <span className="badge badge-green"><i className="fa-solid fa-medal" aria-hidden="true" /> {j.disciplina_nombre}</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)' }}>General</span>
                       )}
                     </td>
                     <td>
                       {j.equipo_nombre ? (
-                        <span className="badge badge-blue">🏆 {j.equipo_nombre}</span>
+                        <span className="badge badge-blue"><i className="fa-solid fa-shield-halved" aria-hidden="true" /> {j.equipo_nombre}</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)' }}>—</span>
                       )}
@@ -624,7 +626,7 @@ export default function Jugadores() {
                       fontSize: 64
                     }}
                   >
-                    👤
+                    <i className="fa-solid fa-user" aria-hidden="true" />
                   </div>
                 )}
                 {puedeEditar && (
@@ -693,9 +695,7 @@ export default function Jugadores() {
                     </div>
                   </div>
                 ) : (
-                  <p style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', padding: '20px 0' }}>
-                    No hay registros antropométricos aún.
-                  </p>
+                  <EstadoVacio compacto icono="fa-ruler-combined" titulo="Sin medición antropométrica" descripcion="Se registra en el módulo Antropometría." />
                 )}
               </div>
               <div className="card" style={{ padding: 20 }}>
@@ -717,9 +717,7 @@ export default function Jugadores() {
                     </div>
                   </div>
                 ) : (
-                  <p style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', padding: '20px 0' }}>
-                    No hay evaluaciones físicas registradas.
-                  </p>
+                  <EstadoVacio compacto icono="fa-bullseye" titulo="Sin evaluación física" descripcion="Se registra en el módulo Evaluaciones." />
                 )}
               </div>
             </div>
