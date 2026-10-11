@@ -81,7 +81,9 @@ Dentro de paneles y fichas se usa la variante `compacto`. Nunca emojis.
 
 Tokens en `index.css`: `--dur-rapida` 120 ms (hover y presionado), `--dur-media` 200 ms (entradas de hojas, modales y menús), `--dur-lenta` 280 ms (cambios grandes); `--curva-salida` `cubic-bezier(0.23, 1, 0.32, 1)` para entradas y respuestas, `--curva-movimiento` `cubic-bezier(0.77, 0, 0.175, 1)` para algo que cambia de lugar.
 
-Reglas: animar solo `transform` y `opacity`; nada animado en acciones que se repiten muchas veces (escribir, navegar con teclado); nunca aparecer desde `scale(0)`; con `prefers-reduced-motion: reduce` no hay transiciones ni animaciones. Criterio tomado de la skill `emil-design-eng` (Emil Kowalski).
+`--curva-hoja` `cubic-bezier(0.32, 0.72, 0, 1)` para hojas que suben desde abajo (hoja "Más" y modales en celular, 300 ms).
+
+Reglas: animar solo `transform` y `opacity`; nada animado en acciones que se repiten muchas veces (escribir, navegar con teclado); nunca aparecer desde `scale(0)`; con `prefers-reduced-motion: reduce` no hay transiciones ni animaciones, salvo un fundido de 150 ms en modales y hojas para que su aparición se entienda. Las gráficas de Recharts animan 350 ms (no 1,5 s) y se apagan con movimiento reducido (`utils/movimiento.js`). No se animan las pestañas, el menú ni la navegación con teclado (se usan decenas de veces al día), ni las tarjetas que no son clicables. Criterio tomado de la skill `emil-design-eng` (Emil Kowalski).
 
 ## 4. Estructura
 

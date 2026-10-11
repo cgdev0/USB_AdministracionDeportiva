@@ -3,6 +3,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, ResponsiveContainer,
   ReferenceLine, Label, Cell, CartesianGrid
 } from 'recharts';
+import { ANIMACION_GRAFICA } from '../utils/movimiento'
 
 const Somatocarta = ({ data, average = null }) => {
   // data: array de { x, y, nombre, posicion, somatotipo }
@@ -92,7 +93,7 @@ const Somatocarta = ({ data, average = null }) => {
           
           <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
           
-          <Scatter data={chartData}>
+          <Scatter {...ANIMACION_GRAFICA} data={chartData}>
             {chartData.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`} 

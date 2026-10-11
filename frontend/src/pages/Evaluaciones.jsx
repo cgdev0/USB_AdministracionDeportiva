@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip
 } from 'recharts'
+import { ANIMACION_GRAFICA } from '../utils/movimiento'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
 import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
@@ -182,7 +183,7 @@ export default function Evaluaciones() {
                   <PolarGrid stroke="var(--border)" />
                   <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar name={ev.jugador_nombre} dataKey="A" stroke="var(--accent2)" fill="var(--accent2)" fillOpacity={0.5} />
+                  <Radar {...ANIMACION_GRAFICA} name={ev.jugador_nombre} dataKey="A" stroke="var(--accent2)" fill="var(--accent2)" fillOpacity={0.5} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>

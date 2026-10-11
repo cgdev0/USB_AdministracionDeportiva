@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, BarChart, Bar, Legend
 } from 'recharts'
+import { ANIMACION_GRAFICA } from '../utils/movimiento'
 import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
@@ -597,7 +598,7 @@ export default function Antropometria() {
                       <PolarGrid stroke="#DDDDDD" />
                       <PolarAngleAxis dataKey="pliegue" stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} />
                       <PolarRadiusAxis stroke="#CCCCCC" />
-                      <Radar name="Espesor (mm)" dataKey="valor" stroke="var(--accent2)" fill="var(--accent2)" fillOpacity={0.4} />
+                      <Radar {...ANIMACION_GRAFICA} name="Espesor (mm)" dataKey="valor" stroke="var(--accent2)" fill="var(--accent2)" fillOpacity={0.4} />
                       <Tooltip
                         contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)' }}
                         formatter={(value) => [`${value} mm`, 'Espesor']}
@@ -648,9 +649,9 @@ export default function Antropometria() {
                       contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)' }}
                     />
                     <Legend />
-                    <Area type="monotone" dataKey="peso" name="Peso Total (kg)" stroke="var(--accent)" fillOpacity={1} fill="url(#colorPeso)" />
-                    <Area type="monotone" dataKey="musculo" name="Masa Muscular (kg)" stroke="#0B93C7" fillOpacity={1} fill="url(#colorMusculo)" />
-                    <Area type="monotone" dataKey="grasa" name="% Grasa Corporal" stroke="var(--danger)" fillOpacity={1} fill="url(#colorGrasa)" />
+                    <Area {...ANIMACION_GRAFICA} type="monotone" dataKey="peso" name="Peso Total (kg)" stroke="var(--accent)" fillOpacity={1} fill="url(#colorPeso)" />
+                    <Area {...ANIMACION_GRAFICA} type="monotone" dataKey="musculo" name="Masa Muscular (kg)" stroke="#0B93C7" fillOpacity={1} fill="url(#colorMusculo)" />
+                    <Area {...ANIMACION_GRAFICA} type="monotone" dataKey="grasa" name="% Grasa Corporal" stroke="var(--danger)" fillOpacity={1} fill="url(#colorGrasa)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -675,7 +676,7 @@ export default function Antropometria() {
                       <XAxis type="number" stroke="var(--text-muted)" />
                       <YAxis type="category" dataKey="nombre" stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
                       <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
-                      <Bar dataKey="cm" fill="var(--accent)" radius={[0, 6, 6, 0]} />
+                      <Bar {...ANIMACION_GRAFICA} dataKey="cm" fill="var(--accent)" radius={[0, 6, 6, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
