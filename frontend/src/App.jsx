@@ -5,37 +5,12 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/Estructura'
 import { MODULOS } from './config/navegacion'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Equipos from './pages/Equipos'
-import Jugadores from './pages/Jugadores'
-import Entrenamientos from './pages/Entrenamientos'
-import Asistencia from './pages/Asistencia'
-import Lesiones from './pages/Lesiones'
-import Evaluaciones from './pages/Evaluaciones'
-import Partidos from './pages/Partidos'
-import EstadisticasJugador from './pages/EstadisticasJugador'
-import Antropometria from './pages/Antropometria'
-import Usuarios from './pages/Usuarios'
-import HeadCoach from './pages/HeadCoach'
-import Salud from './pages/Salud'
+import LimiteCarga from './components/LimiteCarga'
+import { PAGINAS } from './config/paginas'
 
 // Cada ruta usa los roles definidos en config/navegacion.js: el menú y el acceso
 // a las páginas salen de la misma fuente y no pueden contradecirse.
-const PAGINAS = {
-  '/': Dashboard,
-  '/head-coach': HeadCoach,
-  '/equipos': Equipos,
-  '/jugadores': Jugadores,
-  '/entrenamientos': Entrenamientos,
-  '/asistencia': Asistencia,
-  '/partidos': Partidos,
-  '/estadisticas': EstadisticasJugador,
-  '/lesiones': Lesiones,
-  '/salud': Salud,
-  '/evaluaciones': Evaluaciones,
-  '/antropometria': Antropometria,
-  '/usuarios': Usuarios,
-}
+// Las páginas se cargan por partes (config/paginas.js).
 
 export default function App() {
   return (
@@ -48,7 +23,7 @@ export default function App() {
             return (
               <Route key={ruta} path={ruta} element={
                 <ProtectedRoute roles={roles}>
-                  <AppLayout><Pagina /></AppLayout>
+                  <AppLayout><LimiteCarga key={ruta}><Pagina /></LimiteCarga></AppLayout>
                 </ProtectedRoute>
               } />
             )
