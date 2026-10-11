@@ -1,7 +1,7 @@
 // Recorrido completo por rol: 13 módulos × 4 anchos (RF-04, RF-05, RNF-04; métricas M-P1 y M-F4)
 // Para cada combinación verifica: acceso o redirección según el rol, sin errores y sin desborde horizontal.
 const { test, expect } = require('@playwright/test');
-const { ANCHOS, modulos, entrar, vigilar, desborde, guardarMetrica } = require('./ayuda');
+const { ANCHOS, modulos, entrar, vigilar, desborde, guardarMetrica, paginaEn } = require('./ayuda');
 
 const ROLES = [
   ['administrador', 'administrador'],
@@ -12,14 +12,15 @@ const ROLES = [
 ];
 
 ROLES.forEach(([cuenta, rol], i) => {
-  test(`CP-UI-REC-00${i + 1} [RF-04] [RF-05] Recorrido de ${rol}: 13 módulos en 4 anchos`, async ({ page }) => {
+  test(`CP-UI-REC-00${i + 1} [RF-04] [RF-05] Recorrido de ${rol}: 13 módulos en 4 anchos`, async ({ browser }) => {
     const MODULOS = await modulos();
-    const problemas = vigilar(page);
-    await entrar(page, cuenta);
     const filas = [];
 
-    for (const [ancho, tamano] of Object.entries(ANCHOS)) {
-      await page.setViewportSize(tamano);
+    for (const ancho of Object.keys(ANCHOS)) {
+      // Un contexto por ancho: táctil en celular y tableta, mouse en computador
+      const page = await paginaEn(browser, ancho);
+      const problemas = vigilar(page);
+      await entrar(page, cuenta);
       for (const m of MODULOS) {
         problemas.length = 0;
         await page.goto(m.ruta);
@@ -34,6 +35,7 @@ ROLES.forEach(([cuenta, rol], i) => {
         expect.soft(d, `${m.ruta} (${ancho}) sin desborde horizontal`).toBeLessThanOrEqual(0);
         expect.soft(problemas, `${m.ruta} (${ancho}) sin errores`).toEqual([]);
       }
+      await page.context().close();
     }
     guardarMetrica(`recorrido-${rol}`, filas);
   });

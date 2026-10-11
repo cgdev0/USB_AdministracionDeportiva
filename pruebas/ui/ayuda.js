@@ -14,6 +14,14 @@ const ANCHOS = {
   pc: { width: 1440, height: 900 },
 };
 
+// Celulares y tabletas se emulan con pantalla táctil (pointer: coarse), como en un dispositivo real;
+// el computador, con mouse. Así se prueban los tamaños táctiles y el hover solo con mouse.
+const esTactil = (ancho) => ancho !== 'pc';
+async function paginaEn(browser, ancho) {
+  const contexto = await browser.newContext({ viewport: ANCHOS[ancho], hasTouch: esTactil(ancho) });
+  return contexto.newPage();
+}
+
 // Configuración de navegación de la app (fuente única de módulos y roles)
 async function modulos() {
   const { MODULOS } = await import(pathToFileURL(path.join(RAIZ, 'frontend/src/config/navegacion.js')).href);
@@ -63,4 +71,4 @@ function guardarMetrica(nombre, datos) {
   fs.writeFileSync(path.join(DIR_METRICAS, `${nombre}.json`), JSON.stringify(datos, null, 2));
 }
 
-module.exports = { ANCHOS, modulos, entrar, entrarPorFormulario, vigilar, desborde, guardarMetrica, CUENTAS };
+module.exports = { esTactil, paginaEn, ANCHOS, modulos, entrar, entrarPorFormulario, vigilar, desborde, guardarMetrica, CUENTAS };

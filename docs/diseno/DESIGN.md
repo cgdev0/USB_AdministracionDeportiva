@@ -54,6 +54,22 @@ Medido directamente en las plataformas (CSS publicado y capturas por píxel):
 
 Radio 4 px (Bootstrap). Paneles con sombra y borde inferior gris, como el portal: `0 1px 3px rgba(0,0,0,.14), 0 4px 0 -1px #D2D2D2`. Banners verdes con degradados radiales sutiles para dar profundidad. Áreas táctiles mínimas de 44 px.
 
+### Interacción (v1.5)
+
+| Estado | Regla |
+|---|---|
+| Hover | Solo con mouse: toda regla `:hover` va dentro de `@media (hover: hover) and (pointer: fine)`, para que en pantallas táctiles no quede "pegada" después de tocar. Nada esencial (información o acciones) puede depender del hover. |
+| Presionado | Botones, botones de ícono y opciones de menú ceden un poco al presionar (`transform: scale(0.97)`). Reemplaza el destello gris del toque (`-webkit-tap-highlight-color: transparent`). |
+| Foco de teclado | Anillo naranja de 2 px rodeado de uno casi negro (`:focus-visible`). El negro asegura contraste sobre blanco, gris y verde; el naranja conserva la identidad. Los campos de formulario usan su propio borde verde con halo. |
+| Deshabilitado | Opacidad 0,6 (botones) o 0,45 (íconos) y cursor `not-allowed`. Los botones de guardar muestran "Guardando…" mientras esperan. |
+| Táctil | Con `@media (pointer: coarse)`: botones, íconos, selectores y campos de al menos 44 px, y campos con letra de 16 px (evita el zoom automático de iOS). En computador se conserva la densidad del portal. Nunca se bloquea el zoom. |
+
+### Movimiento (v1.5)
+
+Tokens en `index.css`: `--dur-rapida` 120 ms (hover y presionado), `--dur-media` 200 ms (entradas de hojas, modales y menús), `--dur-lenta` 280 ms (cambios grandes); `--curva-salida` `cubic-bezier(0.23, 1, 0.32, 1)` para entradas y respuestas, `--curva-movimiento` `cubic-bezier(0.77, 0, 0.175, 1)` para algo que cambia de lugar.
+
+Reglas: animar solo `transform` y `opacity`; nada animado en acciones que se repiten muchas veces (escribir, navegar con teclado); nunca aparecer desde `scale(0)`; con `prefers-reduced-motion: reduce` no hay transiciones ni animaciones. Criterio tomado de la skill `emil-design-eng` (Emil Kowalski).
+
 ## 4. Estructura
 
 ### Computador (≥ 1024 px): igual al portal
@@ -98,7 +114,8 @@ Header blanco compacto (logo + nombre del sistema + foto), franja, contenido en 
 |---|---|---|
 | 1 | Reinterpretación propia: Zilla Slab + Fira Sans, fondo blanco minimalista, solo una franja fina como guiño a la marca. | **Rechazada** por Carlos: no se parecía a las plataformas de la universidad (otra tipografía, otros colores, sin footer negro, demasiado plana). |
 | 2 | Lenguaje visual de Unisimón medido en sus plataformas, modernizado. | **Aprobada** por Carlos y aplicada en la v1.3. |
+| v1.5 | Estados de interacción por capacidad del dispositivo (mouse o táctil), tokens de movimiento y foco de dos tonos. Sin emojis en la interfaz: solo íconos de Font Awesome. | Aprobada por Carlos (fase 1 de v1.5). |
 
-## 7. Calidad mínima (se verifica con Playwright en 390 px y 1440 px)
+## 7. Calidad mínima (se verifica con Playwright en 360, 390, 768 y 1440 px; celular y tableta con emulación táctil)
 
 Sin scroll horizontal · objetivos táctiles ≥ 44 px · foco visible con teclado · `prefers-reduced-motion` respetado · contraste AA · estados de carga, vacío y error en cada módulo.
