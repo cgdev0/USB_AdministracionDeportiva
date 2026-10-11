@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 
 const { responderError } = require('../utils/errores');
+const { puedeVerJugador } = require('../utils/alcance');
 const calculateAnthropometry = (data, genero = 'masculino') => {
   const {
     peso, estatura,
@@ -132,6 +133,10 @@ const generoDelJugador = async (jugadorId) => {
 
 const getAntropometriaByJugador = async (req, res) => {
   try {
+    // Solo quien puede ver al deportista accede a sus medidas (DEF-029)
+    if (!(await puedeVerJugador(pool, req.usuario, req.params.id))) {
+      return res.status(404).json({ error: 'Deportista no encontrado o fuera de tu alcance.' });
+    }
     const { rows } = await pool.query(
       'SELECT * FROM antropometria WHERE jugador_id = $1 ORDER BY fecha DESC',
       [req.params.id]

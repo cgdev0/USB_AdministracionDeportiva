@@ -3,6 +3,19 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v1.5.2 — Privacidad de los datos de los deportistas
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.5.2`
+
+Corrige tres fallas de privacidad encontradas al escribir la guía del sistema (datos protegidos por la Ley 1581 de 2012):
+- **Asistencia (DEF-027):** cada rol ve solo la asistencia de los deportistas de su alcance; antes un deportista veía la de todo el plantel.
+- **Evaluaciones físicas (DEF-028):** se filtran por rol; antes la API las devolvía todas a cualquier usuario.
+- **Antropometría (DEF-029):** las medidas de un deportista solo las ve quien puede ver a ese deportista; si no, la API responde "no encontrado".
+
+La regla de alcance (deportista → él mismo, entrenador → los suyos, head coach → los de sus entrenadores, administrador y salud → todos) queda en un solo lugar: `backend/utils/alcance.js`.
+
+Pruebas: CP-PER-010 a CP-PER-012. API 92 de 92, navegador 36 de 36.
+
 ## v1.5.1 — Vista del deportista desde el inicio
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.5.1`

@@ -1,14 +1,19 @@
 const db = require('../config/db');
 
 const { responderError } = require('../utils/errores');
-exports.getAll = async (_req, res) => {
+const { condicionAlcance } = require('../utils/alcance');
+exports.getAll = async (req, res) => {
   try {
+    // Cada rol ve solo las evaluaciones de los deportistas de su alcance (DEF-028)
+    const params = [];
+    const alcance = condicionAlcance(req.usuario, params);
     const { rows } = await db.query(`
       SELECT e.*, j.nombre AS jugador_nombre, j.dorsal AS jugador_dorsal
       FROM evaluaciones_rugby e
       JOIN jugadores j ON e.jugador_id = j.id
+      ${alcance ? `WHERE ${alcance}` : ''}
       ORDER BY e.fecha DESC
-    `);
+    `, params);
     res.json(rows);
   } catch (err) {
     responderError(res, err);
