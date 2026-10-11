@@ -143,8 +143,8 @@ exports.getInicio = async (req, res) => {
        WHERE e.fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6${q3.c} ORDER BY e.fecha, e.hora NULLS LAST, e.id`, q3.pa);
     const cuandoDonde = (a) => [a.lugar, a.hora].filter(Boolean).join(' · ') || null;
     const semana = [
-      ...partidos.map(p => ({ clase: 'partido', id: p.id, fecha: p.fecha, hora: p.hora, titulo: `Unisimón vs. ${p.rival}`, etiqueta: p.tipo === 'liga' ? 'Liga' : 'Amistoso', detalle: cuandoDonde(p) })),
-      ...entrenos.map(e => ({ clase: 'entrenamiento', id: e.id, fecha: e.fecha, hora: e.hora, titulo: e.tipo, detalle: cuandoDonde(e) || e.descripcion })),
+      ...partidos.map(p => ({ clase: 'partido', id: p.id, fecha: p.fecha, hora: p.hora, lugar: p.lugar, titulo: `Unisimón vs. ${p.rival}`, etiqueta: p.tipo === 'liga' ? 'Liga' : 'Amistoso', detalle: cuandoDonde(p) })),
+      ...entrenos.map(e => ({ clase: 'entrenamiento', id: e.id, fecha: e.fecha, hora: e.hora, lugar: e.lugar, titulo: e.tipo, detalle: cuandoDonde(e) || e.descripcion })),
     ].sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.hora || '99').localeCompare(b.hora || '99') || (a.clase === 'partido' ? -1 : 1));
 
     // 4. Asistencia de las últimas 4 sesiones (solo jugadores del alcance)

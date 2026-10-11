@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext'
 import { Esqueleto, EstadoError, EstadoVacio } from './EstadoVista'
 import { nombreConDorsal, tieneDorsal } from '../utils/jugador'
 import { fechaLarga } from '../utils/fechas'
+import AgregarCalendario from './AgregarCalendario'
 
 const ESTADO = {
   disponible:    { texto: 'Disponible',       clase: 'badge-green' },
@@ -277,6 +278,13 @@ function Vista({ datos, alResponder, partido }) {
             )
           ) : <p className="convocatoria-detalle">El partido ya pasó; ya no se puede responder.</p>}
         </div>
+      )}
+      {conv.mia && (
+        <AgregarCalendario evento={{
+          id: `partido-${partido.id}`, titulo: `Unisimón vs. ${partido.rival}`, fecha: partido.fecha?.slice(0, 10),
+          hora: conv.hora_presentacion || partido.hora || null, lugar: conv.lugar || partido.lugar || null, minutos: 150,
+          descripcion: `Convocado como ${conv.mia.rol}.${conv.notas ? ` ${conv.notas}` : ''}`,
+        }} />
       )}
       {(conv.hora_presentacion || conv.lugar || conv.notas) && (
         <div className="convocatoria-logistica">

@@ -8,6 +8,8 @@ import { Esqueleto, EstadoError } from '../components/EstadoVista'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
 import Convocatoria from '../components/Convocatoria'
+import InstalarApp from '../components/InstalarApp'
+import AgregarCalendario from '../components/AgregarCalendario'
 import { ROLES, iniciales } from '../config/navegacion'
 import { capitalizar, diaCorto, fechaCorta, fechaLarga, fechaRelativa, numeroDia } from '../utils/fechas'
 import { nombreConDorsal, tieneDorsal } from '../utils/jugador'
@@ -371,6 +373,7 @@ function MiSesion({ usuario, onSalir }) {
               {ac.icono && <i className={`fa-solid ${ac.icono}`} aria-hidden="true"></i>} {ac.texto}
             </Link>
           ))}
+          <InstalarApp />
           <button type="button" className="btn btn-secondary btn-bloque" onClick={() => setCambiarClave(true)}>Cambiar contraseña</button>
           <button type="button" className="btn btn-secondary btn-bloque" onClick={onSalir}>Cerrar sesión</button>
         </div>
@@ -483,6 +486,11 @@ function EstaSemana({ items }) {
                   <p className="ini-agenda-titulo">{it.titulo} {it.etiqueta && <span className="ini-etiqueta">{it.etiqueta}</span>}</p>
                   <p className="ini-agenda-detalle">{it.detalle || (it.clase === 'partido' ? 'Partido' : 'Entrenamiento')}</p>
                 </div>
+                <AgregarCalendario compacto evento={{
+                  id: `${it.clase}-${it.id}`, titulo: it.titulo, fecha: it.fecha, hora: it.hora, lugar: it.lugar,
+                  minutos: it.clase === 'partido' ? 150 : 90,
+                  descripcion: it.clase === 'partido' ? 'Partido · Administración Deportiva Unisimón' : 'Entrenamiento · Administración Deportiva Unisimón',
+                }} />
               </li>
             ))}
           </ul>
