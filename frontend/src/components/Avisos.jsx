@@ -15,6 +15,9 @@ const hace = (fecha) => {
   return new Date(fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
 }
 
+// Ícono de cada tipo de aviso
+const ICONOS = { convocatoria: 'fa-clipboard-list', comunicado: 'fa-bullhorn', recordatorio: 'fa-clock' }
+
 export default function Avisos() {
   const [datos, setDatos] = useState(null)
   const [error, setError] = useState('')
@@ -55,9 +58,10 @@ export default function Avisos() {
                 {datos.avisos.map(a => (
                   <li key={a.id}>
                     <button type="button" className={a.leida ? '' : 'sin-leer'} onClick={() => abrirAviso(a)}>
+                      <i className={`fa-solid ${ICONOS[a.tipo] || 'fa-bell'} avisos-icono`} aria-hidden="true"></i>
                       <span className="avisos-titulo">{a.titulo}</span>
                       <span className="avisos-mensaje">{a.mensaje}</span>
-                      <span className="avisos-hora">{hace(a.created_at)}</span>
+                      <span className="avisos-hora">{hace(a.created_at)}{!a.leida && <span className="avisos-nuevo">· Nuevo</span>}</span>
                     </button>
                   </li>
                 ))}

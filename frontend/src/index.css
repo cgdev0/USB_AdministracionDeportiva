@@ -515,7 +515,7 @@ button.ini-dorsal:active { transform: scale(0.97); }
   position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-left: auto;
   border: 1px solid #CCC; border-radius: 50%; background: var(--blanco); color: #555; font-size: 18px; transition: var(--transition);
 }
-.cabecera-avisos + .cabecera-foto { margin-left: 8px; }
+.cabecera-avisos ~ .cabecera-foto { margin-left: 8px; }
 @media (hover: hover) and (pointer: fine) { .cabecera-avisos:hover { background: #F2F2F2; color: var(--texto); } }
 .cabecera-avisos:active { transform: scale(0.95); }
 .cabecera-avisos-numero {
@@ -523,20 +523,26 @@ button.ini-dorsal:active { transform: scale(0.97); }
   display: grid; place-items: center; background: var(--danger); color: var(--blanco); font-size: 11px; font-weight: 700;
   box-shadow: 0 0 0 2px var(--blanco);
 }
-@media (min-width: 1024px) { .cabecera-avisos { margin-left: 0; margin-right: 12px; } .cabecera-avisos + .cabecera-foto { margin-left: 0; } }
+@media (min-width: 1024px) { .cabecera-avisos { margin-left: 0; margin-right: 12px; } .cabecera-avisos ~ .cabecera-foto { margin-left: 0; } }
 /* En celular el círculo con las iniciales es decorativo (la sesión está en el inicio): cede su lugar a la campanita */
-@media (max-width: 1023px) { .cabecera-avisos + .cabecera-foto { display: none; } }
-.avisos-lista { list-style: none; display: grid; gap: 8px; }
+@media (max-width: 1023px) { .cabecera-avisos ~ .cabecera-foto { display: none; } }
+/* Lista de avisos: filas separadas por una línea, con el ícono del tipo de aviso (como los reconocimientos del inicio) */
+.avisos-lista { list-style: none; display: grid; margin: -4px 0; }
+.avisos-lista li + li { border-top: 1px solid #E5E5E5; }
 .avisos-lista button {
-  display: grid; gap: 2px; width: 100%; padding: 12px 14px; text-align: left; font: inherit; color: var(--texto); cursor: pointer;
-  border: 1px solid var(--borde-claro); border-radius: 6px; background: var(--blanco); transition: var(--transition);
+  display: grid; grid-template-columns: 36px 1fr; gap: 2px 12px; align-items: start; width: 100%; padding: 12px 6px;
+  text-align: left; font: inherit; color: var(--texto); cursor: pointer; border: 0; border-radius: 4px; background: none; transition: var(--transition);
 }
-.avisos-lista button.sin-leer { border-left: 4px solid var(--verde-boton); background: #F6FBF7; }
-@media (hover: hover) and (pointer: fine) { .avisos-lista button:hover { border-color: var(--verde-boton); } }
-.avisos-lista button:active { transform: scale(0.99); }
-.avisos-titulo { font-weight: 700; font-size: 14.5px; }
-.avisos-mensaje { font-size: 14px; color: var(--texto); }
-.avisos-hora { font-size: 12.5px; color: var(--texto-suave); }
+@media (hover: hover) and (pointer: fine) { .avisos-lista button:hover { background: #F5F5F5; } }
+.avisos-lista button:active { background: #EEEEEE; }
+.avisos-icono { grid-row: span 3; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #EEEEEE; color: #666; font-size: 15px; }
+.avisos-lista .sin-leer .avisos-icono { background: var(--ok-fondo); color: var(--verde-texto); }
+.avisos-titulo { font-weight: 500; font-size: 14.5px; }
+.avisos-lista .sin-leer .avisos-titulo { font-weight: 700; }
+.avisos-mensaje { font-size: 14px; color: var(--texto-suave); }
+.avisos-lista .sin-leer .avisos-mensaje { color: var(--texto); }
+.avisos-hora { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--texto-suave); }
+.avisos-nuevo { font-weight: 700; color: var(--verde-texto); }
 
 /* Convocatoria (v1.6) */
 .convocatoria { display: grid; gap: 14px; color: var(--texto); }

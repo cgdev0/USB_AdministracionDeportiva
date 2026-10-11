@@ -24,7 +24,7 @@ test('CP-UI-COM-001 [RF-21] El entrenador envía un aviso al equipo desde el ini
   await page.context().close();
 });
 
-test('CP-UI-COM-002 [RF-21] El deportista ve el aviso en el inicio y en la campanita', async ({ browser }) => {
+test('CP-UI-COM-002 [RF-21] El deportista ve el aviso en el inicio y en la campanita, sin desbordes en celular', async ({ browser }) => {
   const page = await paginaEn(browser, 'celular');
   await entrar(page, 'jugador');
   await page.goto('/');
@@ -33,6 +33,9 @@ test('CP-UI-COM-002 [RF-21] El deportista ve el aviso en el inicio y en la campa
   await expect(panel.getByRole('button', { name: 'Enviar aviso' })).toHaveCount(0);
   await page.locator('.cabecera-avisos').click();
   await expect(page.locator('.avisos-lista button', { hasText: 'Aviso del entrenador: Cambio de cancha' })).toBeVisible();
+  // DEF-030: al abrir los avisos reaparecía el círculo de iniciales y la página se desbordaba 27 px en celular
+  expect(await desborde(page)).toBeLessThanOrEqual(1);
+  await expect(page.locator('.cabecera-foto')).toBeHidden();
   await page.context().close();
 });
 
