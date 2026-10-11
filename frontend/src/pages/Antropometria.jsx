@@ -355,6 +355,7 @@ export default function Antropometria() {
                 Deportista Seleccionado
               </span>
               <select
+                aria-label="Deportista seleccionado"
                 value={selectedJugador}
                 onChange={e => setSelectedJugador(e.target.value)}
                 style={{
@@ -388,6 +389,9 @@ export default function Antropometria() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: 3, borderRadius: 8, border: '1px solid var(--border)' }}>
               <button
+                type="button"
+                className="segmento-boton"
+                aria-pressed={activeTab === 'dashboard'}
                 onClick={() => setActiveTab('dashboard')}
                 style={{
                   padding: '6px 14px',
@@ -406,6 +410,9 @@ export default function Antropometria() {
                 <BarChart3 size={14} /> Dashboard Analítico
               </button>
               <button
+                type="button"
+                className="segmento-boton"
+                aria-pressed={activeTab === 'historial'}
                 onClick={() => setActiveTab('historial')}
                 style={{
                   padding: '6px 14px',

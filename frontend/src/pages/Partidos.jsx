@@ -117,7 +117,7 @@ export default function Partidos() {
             accion={puedeEditar ? { texto: 'Registrar partido', icono: 'fa-plus', onClick: openCreate } : null}
           />
         ) : (
-          <div className="table-wrapper">
+          <div className="table-wrapper" tabIndex={0} role="region" aria-label="Partidos registrados">
             <table>
               <thead>
                 <tr>
@@ -145,7 +145,7 @@ export default function Partidos() {
                           <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)}>
                             <Pencil size={13} /> Editar
                           </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(p.id)}>
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(p.id)} aria-label={`Eliminar el partido contra ${p.rival}`} title="Eliminar">
                             <Trash2 size={13} />
                           </button>
                         </div>

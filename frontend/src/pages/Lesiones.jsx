@@ -150,7 +150,7 @@ export default function Lesiones() {
             textoLimpiar="Ver todos los deportes"
           />
         ) : (
-          <div className="table-wrapper">
+          <div className="table-wrapper" tabIndex={0} role="region" aria-label="Lesiones registradas">
             <table>
               <thead>
                 <tr>
@@ -176,7 +176,7 @@ export default function Lesiones() {
                           <button className="btn btn-ghost btn-sm" onClick={() => openEdit(l)}>
                             <Pencil size={13} /> Editar
                           </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(l.id)}>
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(l.id)} aria-label={`Eliminar la lesión de ${l.jugador_nombre || "este deportista"}`} title="Eliminar">
                             <Trash2 size={13} />
                           </button>
                         </div>

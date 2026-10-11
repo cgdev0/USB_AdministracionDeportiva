@@ -111,7 +111,7 @@ export default function Entrenamientos() {
             accion={puedeEditar ? { texto: 'Nuevo entrenamiento', icono: 'fa-plus', onClick: openCreate } : null}
           />
         ) : (
-          <div className="table-wrapper">
+          <div className="table-wrapper" tabIndex={0} role="region" aria-label="Entrenamientos registrados">
             <table>
               <thead>
                 <tr>
@@ -133,7 +133,7 @@ export default function Entrenamientos() {
                           <button className="btn btn-ghost btn-sm" onClick={() => openEdit(e)}>
                             <Pencil size={13} /> Editar
                           </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(e.id)}>
+                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(e.id)} aria-label={`Eliminar el entrenamiento ${e.tipo || ""} del ${new Date(e.fecha).toLocaleDateString('es')}`} title="Eliminar">
                             <Trash2 size={13} />
                           </button>
                         </div>

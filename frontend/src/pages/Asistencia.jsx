@@ -151,6 +151,7 @@ export default function Asistencia() {
                 <ClipboardList size={18} color="var(--accent)" style={{ flexShrink: 0 }} />
                 <select
                   id="select-entrenamiento"
+                  aria-label="Entrenamiento para tomar asistencia"
                   value={selectedId}
                   onChange={e => setSelectedId(e.target.value)}
                   style={{
@@ -240,7 +241,6 @@ export default function Asistencia() {
                   background: pct >= 70
                     ? 'linear-gradient(90deg, var(--accent2), var(--success))'
                     : 'linear-gradient(90deg, var(--warning), var(--danger))',
-                  borderRadius: 100,
                   transition: 'transform var(--dur-lenta) var(--curva-salida)',
                 }} />
               </div>
@@ -296,7 +296,7 @@ export default function Asistencia() {
                       const isSaving = saving === j.id || saving === 'all'
 
                       return (
-                        <tr key={j.id} style={{ opacity: isSaving ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+                        <tr key={j.id} style={{ opacity: isSaving ? 0.6 : 1, transition: 'opacity var(--dur-media) ease' }}>
                           <td style={{ color: 'var(--text-muted)', width: 40 }}>{i + 1}</td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

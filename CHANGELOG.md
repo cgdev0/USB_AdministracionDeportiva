@@ -3,6 +3,37 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v1.5 — Pulido y experiencia de usuario
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.5`
+
+Integra el pulido planificado (DEF-022 a DEF-026) con una mejora de la experiencia en celular y computador. Se entregó en 6 fases (PR #24 a #28).
+
+Accesibilidad y contraste
+- Colores con contraste AA: verde de botón `#1E7F3E`, verde de texto `#107233`, naranja con texto oscuro. El verde del logo y de los paneles no cambia.
+- Botones de ícono con nombre para lectores de pantalla, selectores con etiqueta, tablas recorribles con el teclado y foco visible sobre cualquier fondo.
+- En pantallas táctiles, todos los controles miden al menos 44 px y los campos usan letra de 16 px (evita el zoom de iOS).
+
+Estados de cada pantalla
+- Mientras carga se ve la forma del contenido, sin cifras falsas.
+- Si el servidor falla, se explica el problema y hay un botón Reintentar en todas las pantallas.
+- Estados vacíos con explicación y la acción que corresponde; "sin resultados del filtro" se distingue de "no hay datos".
+- Sin emojis en la interfaz: solo íconos de Font Awesome.
+
+Rendimiento
+- Cada módulo se descarga al abrirlo y se precarga al pasar el mouse o tocar el menú. El inicio carga en 2,8 s con 4G lento (antes 5,7 s).
+
+Movimiento e interacción
+- El hover solo existe con mouse (ya no se queda pegado en el celular); los botones responden al presionar.
+- La hoja "Más" y los modales en celular suben desde abajo; las gráficas animan en 250 ms; pulso breve al guardar un dorsal.
+- Se respeta la preferencia de movimiento reducido. Revisión estricta con la skill `review-animations`: aprobada.
+
+Responsive
+- Deportistas y Estadísticas caben en celular y tableta sin deslizar de lado: columnas clave y el resto en la ficha.
+- La ficha del deportista ofrece Editar y Eliminar.
+
+Pruebas: 118 casos, 100 % aprobados; índice de calidad 100 en las 22 métricas medidas (faltan las 4 manuales). Informe: `docs/calidad/informes/v1.5.md`. Registro para auditoría: `docs/calidad/informes/v1.5-registro.md`.
+
 ## v1.4 — Seguridad
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.4`

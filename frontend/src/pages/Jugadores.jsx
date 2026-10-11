@@ -256,16 +256,17 @@ export default function Jugadores() {
       {/* Selector de Deporte / Disciplina interactivo */}
       <div className="card" style={{ padding: '16px 20px', marginBottom: 24, background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 260px', minWidth: 0 }}>
+            <div style={{ flex: 'none', width: 38, height: 38, borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
               <Trophy size={20} />
             </div>
-            <div>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent2)' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span id="t-deporte-gestion" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent2)' }}>
                 Deporte en Gestión
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
                 <select
+                  aria-labelledby="t-deporte-gestion"
                   value={selectedSportId}
                   onChange={e => setSelectedSportId(e.target.value)}
                   style={{
@@ -277,7 +278,9 @@ export default function Jugadores() {
                     color: 'var(--text-primary)',
                     border: '1px solid var(--border-hover)',
                     cursor: 'pointer',
-                    minWidth: 200
+                    width: '100%',
+                    maxWidth: 360,
+                    minWidth: 0
                   }}
                 >
                   <option value="todos">Todos los deportes{loading || error ? '' : ` (${jugadores.length})`}</option>
@@ -426,18 +429,18 @@ export default function Jugadores() {
           />
         ) : (
           <div className="table-wrapper">
-            <table>
+            <table className="tabla-movil">
               <thead>
                 <tr>
                   <th>Dorsal</th>
                   <th>Deportista</th>
-                  <th>Edad</th>
-                  <th>Posición</th>
-                  <th>Deporte / Disciplina</th>
-                  <th>Equipo</th>
-                  <th>Entrenador</th>
-                  <th>Peso (kg)</th>
-                  <th>Altura (m)</th>
+                  <th className="col-sec col-ter">Edad</th>
+                  <th className="col-sec">Posición</th>
+                  <th className="col-sec col-ter">Deporte / Disciplina</th>
+                  <th className="col-sec">Equipo</th>
+                  <th className="col-sec col-ter">Entrenador</th>
+                  <th className="col-sec col-ter">Peso (kg)</th>
+                  <th className="col-sec col-ter">Altura (m)</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
@@ -476,45 +479,48 @@ export default function Jugadores() {
                             <i className="fa-solid fa-user" aria-hidden="true" />
                           </div>
                         )}
-                        <span>{j.nombre}</span>
+                        <span>
+                          {j.nombre}
+                          <span className="sub-movil">{[j.posicion, j.equipo_nombre].filter(Boolean).join(' · ') || 'Sin posición ni equipo'}</span>
+                        </span>
                       </div>
                     </td>
-                    <td>{j.edad ? `${j.edad} años` : '—'}</td>
-                    <td>
+                    <td className="col-sec col-ter">{j.edad ? `${j.edad} años` : '—'}</td>
+                    <td className="col-sec">
                       {j.posicion ? (
                         <span className="badge badge-purple">{j.posicion}</span>
                       ) : (
                         '—'
                       )}
                     </td>
-                    <td>
+                    <td className="col-sec col-ter">
                       {j.disciplina_nombre ? (
                         <span className="badge badge-green"><i className="fa-solid fa-medal" aria-hidden="true" /> {j.disciplina_nombre}</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)' }}>General</span>
                       )}
                     </td>
-                    <td>
+                    <td className="col-sec">
                       {j.equipo_nombre ? (
                         <span className="badge badge-blue"><i className="fa-solid fa-shield-halved" aria-hidden="true" /> {j.equipo_nombre}</span>
                       ) : (
                         <span style={{ color: 'var(--text-muted)' }}>—</span>
                       )}
                     </td>
-                    <td>{j.entrenador_nombre || '—'}</td>
-                    <td>{j.peso ? `${j.peso} kg` : '—'}</td>
-                    <td>{j.altura ? `${j.altura} m` : '—'}</td>
+                    <td className="col-sec col-ter">{j.entrenador_nombre || '—'}</td>
+                    <td className="col-sec col-ter">{j.peso ? `${j.peso} kg` : '—'}</td>
+                    <td className="col-sec col-ter">{j.altura ? `${j.altura} m` : '—'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => openFicha(j.id)}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => openFicha(j.id)} aria-label={`Ficha de ${j.nombre}`}>
                           <Eye size={13} /> Ficha
                         </button>
                         {puedeEditar && (
                           <>
-                            <button className="btn btn-ghost btn-sm" onClick={() => openEdit(j)}>
+                            <button className="btn btn-ghost btn-sm acc-sec" onClick={() => openEdit(j)} aria-label={`Editar a ${j.nombre}`} title="Editar">
                               <Pencil size={13} />
                             </button>
-                            <button className="btn btn-danger btn-sm" onClick={() => handleDelete(j.id, j.nombre)}>
+                            <button className="btn btn-danger btn-sm acc-sec" onClick={() => handleDelete(j.id, j.nombre)} aria-label={`Eliminar a ${j.nombre}`} title="Eliminar">
                               <Trash2 size={13} />
                             </button>
                           </>
@@ -578,8 +584,16 @@ export default function Jugadores() {
 
       {/* Modal Ficha Técnica */}
       {modalFicha && selectedPlayer && (
-        <Modal title={`Ficha deportiva: ${nombreConDorsal(selectedPlayer.nombre, selectedPlayer.dorsal)}`} onClose={closeModal} width="800px">
-          <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: 24 }}>
+        <Modal title={`Ficha deportiva: ${nombreConDorsal(selectedPlayer.nombre, selectedPlayer.dorsal)}`} onClose={closeModal} width="800px"
+          footer={puedeEditar ? <>
+            <button type="button" className="btn btn-danger" onClick={() => { const p = selectedPlayer; closeModal(); handleDelete(p.id, p.nombre) }}>
+              <Trash2 size={15} /> Eliminar
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => { const p = selectedPlayer; closeModal(); openEdit(p) }}>
+              <Pencil size={15} /> Editar
+            </button>
+          </> : null}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 24 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div
                 style={{

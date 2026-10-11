@@ -436,7 +436,6 @@ export default function Equipos() {
                 padding: 20,
                 position: 'relative',
                 overflow: 'hidden',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                 border: '1px solid var(--border)'
               }}
             >
@@ -480,7 +479,10 @@ export default function Equipos() {
                     </div>
                     {puedeEditar && (
                       <button
+                        type="button"
+                        className="boton-escudo"
                         title="Cambiar imagen / escudo"
+                        aria-label={`Cambiar el escudo de ${eq.nombre}`}
                         onClick={() => triggerQuickUpload(eq.id)}
                         style={{
                           position: 'absolute',

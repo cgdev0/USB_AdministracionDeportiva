@@ -1,6 +1,6 @@
 # Catálogo de casos de prueba
 
-Generado automáticamente por `npm run test:reporte` el 2026-10-10 (versión v1.4). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
+Generado automáticamente por `npm run test:reporte` el 2026-10-11 (versión v1.5). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
 
 Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 
@@ -82,6 +82,11 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-UI-COM-001 | Deportistas y lesiones se ven bien en celular y computador | RNF-05 | Compatibilidad | Portabilidad · Adaptabilidad | `pruebas/ui/mediciones.spec.js` | chromium, firefox, webkit | ✔ Aprobado |
 | CP-UI-DOR-001 | Cambiar el dorsal con un clic en la tabla (celular) | RF-09 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-DOR-002 | Cambiar el dorsal con un clic en la tabla (pc) | RF-09 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-EST-001 | Sin servidor se explica el error y Reintentar recupera la pantalla | RNF-03 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/estados.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-EST-002 | Mientras carga se ve la forma del contenido y ninguna cifra falsa | RNF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/estados.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-EST-003 | Un filtro sin resultados ofrece limpiarlo y vuelve a mostrar los datos | RF-08 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/estados.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-EST-004 | La interfaz no usa emojis | RNF-07 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/estados.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-EST-005 | Si la descarga de un módulo falla, se explica y se ofrece reintentar | RNF-08 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/estados.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-INI-001 | El inicio del entrenador muestra el plantel con sus 23 dorsales y el resumen | RF-18 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-LOG-001 | Inicio de sesión por formulario lleva al inicio con el nombre del usuario | RF-01 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium, firefox, webkit | ✔ Aprobado |
 | CP-UI-LOG-002 | Credenciales incorrectas muestran un aviso en la página | RF-01 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
@@ -90,6 +95,9 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-UI-MED-002 | Medición de objetivos táctiles de 44 px en celular | RNF-06 | Medición | Usabilidad / Eficiencia / Fiabilidad | `pruebas/ui/mediciones.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-MED-003 | Medición de carga del inicio en celular con red 4G simulada | RNF-08 | Medición | Usabilidad / Eficiencia / Fiabilidad | `pruebas/ui/mediciones.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-MED-004 | Medición de aviso cuando el servidor no responde | RNF-03 | Medición | Usabilidad / Eficiencia / Fiabilidad | `pruebas/ui/mediciones.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-MOV-001 | Con movimiento reducido la hoja "Más" aparece con un fundido, sin desplazarse | RNF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/movimiento.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-MOV-002 | Sin preferencia, la hoja "Más" sube desde abajo con la curva de hoja | RNF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/movimiento.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-MOV-003 | Los chips de deporte indican cuál está activo y cambian el filtro | RF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/movimiento.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-NAV-001 | Hoja "Más" en celular: módulos del rol, cierra con Escape y navega | RF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-NAV-002 | El selector de deporte filtra el inicio | RF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-REC-001 | Recorrido de administrador: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
@@ -97,6 +105,10 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-UI-REC-003 | Recorrido de entrenador: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-REC-004 | Recorrido de personal_salud: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-REC-005 | Recorrido de jugador: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-RES-001 | Deportistas y Estadísticas caben sin deslizar de lado (celular360) | RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/responsive.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-RES-002 | Deportistas y Estadísticas caben sin deslizar de lado (celular) | RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/responsive.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-RES-003 | Deportistas y Estadísticas caben sin deslizar de lado (tableta) | RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/responsive.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-RES-004 | En celular, editar y eliminar un deportista están en su ficha | RF-08 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/responsive.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-SES-001 | Cambiar contraseña valida la confirmación y la contraseña actual | RF-02 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UNI-001 | IMC = peso / estatura² | RF-17 | Unitaria | Funcionalidad · Exactitud | `pruebas/unitarias/calculos.test.js` | — | ✔ Aprobado |
 | CP-UNI-002 | % de grasa en hombre (Yuhasz, 6 pliegues) | RF-17 | Unitaria | Funcionalidad · Exactitud | `pruebas/unitarias/calculos.test.js` | — | ✔ Aprobado |
