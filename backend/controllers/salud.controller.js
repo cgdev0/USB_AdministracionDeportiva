@@ -1,10 +1,11 @@
 const db = require('../config/db');
 const { responderError } = require('../utils/errores');
+const { condicionAlcance } = require('../utils/alcance');
 const puedeVerSaludCompleta = rol => ['administrador','personal_salud'].includes(rol);
 
 exports.getHistorias = async (req,res) => {
   if (!puedeVerSaludCompleta(req.usuario.rol)) return res.status(403).json({error:'Solo el personal de salud autorizado puede consultar historias clínicas'});
-  try { const {rows}=await db.query(`SELECT h.*,j.nombre AS jugador_nombre,j.dorsal AS jugador_dorsal FROM historias_clinicas h JOIN jugadores j ON j.id=h.jugador_id ORDER BY j.nombre`); res.json(rows); }
+  try { const {rows}=await db.query(`SELECT h.*,j.nombre AS jugador_nombre,j.dorsal AS jugador_dorsal,j.disciplina_id FROM historias_clinicas h JOIN jugadores j ON j.id=h.jugador_id ORDER BY j.nombre`); res.json(rows); }
   catch(e){responderError(res, e);}
 };
 exports.saveHistoria = async (req,res) => {
@@ -18,11 +19,12 @@ exports.saveHistoria = async (req,res) => {
 };
 exports.getControles = async (req,res) => {
   try {
-    let q=`SELECT c.*,j.nombre AS jugador_nombre,j.dorsal AS jugador_dorsal FROM controles_medicos c JOIN jugadores j ON j.id=c.jugador_id`;
-    let params=[];
-    if(req.usuario.rol==='jugador'){q+=' WHERE c.jugador_id=$1';params=[req.usuario.jugador_id];}
-    else if(req.usuario.rol==='entrenador'){q+=' JOIN usuarios u ON u.id=j.entrenador_id WHERE u.id=$1';params=[req.usuario.id];}
-    q+=' ORDER BY c.fecha DESC'; const {rows}=await db.query(q,params); res.json(rows);
+    // Misma regla de alcance que el resto del sistema (la ruta ya limita los roles; esto es una segunda barrera)
+    const params=[];
+    const cond=condicionAlcance(req.usuario,params,'j');
+    const {rows}=await db.query(`SELECT c.*,j.nombre AS jugador_nombre,j.dorsal AS jugador_dorsal,j.disciplina_id FROM controles_medicos c
+      JOIN jugadores j ON j.id=c.jugador_id ${cond?`WHERE ${cond}`:''} ORDER BY c.fecha DESC`,params);
+    res.json(rows);
   } catch(e){responderError(res, e);}
 };
 exports.createControl = async (req,res) => {

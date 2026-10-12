@@ -9,7 +9,10 @@ const STORAGE_KEY = 'dt_selected_sport_id'
 
 export function DeporteProvider({ children }) {
   const { usuario, tienePermiso } = useAuth()
-  const puedeGestionarDeportes = tienePermiso(['administrador', 'entrenador'])
+  // Los deportes de la universidad los crea y elimina solo el administrador (v1.9)
+  const puedeGestionarDeportes = usuario?.rol === 'administrador'
+  // Administrador y personal de salud ven todos los deportes; los demás roles, solo los suyos (el servidor ya los limita)
+  const veTodosLosDeportes = ['administrador', 'personal_salud'].includes(usuario?.rol)
 
   const [disciplinas, setDisciplinas] = useState([])
   const [selectedSportId, setSelectedSportIdState] = useState(() => {
@@ -120,6 +123,7 @@ export function DeporteProvider({ children }) {
         crearDisciplina,
         eliminarDisciplina,
         puedeGestionarDeportes,
+        veTodosLosDeportes,
       }}
     >
       {children}
@@ -133,4 +137,19 @@ export function useDeporte() {
     throw new Error('useDeporte debe usarse dentro de un DeporteProvider')
   }
   return ctx
+}
+
+// Filtro por el deporte elegido en la cabecera (v1.9). `deActividad` deja pasar las actividades generales (sin equipo).
+export function useFiltroDeporte() {
+  const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
+  const hay = !!selectedSportId && selectedSportId !== 'todos'
+  const igual = (id) => String(id) === String(selectedSportId)
+  return {
+    hay,
+    nombre: selectedSport?.nombre,
+    deDisciplina: (id) => !hay || igual(id),
+    deActividad: (a) => !hay || !a.equipo_id || igual(a.disciplina_id),
+    deUsuario: (u) => !hay || (u.disciplinas || []).some(igual),
+    limpiar: () => setSelectedSportId('todos'),
+  }
 }

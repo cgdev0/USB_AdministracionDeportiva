@@ -50,15 +50,16 @@ test.describe('Navegación', () => {
     await expect(page.locator('.hoja')).toHaveCount(0);
   });
 
+  // v1.9: el entrenador solo ve su deporte (CP-UI-OBS-004); el filtro entre deportes lo usa el administrador
   test('CP-UI-NAV-002 [RF-06] El selector de deporte filtra el inicio', async ({ page }) => {
     await page.setViewportSize(ANCHOS.pc);
-    await entrar(page, 'entrenador');
+    await entrar(page, 'administrador');
     await page.goto('/');
     const selector = page.locator('#deporte-pc');
     await selector.selectOption({ label: 'Rugby' });
     await expect(page.getByRole('heading', { name: /Disponibilidad del plantel: Rugby/ })).toBeVisible();
     await selector.selectOption({ label: 'Atletismo' });
-    await expect(page.getByText(/No hay deportistas tuyos en Atletismo/)).toBeVisible();
+    await expect(page.getByText(/No hay deportistas en Atletismo/)).toBeVisible();
     await selector.selectOption({ label: 'Todos los deportes' });
   });
 });

@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import CampoClave from '../components/CampoClave'
+import { useDeporte, useFiltroDeporte } from '../context/DeporteContext'
 import { Users, Plus, Upload, Edit2, Trash2, RefreshCw, X, Check, KeyRound } from 'lucide-react'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -34,7 +36,10 @@ export default function Usuarios() {
   const [filtroRol, setFiltroRol] = useState('todos')
   const csvRef = useRef()
 
-  const [form, setForm] = useState({ nombre: '', email: '', password: '', rol: 'jugador', head_coach_id: '' })
+  const [form, setForm] = useState({ nombre: '', email: '', password: '', rol: 'jugador', head_coach_id: '', disciplina_id: '' })
+  const { disciplinas } = useDeporte()
+  const filtro = useFiltroDeporte()
+  const nombreDeporte = (id) => disciplinas.find(d => String(d.id) === String(id))?.nombre
   const [csvResultado, setCsvResultado] = useState(null)
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, usuario: null, loading: false })
   const [resetModal, setResetModal] = useState({ isOpen: false, usuario: null, newPassword: '', loading: false })
@@ -56,13 +61,13 @@ export default function Usuarios() {
 
   const abrirCrear = () => {
     setEditando(null)
-    setForm({ nombre: '', email: '', password: '', rol: 'jugador', head_coach_id: '' })
+    setForm({ nombre: '', email: '', password: '', rol: 'jugador', head_coach_id: '', disciplina_id: '' })
     setModalOpen(true)
   }
 
   const abrirEditar = (u) => {
     setEditando(u)
-    setForm({ nombre: u.nombre, email: u.email, password: '', rol: u.rol, head_coach_id: u.head_coach_id || '' })
+    setForm({ nombre: u.nombre, email: u.email, password: '', rol: u.rol, head_coach_id: u.head_coach_id || '', disciplina_id: u.disciplina_id || '' })
     setModalOpen(true)
   }
 
@@ -70,7 +75,7 @@ export default function Usuarios() {
     e.preventDefault()
     try {
       if (editando) {
-        await api.put(`/usuarios/${editando.id}`, { nombre: form.nombre, email: form.email, rol: form.rol, head_coach_id: form.head_coach_id || null, activo: editando.activo })
+        await api.put(`/usuarios/${editando.id}`, { nombre: form.nombre, email: form.email, rol: form.rol, head_coach_id: form.head_coach_id || null, disciplina_id: form.disciplina_id || null, activo: editando.activo })
         toast.success('Usuario actualizado')
       } else {
         await api.post('/usuarios', form)
@@ -140,9 +145,10 @@ export default function Usuarios() {
     ? ['jugador', 'personal_salud']
     : ROLES
 
-  const usuariosFiltrados = filtroRol === 'todos'
-    ? usuarios
-    : usuarios.filter(u => u.rol === filtroRol)
+  // Filtro por rol (botones) y por el deporte de la cabecera (v1.9)
+  const usuariosFiltrados = usuarios
+    .filter(u => filtroRol === 'todos' || u.rol === filtroRol)
+    .filter(filtro.deUsuario)
 
   return (
     <div className="page-container">
@@ -179,16 +185,18 @@ export default function Usuarios() {
       {/* Tabla */}
       <div className="table-container">
         {cargando ? (
-          <Esqueleto tipo="tabla" columnas={6} filas={6} etiqueta="Cargando usuarios…" />
+          <Esqueleto tipo="tabla" columnas={7} filas={6} etiqueta="Cargando usuarios…" />
         ) : error ? (
           <EstadoError mensaje={error} onReintentar={cargar} />
         ) : usuarios.length === 0 ? (
           <EstadoVacio icono="fa-user-gear" titulo="Aún no hay usuarios" descripcion="Crea el primer usuario o importa varios desde un archivo CSV." />
         ) : usuariosFiltrados.length === 0 ? (
           <EstadoSinResultados
-            descripcion={`No hay usuarios con el rol ${ROLE_LABELS[filtroRol] || filtroRol}.`}
-            onLimpiar={() => setFiltroRol('todos')}
-            textoLimpiar="Ver todos los roles"
+            descripcion={filtro.hay
+              ? `No hay usuarios${filtroRol !== 'todos' ? ` con el rol ${ROLE_LABELS[filtroRol] || filtroRol}` : ''} en ${filtro.nombre}.`
+              : `No hay usuarios con el rol ${ROLE_LABELS[filtroRol] || filtroRol}.`}
+            onLimpiar={() => { setFiltroRol('todos'); filtro.limpiar() }}
+            textoLimpiar="Ver todos"
           />
         ) : (
           <table className="data-table">
@@ -197,6 +205,7 @@ export default function Usuarios() {
                 <th>Nombre</th>
                 <th>Email</th>
                 <th>Rol</th>
+                <th>Deporte</th>
                 <th>Estado</th>
                 <th>Primer Login</th>
                 <th>Acciones</th>
@@ -219,6 +228,7 @@ export default function Usuarios() {
                       {ROLE_LABELS[u.rol]}
                     </span>
                   </td>
+                  <td>{(u.disciplinas || []).map(nombreDeporte).filter(Boolean).join(', ') || <span style={{ color: 'var(--texto-suave)' }}>—</span>}</td>
                   <td>
                     <span style={{ color: u.activo ? 'var(--ok-texto)' : 'var(--error-texto)' }}>
                       {u.activo ? <Check size={16} /> : <X size={16} />}
@@ -269,7 +279,7 @@ export default function Usuarios() {
               {!editando && (
                 <div className="form-group">
                   <label>Contraseña</label>
-                  <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required minLength={6} />
+                  <CampoClave value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required minLength={6} autoComplete="new-password" />
                 </div>
               )}
               <div className="form-group">
@@ -280,6 +290,16 @@ export default function Usuarios() {
                   ))}
                 </select>
               </div>
+              {['entrenador', 'head_coach'].includes(form.rol) && (
+                <div className="form-group">
+                  <label htmlFor="usuario-deporte">Deporte</label>
+                  <select id="usuario-deporte" value={form.disciplina_id} onChange={e => setForm(f => ({ ...f, disciplina_id: e.target.value }))}>
+                    <option value="">Según sus deportistas</option>
+                    {disciplinas.map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}
+                  </select>
+                  <small className="ayuda-campo">El entrenador solo verá este deporte en el selector de la cabecera.</small>
+                </div>
+              )}
               {form.rol === 'entrenador' && <div className="form-group"><label>Head Coach asociado (opcional)</label><select value={form.head_coach_id} onChange={e => setForm(f => ({...f, head_coach_id:e.target.value}))}><option value="">Sin asociación</option>{usuarios.filter(u=>u.rol==='head_coach' && (!editando || u.id!==editando.id)).map(u=><option key={u.id} value={u.id}>{u.nombre}</option>)}</select></div>}
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setModalOpen(false)}>Cancelar</button>
@@ -367,11 +387,11 @@ export default function Usuarios() {
         >
           <div className="form-group">
             <label>Nueva Contraseña *</label>
-            <input
-              type="password"
+            <CampoClave
               value={resetModal.newPassword}
               onChange={e => setResetModal(prev => ({ ...prev, newPassword: e.target.value }))}
               placeholder="Mínimo 6 caracteres"
+              autoComplete="new-password"
               autoFocus
             />
           </div>

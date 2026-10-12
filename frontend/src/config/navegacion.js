@@ -17,7 +17,7 @@ export const MODULOS = [
   { ruta: '/partidos',       etiqueta: 'Partidos',          corto: 'Partidos',     icono: 'fa-solid fa-trophy',
     roles: ['administrador', 'head_coach', 'entrenador', 'jugador'] },
   { ruta: '/estadisticas',   etiqueta: 'Estadísticas',      corto: 'Estadísticas', icono: 'fa-solid fa-chart-column',
-    roles: ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador'],
+    roles: ['administrador', 'head_coach', 'entrenador', 'jugador'],
     etiquetaPorRol: { jugador: 'Mis estadísticas' } },
   { ruta: '/lesiones',       etiqueta: 'Lesiones',          corto: 'Lesiones',     icono: 'fa-solid fa-kit-medical',
     roles: ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador'] },

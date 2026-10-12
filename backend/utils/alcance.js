@@ -51,4 +51,24 @@ async function puedeUsarEquipo(db, usuario, equipoId) {
   return rows.length > 0;
 }
 
-module.exports = { condicionAlcance, puedeVerJugador, condicionEquipos, puedeUsarEquipo };
+// Deportes que puede ver cada rol (v1.9): administrador y personal de salud, todos los de la universidad;
+// entrenador, el deporte que tiene asignado y los de sus deportistas; head coach, los de sus entrenadores;
+// deportista, el suyo. `columna` es el id del deporte (por ejemplo 'd.id'). Devuelve null si el rol ve todos.
+function condicionDisciplinas(usuario, params, columna) {
+  if (!usuario || ['administrador', 'personal_salud'].includes(usuario.rol)) return null;
+  if (usuario.rol === 'jugador') {
+    params.push(usuario.jugador_id || 0);
+    return `${columna} IN (SELECT COALESCE(jx.disciplina_id, eqx.disciplina_id) FROM jugadores jx
+      LEFT JOIN equipos eqx ON eqx.id = jx.equipo_id WHERE jx.id = $${params.length})`;
+  }
+  params.push(usuario.id);
+  const yo = `$${params.length}`;
+  // Los entrenadores cuyo deporte cuenta: él mismo, o los del head coach
+  const entrenadores = usuario.rol === 'head_coach' ? `SELECT id FROM usuarios WHERE head_coach_id = ${yo}` : `SELECT ${yo}::int`;
+  return `${columna} IN (
+      SELECT disciplina_id FROM usuarios WHERE (id = ${yo} OR id IN (${entrenadores})) AND disciplina_id IS NOT NULL
+      UNION SELECT COALESCE(jx.disciplina_id, eqx.disciplina_id) FROM jugadores jx LEFT JOIN equipos eqx ON eqx.id = jx.equipo_id
+        WHERE jx.entrenador_id IN (${entrenadores}) AND COALESCE(jx.disciplina_id, eqx.disciplina_id) IS NOT NULL)`;
+}
+
+module.exports = { condicionAlcance, puedeVerJugador, condicionEquipos, puedeUsarEquipo, condicionDisciplinas };

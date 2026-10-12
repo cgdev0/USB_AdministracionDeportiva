@@ -11,6 +11,7 @@ import Convocatoria from '../components/Convocatoria'
 import InstalarApp from '../components/InstalarApp'
 import AgregarCalendario from '../components/AgregarCalendario'
 import AvisosEquipo from '../components/AvisosEquipo'
+import CampoClave from '../components/CampoClave'
 import { ROLES, iniciales } from '../config/navegacion'
 import { capitalizar, diaCorto, fechaCorta, fechaLarga, fechaRelativa, numeroDia } from '../utils/fechas'
 import { nombreConDorsal, tieneDorsal } from '../utils/jugador'
@@ -386,7 +387,7 @@ function MiSesion({ usuario, onSalir }) {
   const [cambiarClave, setCambiarClave] = useState(false)
   const acciones = ACCIONES[usuario?.rol] || []
   return (
-    <section className="panel orden-6" aria-labelledby="t-sesion">
+    <section className="panel orden-1" aria-labelledby="t-sesion">
       <div className="panel-cabecera"><h2 id="t-sesion">Mi sesión</h2></div>
       <div className="panel-cuerpo">
         <div className="ini-sesion">
@@ -440,11 +441,11 @@ function CambiarClave({ onCerrar }) {
       <form onSubmit={guardar} style={{ display: 'grid', gap: 14 }}>
         {error && <div className="alerta alerta-error" role="alert"><i className="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span>{error}</span></div>}
         <div className="form-group"><label htmlFor="clave-actual">Contraseña actual</label>
-          <input id="clave-actual" type="password" autoComplete="current-password" value={form.actual} onChange={cambiar('actual')} required /></div>
+          <CampoClave id="clave-actual" autoComplete="current-password" value={form.actual} onChange={cambiar('actual')} required /></div>
         <div className="form-group"><label htmlFor="clave-nueva">Contraseña nueva</label>
-          <input id="clave-nueva" type="password" autoComplete="new-password" value={form.nueva} onChange={cambiar('nueva')} required minLength={6} /></div>
+          <CampoClave id="clave-nueva" autoComplete="new-password" value={form.nueva} onChange={cambiar('nueva')} required minLength={6} /></div>
         <div className="form-group"><label htmlFor="clave-confirmar">Confirmar contraseña nueva</label>
-          <input id="clave-confirmar" type="password" autoComplete="new-password" value={form.confirmar} onChange={cambiar('confirmar')} required /></div>
+          <CampoClave id="clave-confirmar" autoComplete="new-password" value={form.confirmar} onChange={cambiar('confirmar')} required /></div>
         <div className="modal-footer" style={{ marginTop: 4 }}>
           <button type="button" className="btn btn-secondary" onClick={onCerrar}>Cancelar</button>
           <button type="submit" className="btn btn-primary" disabled={guardando}>{guardando ? 'Guardando…' : 'Cambiar contraseña'}</button>

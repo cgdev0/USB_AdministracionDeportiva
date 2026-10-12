@@ -4,11 +4,12 @@ import { Plus, Pencil, Trash2, Trophy } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
-import { Esqueleto, EstadoVacio, EstadoError } from '../components/EstadoVista'
+import { Esqueleto, EstadoVacio, EstadoError, EstadoSinResultados } from '../components/EstadoVista'
 import api from '../services/api'
 import Convocatoria from '../components/Convocatoria'
 import CamposAgenda, { AGENDA_VACIA, agendaDe, resumenAgenda, useEquiposAsignables } from '../components/CamposAgenda'
 import { useAuth } from '../context/AuthContext'
+import { useFiltroDeporte } from '../context/DeporteContext'
 
 const EMPTY = { fecha: '', rival: '', tipo: 'liga', resultado: '', ...AGENDA_VACIA }
 
@@ -17,6 +18,7 @@ export default function Partidos() {
   const puedeEditar = tienePermiso(['administrador', 'entrenador'])
 
   const [partidos, setPartidos] = useState([])
+  const filtro = useFiltroDeporte()
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState(null)
   const [modal, setModal]       = useState(false)
@@ -99,6 +101,9 @@ export default function Partidos() {
     return 'var(--warning)'
   }
 
+
+  // Filtro por el deporte de la cabecera (v1.9): las actividades sin equipo son generales y se ven en todos
+  const visibles = partidos.filter(filtro.deActividad)
   return (
     <div>
       <div className="page-header">
@@ -110,7 +115,7 @@ export default function Partidos() {
         <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>
           {!loading && !error && <>
             <Trophy size={15} style={{ display: 'inline', marginRight: 6 }} />
-            {partidos.length} partidos · {partidos.filter(p => p.tipo === 'liga').length} de liga
+            {visibles.length} partidos{filtro.hay ? ` de ${filtro.nombre} y generales` : ''} · {visibles.filter(p => p.tipo === 'liga').length} de liga
           </>}
         </span>
         {puedeEditar && (
@@ -132,6 +137,8 @@ export default function Partidos() {
               : 'Cuando un entrenador registre un partido, aparecerá aquí.'}
             accion={puedeEditar ? { texto: 'Registrar partido', icono: 'fa-plus', onClick: openCreate } : null}
           />
+        ) : visibles.length === 0 ? (
+          <EstadoSinResultados descripcion={`No hay partidos de ${filtro.nombre}.`} onLimpiar={filtro.limpiar} textoLimpiar="Ver todos los deportes" />
         ) : (
           <div className="table-wrapper" tabIndex={0} role="region" aria-label="Partidos registrados">
             <table>
@@ -146,7 +153,7 @@ export default function Partidos() {
                 </tr>
               </thead>
               <tbody>
-                {partidos.map(p => (
+                {visibles.map(p => (
                   <tr key={p.id}>
                     <td style={{ fontWeight: 600 }}>{new Date(p.fecha).toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric' })}</td>
                     <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{p.rival}<span className="sub-agenda">{resumenAgenda(p)}</span></td>

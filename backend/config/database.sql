@@ -462,3 +462,9 @@ CREATE INDEX IF NOT EXISTS idx_comunicado_destinatarios_usuario ON comunicado_de
 -- Los recordatorios automáticos llevan una clave para no repetirse (por ejemplo, rec-ent-15)
 ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS clave VARCHAR(120);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_notificaciones_clave ON notificaciones(usuario_id, clave);
+
+-- -------------------------------------------------------
+-- DEPORTE DEL ENTRENADOR (v1.9, igual que migrations/008_deporte_entrenador.sql)
+-- -------------------------------------------------------
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS disciplina_id INT REFERENCES disciplinas(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_usuarios_disciplina ON usuarios(disciplina_id);

@@ -226,6 +226,16 @@ a, button, select, summary, label, [role="button"] { -webkit-tap-highlight-color
   min-height: 36px; padding: 0 10px; border: 1px solid #CCC; border-radius: 4px;
   background: var(--blanco); color: var(--texto); font-size: 14px;
 }
+.selector-deporte-fijo b { color: var(--texto); font-weight: 500; }
+
+/* Nombre y rol en celular, debajo de la cabecera (v1.9); en PC van a la derecha de la cabecera */
+.cabecera-sesion-movil {
+  display: flex; align-items: baseline; justify-content: flex-end; gap: 8px; max-width: 1440px; margin: 0 auto;
+  padding: 0 16px 8px; font-size: 13px; color: var(--texto-suave); line-height: 1.3;
+}
+.cabecera-sesion-movil span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.cabecera-sesion-movil b { flex: none; font-weight: 700; color: var(--verde-texto); }
+@media (min-width: 1024px) { .cabecera-sesion-movil { display: none; } }
 
 /* ── Computador ── */
 @media (min-width: 1024px) {
@@ -700,6 +710,16 @@ button.ini-dorsal:active { transform: scale(0.97); }
 }
 button.login-icono { cursor: pointer; }
 .login-boton { min-height: 46px; font-size: 15px; }
+
+/* Campo de contraseña con ojo (v1.9) */
+.campo-clave { position: relative; }
+.campo-clave input { width: 100%; padding-right: 46px !important; }
+.campo-clave button {
+  position: absolute; right: 1px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px;
+  display: grid; place-items: center; border: 0; background: none; color: #555; font-size: 16px; cursor: pointer; border-radius: 4px;
+}
+@media (hover: hover) and (pointer: fine) { .campo-clave button:hover { color: var(--texto); } }
+.ayuda-campo { display: block; margin-top: 4px; font-size: 13px; color: var(--texto-suave); }
 .login-ayuda { text-align: center; font-size: 14px; color: var(--texto-suave); }
 .login-demo { border: 1px solid var(--info-borde); background: var(--info-fondo); color: var(--info-texto); border-radius: 4px; padding: 10px 14px; font-size: 14px; }
 .login-demo summary { cursor: pointer; font-weight: 700; min-height: 28px; display: flex; align-items: center; }

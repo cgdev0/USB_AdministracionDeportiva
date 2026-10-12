@@ -9,13 +9,24 @@ import Avisos from './Avisos'
 const claseActiva = ({ isActive }) => (isActive ? 'activo' : undefined)
 
 function SelectorDeporte({ id }) {
-  const { disciplinas, selectedSportId, setSelectedSportId } = useDeporte()
+  const { disciplinas, selectedSportId, setSelectedSportId, veTodosLosDeportes } = useDeporte()
+  // Entrenador, head coach y deportista ven solo sus deportes (v1.9): sin deporte no hay selector y con uno queda fijo
+  if (!veTodosLosDeportes && disciplinas.length === 0) return null
+  if (!veTodosLosDeportes && disciplinas.length === 1) {
+    return (
+      <span className="selector-deporte selector-deporte-fijo">
+        <i className="fa-solid fa-medal" aria-hidden="true"></i>
+        <span>Deporte</span>
+        <b>{disciplinas[0].nombre}</b>
+      </span>
+    )
+  }
   return (
     <label className="selector-deporte" htmlFor={id}>
       <i className="fa-solid fa-medal" aria-hidden="true"></i>
       <span>Deporte</span>
       <select id={id} value={selectedSportId || 'todos'} onChange={e => setSelectedSportId(e.target.value)}>
-        <option value="todos">Todos los deportes</option>
+        <option value="todos">{veTodosLosDeportes ? 'Todos los deportes' : 'Todos mis deportes'}</option>
         {disciplinas.map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}
       </select>
     </label>
@@ -25,7 +36,7 @@ function SelectorDeporte({ id }) {
 function Cabecera() {
   const { usuario, logout } = useAuth()
   const navigate = useNavigate()
-  const salir = () => { logout(); navigate('/login') }
+  const salir = () => { logout(); navigate('/login', { replace: true }) }
   return (
     <header className="cabecera">
       <div className="cabecera-in">
@@ -44,6 +55,11 @@ function Cabecera() {
           <i className="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
         </button>
       </div>
+      {/* En celular no cabe junto al logo: el nombre y el rol van en una línea debajo */}
+      <p className="cabecera-sesion-movil">
+        <span>{usuario?.nombre}</span>
+        <b>{ROLES[usuario?.rol] || usuario?.rol}</b>
+      </p>
     </header>
   )
 }

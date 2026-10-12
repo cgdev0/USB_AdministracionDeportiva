@@ -1,15 +1,21 @@
 const db = require('../config/db');
 
 const { responderError } = require('../utils/errores');
-exports.getAll = async (_req, res) => {
+const { condicionDisciplinas } = require('../utils/alcance');
+
+// GET /api/disciplinas → los deportes que el usuario puede ver (v1.9: el entrenador y el deportista, solo los suyos)
+exports.getAll = async (req, res) => {
   try {
+    const params = [];
+    const cond = condicionDisciplinas(req.usuario, params, 'd.id');
     const { rows } = await db.query(`
       SELECT d.*, COUNT(j.id)::int AS total_jugadores
       FROM disciplinas d
       LEFT JOIN jugadores j ON j.disciplina_id = d.id
+      ${cond ? `WHERE ${cond}` : ''}
       GROUP BY d.id
       ORDER BY d.nombre ASC
-    `);
+    `, params);
     res.json(rows);
   } catch (err) {
     responderError(res, err);

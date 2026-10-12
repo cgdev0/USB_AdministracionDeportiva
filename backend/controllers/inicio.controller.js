@@ -240,7 +240,10 @@ exports.getInicio = async (req, res) => {
       lider('asistencias', 'Máximo asistidor de la temporada', 'fa-handshake', 'asistencias'),
     ])).filter(Boolean);
 
-    res.json({ proximo_partido: proximo || null, plantel, resumen, revisar, semana, asistencia, anotadores, convocatoria, reconocimientos });
+    // Las estadísticas deportivas no son del campo del personal de salud (v1.9)
+    const esSalud = vista.rol === 'personal_salud';
+    res.json({ proximo_partido: proximo || null, plantel, resumen, revisar, semana, asistencia,
+      anotadores: esSalud ? [] : anotadores, convocatoria, reconocimientos: esSalud ? [] : reconocimientos });
   } catch (err) {
     responderError(res, err);
   }
