@@ -254,6 +254,18 @@
 <script>
 // d: PC, Celular o Ambos.  r: rol con el que se hace.  e: resultado esperado.
 const SECCIONES = [
+  { id: 'v19', titulo: 'Correcciones para volver a probar (v1.9)', pruebas: [
+    ['v19-01', 'El entrenador solo ve su deporte', 'Entrenador', 'pc', 'En la cabecera aparece "Deporte: Rugby" fijo, sin lista para elegir otros deportes. En Deportistas ya no está el botón "Crear Deporte".'],
+    ['v19-02', 'El deportista solo ve su deporte', 'Deportista', 'ambos', 'No aparecen los demás deportes de la universidad: en PC la cabecera muestra solo Rugby y en celular el menú "Más" también.'],
+    ['v19-03', 'El administrador asigna el deporte de un entrenador', 'Administrador', 'pc', 'En Usuarios → editar a Juan Moreno aparece el campo Deporte. Al elegir uno y guardar, Juan Moreno ve solo ese deporte al entrar.'],
+    ['v19-04', 'Salud ya no ve estadísticas', 'Personal de salud', 'ambos', 'No está la pestaña Estadísticas ni los paneles de máximos anotadores y reconocimientos en el inicio.'],
+    ['v19-05', 'El botón Atrás con la sesión abierta', 'Todos', 'ambos', 'Después de entrar, Atrás ya no muestra el formulario de inicio de sesión. Cerrar sesión y luego Atrás tampoco deja entrar sin clave.'],
+    ['v19-06', 'Ojo para ver la contraseña', 'Todos', 'ambos', 'En Inicio → Mi sesión → Cambiar contraseña, cada campo tiene un ojo que muestra u oculta lo escrito. También en Usuarios al crear un usuario y al restablecer una clave.'],
+    ['v19-07', 'Filtro por deporte en Entrenamientos, Partidos y Salud', 'Administrador', 'pc', 'Al cambiar el deporte de la cabecera, cambian las listas. Las actividades sin equipo (generales) aparecen en todos los deportes.'],
+    ['v19-08', 'Filtro por deporte en Usuarios', 'Administrador', 'pc', 'Hay una columna Deporte. Al elegir Rugby en la cabecera quedan solo las cuentas de ese deporte; se combina con los botones de rol.'],
+    ['v19-09', 'Nombre y rol arriba en el celular', 'Todos', 'cel', 'Debajo del logo se ve el nombre y el rol de quien entró.'],
+    ['v19-10', 'Mi sesión arriba en el celular', 'Todos', 'cel', 'En el inicio, Mi sesión aparece justo debajo del próximo partido, no al final.'],
+  ]},
   { id: 'acceso', titulo: 'Inicio de sesión y cuenta', pruebas: [
     ['acc-01', 'Entrar con cada una de las 6 cuentas', 'Todos', 'ambos', 'Cada cuenta llega a su inicio y arriba a la derecha aparece su nombre y su rol. Hazlo al menos una vez en PC y una en celular.'],
     ['acc-02', 'Entrar con una clave equivocada', 'Sin iniciar sesión', 'ambos', 'Aparece un mensaje claro de correo o contraseña incorrectos, sin entrar.'],

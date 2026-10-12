@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -12,7 +12,7 @@ const CUENTAS_DEMO = [
 ]
 
 export default function Login() {
-  const { login } = useAuth()
+  const { login, usuario, cargando: cargandoSesion } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', password: '' })
   const [cargando, setCargando] = useState(false)
@@ -31,7 +31,8 @@ export default function Login() {
     try {
       const usuario = await login(form.email, form.password)
       toast.success(`Bienvenido, ${usuario.nombre}`)
-      navigate('/')
+      // replace: el login no queda en el historial, así Atrás no muestra el formulario con la sesión abierta
+      navigate('/', { replace: true })
     } catch (err) {
       setError(err.status === 401
         ? 'El usuario o la contraseña no coinciden. Revisa los datos e intenta de nuevo.'
@@ -41,6 +42,9 @@ export default function Login() {
     }
   }
 
+
+  // Con la sesión abierta, volver al login (por ejemplo con el botón Atrás) lleva directo al inicio
+  if (!cargandoSesion && usuario) return <Navigate to="/" replace />
   return (
     <div className="login-escena">
       <div className="login-tarjeta">

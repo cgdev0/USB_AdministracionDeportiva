@@ -20,7 +20,7 @@ async function listar(tabla, usuario, extra = '') {
   const params = [];
   const cond = condicionEquipos(usuario, params, 'a.equipo_id');
   const { rows } = await db.query(`
-    SELECT a.*, eq.nombre AS equipo_nombre FROM ${tabla} a LEFT JOIN equipos eq ON eq.id = a.equipo_id
+    SELECT a.*, eq.nombre AS equipo_nombre, eq.disciplina_id FROM ${tabla} a LEFT JOIN equipos eq ON eq.id = a.equipo_id
     ${cond ? `WHERE ${cond}` : ''} ${extra} ORDER BY a.fecha DESC, a.hora NULLS LAST, a.id DESC`, params);
   return rows;
 }
@@ -30,7 +30,7 @@ async function buscar(tabla, usuario, id, cliente = db) {
   const params = [id];
   const cond = condicionEquipos(usuario, params, 'a.equipo_id');
   const { rows } = await cliente.query(`
-    SELECT a.*, eq.nombre AS equipo_nombre FROM ${tabla} a LEFT JOIN equipos eq ON eq.id = a.equipo_id
+    SELECT a.*, eq.nombre AS equipo_nombre, eq.disciplina_id FROM ${tabla} a LEFT JOIN equipos eq ON eq.id = a.equipo_id
     WHERE a.id = $1${cond ? ` AND ${cond}` : ''}`, params);
   return rows[0] || null;
 }

@@ -3,12 +3,51 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v1.9 — Observaciones del tester (primera entrega)
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.9`
+
+Correcciones a partir de las primeras pruebas de Alejandro Guevara en PC y celular.
+
+Acceso por deporte y por rol
+- El entrenador, el head coach y el deportista ven solo sus deportes, no los de toda la universidad. Con un solo deporte, la cabecera lo muestra fijo, sin lista.
+- El administrador puede asignar el deporte de cada entrenador o head coach en Usuarios. Si no tiene, se usa el deporte de sus deportistas.
+- Solo el administrador crea y elimina deportes (antes también el entrenador).
+- El personal de salud ya no ve Estadísticas ni los máximos anotadores y reconocimientos del inicio.
+
+Filtro por deporte donde faltaba
+- Entrenamientos y Partidos: muestran las actividades del deporte elegido más las generales (sin equipo).
+- Salud y controles: controles, historias clínicas y listas de deportistas.
+- Usuarios: nueva columna Deporte y filtro por el deporte de la cabecera, junto al filtro por rol.
+
+Inicio de sesión y contraseñas
+- DEF-031: con la sesión abierta, el botón Atrás ya no muestra el formulario de inicio de sesión; si se llega al login con sesión, va directo al inicio.
+- Botón del ojo para ver la contraseña en Cambiar contraseña y en los formularios de Usuarios.
+
+Celular
+- El nombre y el rol se ven arriba, debajo de la cabecera.
+- Mi sesión va justo debajo del próximo partido.
+
+Además
+- DEF-032: editar un usuario desde Usuarios ya no borra su vínculo con el perfil de deportista.
+
+Datos: migración `008_deporte_entrenador.sql` (deporte asignado en usuarios). Railway la aplica sola al arrancar.
+
+Pruebas: CP-OBS-001 a 007 (API) y CP-UI-OBS-001 a 005 (navegador). CP-UI-NAV-002 pasa a usar el administrador.
+
 ## v1.8.2 — Apagado limpio en Railway y lista para el tester
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.8.2`
 
 - Railway enviaba un correo de "crash" en cada despliegue: al apagar la versión anterior con SIGTERM, npm lo reportaba como "command failed". Ahora la app arranca directamente con Node (`backend/config/iniciar_railway.js`) y el servidor cierra ordenadamente (termina las peticiones en curso, cierra la base y sale con código 0).
 - `docs/calidad/casos/lista-tester.html`: lista de 60 pruebas manuales por rol (PC, celular o ambos), con casillas que se guardan en el navegador, formulario de fallas (rol, dispositivo, pantalla, pasos, resultado, gravedad y captura) e informe descargable.
+
+## v1.8.1 — Lista de avisos y desborde en celular
+
+**Autor:** Carlos Gamboa · **Etiqueta:** `v1.8.1`
+
+- Lista de avisos de la campanita sin la franja de color al borde: filas con separador y el ícono del tipo de aviso (convocatoria, aviso del entrenador, recordatorio); los no leídos van en negrita con el ícono en verde y la marca "Nuevo".
+- DEF-030: en celular, al abrir la campanita la página se desbordaba 27 px y el botón de cerrar quedaba cortado.
 
 ## v1.8 — Publicación en Railway
 
@@ -22,10 +61,6 @@ Despliegue
 - Railway no ejecutó el `preDeployCommand` en el primer despliegue (la base quedó sin tablas); por eso la preparación pasó al arranque.
 - Detrás del proxy de Railway el freno de intentos de login funciona por usuario y se reconoce HTTPS. Fotos y logos se guardan en un volumen (`UPLOADS_DIR=/data/uploads`).
 - Cada fusión en `main` despliega una versión nueva sin perder los datos.
-
-Interfaz
-- Lista de avisos de la campanita sin la franja de color al borde: filas con separador y el ícono del tipo de aviso (convocatoria, aviso del entrenador, recordatorio); los no leídos van en negrita con el ícono en verde y la marca "Nuevo".
-- DEF-030: en celular, al abrir la campanita la página se desbordaba 27 px y el botón de cerrar quedaba cortado.
 
 Pendiente: Railway reemplazará `railway.json` por su formato nuevo (`.railway/railway.ts`) el 2026-12-01; hay que migrarlo antes.
 

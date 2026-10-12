@@ -1,6 +1,6 @@
 # Catálogo de casos de prueba
 
-Generado automáticamente por `npm run test:reporte` el 2026-10-11 (versión v1.8). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
+Generado automáticamente por `npm run test:reporte` el 2026-10-12 (versión v1.9). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
 
 Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 
@@ -70,6 +70,13 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-MOD-011 | Salud: historia clínica, control médico y seguimiento de lesión | RF-15 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/modulos.test.js` | — | ✔ Aprobado |
 | CP-MOD-012 | Evaluación de rugby: puntajes normalizados exactos | RF-16 | Integración | Funcionalidad · Exactitud | `pruebas/integracion/modulos.test.js` | — | ✔ Aprobado |
 | CP-MOD-013 | Antropometría: el backend guarda cálculos exactos | RF-17 | Integración | Funcionalidad · Exactitud | `pruebas/integracion/modulos.test.js` | — | ✔ Aprobado |
+| CP-OBS-001 | Cada rol ve solo sus deportes en el selector | RF-06 | Otro | — | `pruebas/integracion/observaciones.test.js` | — | ✔ Aprobado |
+| CP-OBS-002 | El administrador asigna el deporte a un entrenador | RF-03 | Otro | — | `pruebas/integracion/observaciones.test.js` | — | ✔ Aprobado |
+| CP-OBS-003 | Solo el administrador crea y elimina deportes | RF-06 | Otro | — | `pruebas/integracion/observaciones.test.js` | — | ✔ Aprobado |
+| CP-OBS-004 | El personal de salud no ve estadísticas deportivas | RF-04 | Otro | — | `pruebas/integracion/observaciones.test.js` | — | ✔ Aprobado |
+| CP-OBS-005 | Entrenamientos, partidos y controles traen el deporte para filtrar | RF-06 | Otro | — | `pruebas/integracion/observaciones.test.js` | — | ✔ Aprobado |
+| CP-OBS-006 | Los controles médicos: el deportista solo los suyos; head coach y entrenador no entran | RF-05 | Otro | — | `pruebas/integracion/observaciones.test.js` | — | ✔ Aprobado |
+| CP-OBS-007 | DEF-032: editar un usuario sin enviar el vínculo no lo borra | RF-03 | Otro | — | `pruebas/integracion/observaciones.test.js` | — | ✔ Aprobado |
 | CP-PER-001 | Solo el administrador gestiona usuarios | RF-04 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
 | CP-PER-002 | El jugador solo ve sus lesiones y no puede abrir las ajenas | RF-05 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
 | CP-PER-003 | Jugador y entrenador no pueden registrar lesiones | RF-14 | Integración | Funcionalidad · Seguridad de acceso | `pruebas/integracion/permisos.test.js` | — | ✔ Aprobado |
@@ -133,6 +140,11 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-UI-MOV-003 | Los chips de deporte indican cuál está activo y cambian el filtro | RF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/movimiento.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-NAV-001 | Hoja "Más" en celular: módulos del rol, cierra con Escape y navega | RF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-NAV-002 | El selector de deporte filtra el inicio | RF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-OBS-001 | Con la sesión abierta, Atrás no muestra el formulario de inicio de sesión | RF-01 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/observaciones.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-OBS-002 | El ojo muestra y oculta la contraseña nueva | RF-02 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/observaciones.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-OBS-003 | En celular se ve el rol arriba y Mi sesión va debajo del próximo partido | RF-18 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/observaciones.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-OBS-004 | El entrenador ve su deporte fijo y no puede crear deportes | RF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/observaciones.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-OBS-005 | El personal de salud no tiene Estadísticas | RF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/observaciones.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-RCN-001 | El entrenador ve los reconocimientos del plantel | RF-23 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/comunicacion.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-REC-001 | Recorrido de administrador: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-REC-002 | Recorrido de head_coach: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |

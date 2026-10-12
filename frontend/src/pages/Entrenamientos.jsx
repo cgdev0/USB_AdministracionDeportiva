@@ -3,10 +3,11 @@ import { Plus, Pencil, Trash2, Dumbbell } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
-import { Esqueleto, EstadoVacio, EstadoError } from '../components/EstadoVista'
+import { Esqueleto, EstadoVacio, EstadoError, EstadoSinResultados } from '../components/EstadoVista'
 import api from '../services/api'
 import CamposAgenda, { AGENDA_VACIA, agendaDe, resumenAgenda, useEquiposAsignables } from '../components/CamposAgenda'
 import { useAuth } from '../context/AuthContext'
+import { useFiltroDeporte } from '../context/DeporteContext'
 
 const EMPTY = { fecha: '', tipo: '', descripcion: '', ...AGENDA_VACIA }
 const TIPOS  = ['Resistencia','Fuerza','Táctica','Velocidad','Técnica','Físico General','Recuperación']
@@ -16,6 +17,7 @@ export default function Entrenamientos() {
   const puedeEditar = tienePermiso(['administrador', 'entrenador'])
 
   const [entrenamientos, setEntrenamientos] = useState([])
+  const filtro = useFiltroDeporte()
   const [loading, setLoading]               = useState(true)
   const [error, setError]                   = useState(null)
   const [modal, setModal]                   = useState(false)
@@ -79,6 +81,9 @@ export default function Entrenamientos() {
     }
   }
 
+
+  // Filtro por el deporte de la cabecera (v1.9): las actividades sin equipo son generales y se ven en todos
+  const visibles = entrenamientos.filter(filtro.deActividad)
   return (
     <div>
       <div className="page-header">
@@ -90,7 +95,7 @@ export default function Entrenamientos() {
         <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>
           {!loading && !error && <>
             <Dumbbell size={15} style={{ display: 'inline', marginRight: 6 }} />
-            {entrenamientos.length} sesiones registradas
+            {visibles.length} {visibles.length === 1 ? 'sesión' : 'sesiones'}{filtro.hay ? ` de ${filtro.nombre} y generales` : ' registradas'}
           </>}
         </span>
         {puedeEditar && (
@@ -112,6 +117,8 @@ export default function Entrenamientos() {
               : 'Cuando un entrenador programe una sesión, aparecerá aquí.'}
             accion={puedeEditar ? { texto: 'Nuevo entrenamiento', icono: 'fa-plus', onClick: openCreate } : null}
           />
+        ) : visibles.length === 0 ? (
+          <EstadoSinResultados descripcion={`No hay entrenamientos de ${filtro.nombre}.`} onLimpiar={filtro.limpiar} textoLimpiar="Ver todos los deportes" />
         ) : (
           <div className="table-wrapper" tabIndex={0} role="region" aria-label="Entrenamientos registrados">
             <table>
@@ -124,7 +131,7 @@ export default function Entrenamientos() {
                 </tr>
               </thead>
               <tbody>
-                {entrenamientos.map(e => (
+                {visibles.map(e => (
                   <tr key={e.id}>
                     <td style={{ fontWeight: 600 }}>{new Date(e.fecha).toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric' })}</td>
                     <td><span className="badge badge-purple">{e.tipo}</span><span className="sub-agenda">{resumenAgenda(e)}</span></td>

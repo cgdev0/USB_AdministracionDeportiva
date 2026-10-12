@@ -5,7 +5,8 @@ const { verificarToken, autorizar } = require('../middleware/auth');
 router.use(verificarToken);
 
 router.get('/',       ctrl.getAll);
-router.post('/',      autorizar('administrador', 'entrenador'), ctrl.create);
-router.delete('/:id', autorizar('administrador', 'entrenador'), ctrl.remove);
+// Los deportes de la universidad los administra solo el administrador (v1.9)
+router.post('/',      autorizar('administrador'), ctrl.create);
+router.delete('/:id', autorizar('administrador'), ctrl.remove);
 
 module.exports = router;

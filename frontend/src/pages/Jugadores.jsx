@@ -35,6 +35,7 @@ export default function Jugadores() {
     selectedSport,
     setSelectedSportId,
     crearDisciplina,
+    puedeGestionarDeportes,
     cargarDisciplinas,
   } = useDeporte()
 
@@ -301,14 +302,14 @@ export default function Jugadores() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
             {puedeEditar && (
               <>
-                <button
+                {puedeGestionarDeportes && <button
                   className="btn btn-secondary"
                   onClick={() => setModalNuevoDeporte(true)}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
                   title="Crear un nuevo deporte o disciplina"
                 >
                   <Trophy size={15} color="var(--accent2)" /> + Crear Deporte
-                </button>
+                </button>}
 
                 <button
                   className="btn btn-secondary"

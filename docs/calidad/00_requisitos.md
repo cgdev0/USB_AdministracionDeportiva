@@ -25,7 +25,7 @@ Prioridad: **A** = imprescindible para el uso del sistema, **M** = importante, *
 | RF-03 | Gestionar usuarios: crear, editar, desactivar, restablecer contraseña, asignar rol y crear en lote desde CSV. | Administrador | A |
 | RF-04 | Restringir menú, páginas y operaciones de la API según el rol. | Todos | A |
 | RF-05 | Mostrar a cada rol solo los datos que le corresponden: el deportista los suyos, el entrenador los de sus deportistas y el head coach los de sus entrenadores. | Todos | A |
-| RF-06 | Gestionar deportes (crear, eliminar) y filtrar la información por deporte en toda la aplicación. | Administrador, entrenador | M |
+| RF-06 | Gestionar deportes (crear y eliminar, solo el administrador) y filtrar la información por deporte en toda la aplicación (también entrenamientos, partidos, salud y usuarios). El entrenador, el head coach y el deportista ven solo sus deportes; el administrador puede asignar el deporte de cada entrenador. | Administrador, entrenador | M |
 | RF-07 | Gestionar equipos: crear, editar, cargar escudo, eliminar, ver nómina y asignar o desvincular deportistas. | Administrador, entrenador (consulta: head coach, salud) | M |
 | RF-08 | Gestionar deportistas: crear, editar, eliminar, subir foto, ver ficha, buscar, filtrar e importar desde CSV. | Administrador, entrenador | A |
 | RF-09 | Asignar, cambiar y quitar el dorsal (0 a 99) de un deportista, sin repetirlo dentro de un equipo, y mostrarlo junto al nombre en todo el sistema. | Administrador, entrenador | M |
