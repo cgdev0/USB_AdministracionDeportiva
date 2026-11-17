@@ -136,19 +136,23 @@ test('CP-UI-INI-002 [RF-18] Tocar un número del plantel muestra el inicio de es
   await page.context().close();
 });
 
-test('CP-UI-AGE-001 [RF-10] El entrenador programa un entrenamiento con equipo, hora y lugar', async ({ browser }) => {
+test('CP-UI-AGE-001 [RF-10] El entrenador programa un entrenamiento con equipo, día y hora disponibles, y lugar', async ({ browser }) => {
   const { paginaEn } = require('./ayuda');
   const page = await paginaEn(browser, 'celular');
   await entrar(page, 'entrenador');
   await page.goto('/entrenamientos');
   await page.getByRole('button', { name: /Nuevo entrenamiento/i }).click();
   const hoja = page.locator('.modal-box, .modal').first();
-  await hoja.locator('input[name="fecha"]').fill('2026-12-10');
   await hoja.locator('select[name="tipo"]').selectOption('Táctica');
   const opcion = hoja.getByLabel('Equipo').locator('option', { hasText: 'Unisimón Rugby (demo)' });
   await expect(opcion).toHaveCount(1);
   await hoja.getByLabel('Equipo').selectOption(await opcion.getAttribute('value'));
-  await hoja.getByLabel('Hora').fill('17:30');
+  // v2.6: calendario propio (sin días pasados) y botones con las horas disponibles
+  await expect(hoja.getByRole('button', { name: 'Mes anterior' })).toBeDisabled();
+  await hoja.getByRole('button', { name: 'Mes siguiente' }).click();
+  await hoja.locator('.selector-dia', { hasText: /^10$/ }).click();
+  await hoja.getByRole('button', { name: '5:30 p. m.' }).click();
+  await expect(hoja.getByRole('button', { name: '5:30 p. m.' })).toHaveAttribute('aria-pressed', 'true');
   await hoja.getByLabel('Lugar').fill('Cancha UI prueba');
   await hoja.getByRole('button', { name: 'Crear' }).click();
   // v2.0: los entrenamientos se ven como lista de sesiones con equipo, lugar y hora

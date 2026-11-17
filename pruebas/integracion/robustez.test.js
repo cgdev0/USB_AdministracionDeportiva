@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { iniciar, cerrar, llamar, token, sql } = require('../utilidades/api');
+const { fechaEnDias, horaActual } = require('../utilidades/fechas');
 
 let A;
 test.before(async () => { await iniciar(); A = await token('administrador'); });
@@ -73,7 +74,7 @@ test('CP-SEG-008 [RNF-03] Fecha con formato inválido', async () => {
 });
 
 test('CP-SEG-009 [RNF-03] Tipo de partido fuera de la lista (liga o amistoso)', async () => {
-  rechaza(await llamar('POST', '/api/partidos', A, { fecha: '2026-11-01', rival: 'ZZ', tipo: 'final' }), 'tipo de partido');
+  rechaza(await llamar('POST', '/api/partidos', A, { fecha: fechaEnDias(10), rival: 'ZZ', tipo: 'final' }), 'tipo de partido');
 });
 
 test('CP-SEG-010 [RNF-03] Referencia a un jugador inexistente', async () => {

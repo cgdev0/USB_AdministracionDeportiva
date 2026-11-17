@@ -2,6 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { iniciar, cerrar, llamar, token, sql } = require('../utilidades/api');
+const { fechaEnDias, horaActual } = require('../utilidades/fechas');
 
 const T = {};
 let equipoDemo, entrenamiento, jugadorPropio;
@@ -10,7 +11,7 @@ test.before(async () => {
   await iniciar();
   for (const rol of ['administrador', 'entrenador', 'entrenador2', 'jugador']) T[rol] = await token(rol);
   ({ rows: [{ id: equipoDemo }] } = await sql(`SELECT id FROM equipos WHERE nombre = 'Unisimón Rugby (demo)'`));
-  const e = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: '2026-12-10', tipo: 'ZZ v2 sesión', equipo_id: equipoDemo });
+  const e = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: fechaEnDias(23), tipo: 'ZZ v2 sesión', equipo_id: equipoDemo });
   entrenamiento = e.datos.id;
   jugadorPropio = (await llamar('GET', '/api/jugadores', T.entrenador)).datos[0].id;
 });
@@ -23,10 +24,11 @@ test.after(async () => {
 });
 
 test('CP-COR-001 [RF-12] [DEF-040] La fecha de un partido se devuelve tal como se guardó (sin desfase de zona horaria)', async () => {
-  const c = await llamar('POST', '/api/partidos', T.administrador, { fecha: '2026-10-12', rival: 'ZZ v2 fecha', tipo: 'liga', equipo_id: equipoDemo });
+  const fecha = fechaEnDias(25);
+  const c = await llamar('POST', '/api/partidos', T.administrador, { fecha, rival: 'ZZ v2 fecha', tipo: 'liga', equipo_id: equipoDemo });
   assert.equal(c.status, 201);
   const p = (await llamar('GET', `/api/partidos/${c.datos.id}`, T.administrador)).datos;
-  assert.equal(p.fecha, '2026-10-12');
+  assert.equal(p.fecha, fecha);
 });
 
 test('CP-COR-002 [RF-11] [DEF-041] La asistencia se guarda como verdadero/falso y no se duplica', async () => {
@@ -45,10 +47,10 @@ test('CP-COR-002 [RF-11] [DEF-041] La asistencia se guarda como verdadero/falso 
 });
 
 test('CP-COR-003 [RF-10] [DEF-042] Solo el administrador crea actividades generales', async () => {
-  const r = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: '2026-12-11', tipo: 'ZZ v2 general' });
+  const r = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: fechaEnDias(24), tipo: 'ZZ v2 general' });
   assert.equal(r.status, 400);
   assert.match(r.datos.error, /Elige el equipo/);
-  const a = await llamar('POST', '/api/entrenamientos', T.administrador, { fecha: '2026-12-11', tipo: 'ZZ v2 general' });
+  const a = await llamar('POST', '/api/entrenamientos', T.administrador, { fecha: fechaEnDias(24), tipo: 'ZZ v2 general' });
   assert.equal(a.status, 201);
 });
 
