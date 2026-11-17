@@ -3,6 +3,17 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v2.6 — Fechas y horas disponibles en entrenamientos y partidos
+
+**Etiqueta:** `v2.6` · Sin cambios en la base de datos.
+
+- No se pueden programar entrenamientos ni partidos en una fecha pasada, ni hoy a una hora que ya pasó. Un registro antiguo se puede seguir editando si no se cambia su fecha (por ejemplo, para anotar el resultado de un partido jugado).
+- La fecha y la hora ya no usan el selector del navegador: el sistema muestra un calendario propio (los días pasados aparecen bloqueados) y botones con las horas disponibles, de 6:00 a. m. a 10:00 p. m. cada 30 minutos, agrupadas en mañana, tarde y noche. No aparecen las horas que ya pasaron ni las que el equipo ya tiene ocupadas con otro entrenamiento o partido.
+- Nuevo `GET /api/entrenamientos/horas-disponibles` y `GET /api/partidos/horas-disponibles` (`fecha`, `equipo_id`, `id` del registro que se edita). El servidor aplica las mismas reglas al guardar: fecha pasada o hora fuera de la lista → 400; hora ocupada por el mismo equipo → 409.
+- Componente `frontend/src/components/SelectorFechaHora.jsx`; validación en `backend/utils/agenda.js`.
+
+Pruebas: CP-AGE-007 a 010 nuevas; CP-UI-AGE-001 usa el calendario y los botones de hora; las pruebas que creaban actividades con fechas fijas (ya pasadas) usan fechas relativas a hoy (`pruebas/utilidades/fechas.js`).
+
 ## v2.5 — Fórmulas de antropometría revisadas
 
 **Etiqueta:** `v2.5` · Sin cambios en la base de datos. Los registros guardados antes conservan sus valores; al editarlos y pulsar "Recalcular" se actualizan.

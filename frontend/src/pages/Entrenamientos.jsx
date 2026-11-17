@@ -31,6 +31,7 @@ export default function Entrenamientos() {
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState(EMPTY)
   const [editId, setEditId] = useState(null)
+  const [original, setOriginal] = useState({}) // fecha y hora guardadas del entrenamiento que se edita
   const [saving, setSaving] = useState(false)
   const [verPasados, setVerPasados] = useState(false)
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, loading: false })
@@ -49,9 +50,9 @@ export default function Entrenamientos() {
 
   const openCreate = () => {
     setForm({ ...EMPTY, fecha: hoyISO(), equipo_id: equipoInicial(equipos, usuario?.rol) })
-    setEditId(null); setModal(true)
+    setEditId(null); setOriginal({}); setModal(true)
   }
-  const openEdit = (e) => { setForm({ fecha: e.fecha?.slice(0, 10), tipo: e.tipo, descripcion: e.descripcion || '', ...agendaDe(e) }); setEditId(e.id); setModal(true) }
+  const openEdit = (e) => { setForm({ fecha: e.fecha?.slice(0, 10), tipo: e.tipo, descripcion: e.descripcion || '', ...agendaDe(e) }); setEditId(e.id); setOriginal({ fecha: e.fecha?.slice(0, 10), hora: e.hora || '' }); setModal(true) }
   const closeModal = () => setModal(false)
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
 
@@ -223,17 +224,13 @@ export default function Entrenamientos() {
         >
           <form className="form-grid" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="ent-fecha">Fecha *</label>
-              <input id="ent-fecha" name="fecha" type="date" value={form.fecha} onChange={handleChange} />
-            </div>
-            <div className="form-group">
               <label htmlFor="ent-tipo">Tipo *</label>
               <select id="ent-tipo" name="tipo" value={form.tipo} onChange={handleChange}>
                 <option value="">Seleccionar…</option>
                 {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <CamposAgenda form={form} onChange={handleChange} equipos={equipos} />
+            <CamposAgenda form={form} onChange={handleChange} equipos={equipos} tabla="entrenamientos" idActual={editId} original={original} />
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label htmlFor="ent-desc">Descripción</label>
               <textarea id="ent-desc" name="descripcion" rows="3" value={form.descripcion} onChange={handleChange}

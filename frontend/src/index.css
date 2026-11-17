@@ -1269,3 +1269,34 @@ button.ini-dorsal:active { transform: scale(0.97); }
 }
 /* Tableta: celdas un poco más compactas para que las tablas quepan con margen */
 @media (min-width: 720px) and (max-width: 1279px) { .tabla-movil th, .tabla-movil td { padding-left: 10px; padding-right: 10px; } }
+
+/* ── v2.6: selector propio de fecha y hora (entrenamientos y partidos) ── */
+.selector-fecha-hora { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 720px) { .selector-fecha-hora { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+.selector-etiqueta { display: block; font-weight: 600; font-size: 14px; margin-bottom: 8px; color: var(--text-primary); }
+.selector-etiqueta small { font-weight: 500; color: var(--text-muted); }
+.selector-calendario-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; }
+.selector-mes { display: flex; align-items: center; gap: 4px; }
+.selector-mes strong { min-width: 9.5em; text-align: center; text-transform: capitalize; font-family: var(--display); font-size: 17px; }
+.selector-mes .btn { min-width: 44px; min-height: 44px; }
+.selector-dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.selector-dia-semana { text-align: center; font-size: 12px; font-weight: 700; color: var(--text-muted); text-decoration: none; padding: 4px 0; }
+.selector-dia, .selector-hora {
+  min-height: 44px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-primary); font: inherit; font-weight: 600; cursor: pointer;
+}
+.selector-dia { padding: 0; }
+.selector-dia.hoy { border-color: var(--verde); color: var(--verde); }
+.selector-dia:disabled { background: var(--superficie-2); color: var(--text-muted); opacity: .55; cursor: not-allowed; text-decoration: line-through; }
+.selector-dia[aria-pressed="true"], .selector-hora[aria-pressed="true"] { background: var(--verde); border-color: var(--verde); color: #fff; }
+.selector-dia:focus-visible, .selector-hora:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .selector-dia:hover:not(:disabled):not([aria-pressed="true"]), .selector-hora:hover:not([aria-pressed="true"]) { border-color: var(--verde); }
+}
+.selector-franja { margin-bottom: 10px; }
+.selector-franja-nombre { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin-bottom: 6px; }
+.selector-horas-lista { display: flex; flex-wrap: wrap; gap: 6px; }
+.selector-hora { padding: 0 12px; min-width: 88px; }
+.selector-hora.sin-hora { font-weight: 500; }
+.selector-nota { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; }
+.selector-nota.error { color: var(--error-texto); }

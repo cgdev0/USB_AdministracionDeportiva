@@ -30,6 +30,7 @@ export default function Partidos() {
   const [form, setForm] = useState(EMPTY)
   const [res, setRes] = useState(RES_VACIO)
   const [editId, setEditId] = useState(null)
+  const [original, setOriginal] = useState({}) // fecha y hora guardadas del partido que se edita
   const [saving, setSaving] = useState(false)
   const [vista, setVista] = useState('proximos')
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, loading: false })
@@ -67,12 +68,12 @@ export default function Partidos() {
     const equipo_id = equipoInicial(equipos, usuario?.rol)
     const perfil = perfilDeporte(equipos.find(e => String(e.id) === equipo_id)?.disciplina_nombre)
     setForm({ ...EMPTY, fecha: hoyISO(), equipo_id, tipo: tiposEvento(perfil)[0].valor })
-    setRes(RES_VACIO); setEditId(null); setModal(true)
+    setRes(RES_VACIO); setEditId(null); setOriginal({}); setModal(true)
   }
   const openEdit = (p) => {
     setForm({ fecha: p.fecha?.slice(0, 10) || '', rival: p.rival, tipo: p.tipo, ...agendaDe(p) })
     setRes(leerResultado(p.resultado, perfilDeporte(p.disciplina_nombre)))
-    setEditId(p.id); setModal(true)
+    setEditId(p.id); setOriginal({ fecha: p.fecha?.slice(0, 10) || '', hora: p.hora || '' }); setModal(true)
   }
   const closeModal = () => setModal(false)
   const handleChange = e => {
@@ -215,11 +216,8 @@ export default function Partidos() {
           }
         >
           <form className="form-grid" onSubmit={handleSubmit}>
-            <CamposAgenda form={form} onChange={handleChange} equipos={equipos} lugarEjemplo="Ej. Estadio General Santander" />
-            <div className="form-group">
-              <label htmlFor="p-fecha">Fecha *</label>
-              <input id="p-fecha" name="fecha" type="date" value={form.fecha} onChange={handleChange} />
-            </div>
+            <CamposAgenda form={form} onChange={handleChange} equipos={equipos} lugarEjemplo="Ej. Estadio General Santander"
+              tabla="partidos" idActual={editId} original={original} />
             <div className="form-group">
               <label htmlFor="p-tipo">Tipo *</label>
               <select id="p-tipo" name="tipo" value={form.tipo} onChange={handleChange}>

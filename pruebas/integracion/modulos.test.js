@@ -2,6 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { iniciar, cerrar, llamar, token, sql } = require('../utilidades/api');
+const { fechaEnDias, horaActual } = require('../utilidades/fechas');
 
 const PRE = 'ZZ prueba ';   // prefijo para identificar y limpiar los datos creados
 const T = {};
@@ -85,14 +86,14 @@ test('CP-MOD-005 [RF-08] Deportistas: crear, ver ficha, editar parcialmente y el
 });
 
 test('CP-MOD-006 [RF-10] Entrenamientos: crear, editar y eliminar', async () => {
-  const c = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: '2026-11-02', tipo: `${PRE}Fuerza`, descripcion: 'Gimnasio', equipo_id: T.equipo });
+  const c = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: fechaEnDias(5), tipo: `${PRE}Fuerza`, descripcion: 'Gimnasio', equipo_id: T.equipo });
   assert.equal(c.status, 201);
-  assert.equal((await llamar('PUT', `/api/entrenamientos/${c.datos.id}`, T.entrenador, { fecha: '2026-11-03', tipo: `${PRE}Fuerza`, descripcion: 'Cambio' })).status, 200);
+  assert.equal((await llamar('PUT', `/api/entrenamientos/${c.datos.id}`, T.entrenador, { fecha: fechaEnDias(6), tipo: `${PRE}Fuerza`, descripcion: 'Cambio' })).status, 200);
   assert.equal((await llamar('DELETE', `/api/entrenamientos/${c.datos.id}`, T.entrenador)).status, 200);
 });
 
 test('CP-MOD-007 [RF-11] Asistencia: registrar y corregir', async () => {
-  const e = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: '2026-11-04', tipo: `${PRE}Táctica`, equipo_id: T.equipo });
+  const e = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: fechaEnDias(7), tipo: `${PRE}Táctica`, equipo_id: T.equipo });
   // v2.0: el entrenador solo toma asistencia a sus propios deportistas
   const j = (await llamar('GET', '/api/jugadores', T.entrenador)).datos[0].id;
   const a = await llamar('POST', '/api/asistencia', T.entrenador, { jugador_id: j, entrenamiento_id: e.datos.id, asistencia: true });
@@ -103,9 +104,9 @@ test('CP-MOD-007 [RF-11] Asistencia: registrar y corregir', async () => {
 });
 
 test('CP-MOD-008 [RF-12] Partidos: crear con resultado, editar y eliminar', async () => {
-  const c = await llamar('POST', '/api/partidos', T.entrenador, { fecha: '2026-11-08', rival: `${PRE}Rival`, tipo: 'amistoso', equipo_id: T.equipo });
+  const c = await llamar('POST', '/api/partidos', T.entrenador, { fecha: fechaEnDias(9), rival: `${PRE}Rival`, tipo: 'amistoso', equipo_id: T.equipo });
   assert.equal(c.status, 201);
-  assert.equal((await llamar('PUT', `/api/partidos/${c.datos.id}`, T.entrenador, { fecha: '2026-11-08', rival: `${PRE}Rival`, tipo: 'amistoso', resultado: '21-14' })).status, 200);
+  assert.equal((await llamar('PUT', `/api/partidos/${c.datos.id}`, T.entrenador, { fecha: fechaEnDias(9), rival: `${PRE}Rival`, tipo: 'amistoso', resultado: '21-14' })).status, 200);
   assert.equal((await llamar('DELETE', `/api/partidos/${c.datos.id}`, T.entrenador)).status, 200);
 });
 

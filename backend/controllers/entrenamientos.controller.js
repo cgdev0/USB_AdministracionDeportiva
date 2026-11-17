@@ -1,7 +1,7 @@
 const db = require('../config/db');
 
 const { responderError } = require('../utils/errores');
-const { camposAgenda, listar, buscar } = require('../utils/agenda');
+const { camposAgenda, listar, buscar, validarFechaHora } = require('../utils/agenda');
 
 // v1.7: cada usuario ve los entrenamientos generales y los de los equipos de su alcance
 exports.getAll = async (req, res) => {
@@ -28,6 +28,8 @@ exports.create = async (req, res) => {
   try {
     const a = await camposAgenda(req.usuario, req.body);
     if (a.error) return res.status(a.status || 400).json({ error: a.error });
+    const v = await validarFechaHora('entrenamientos', { fecha, hora: a.hora, equipo_id: a.equipo_id });
+    if (v.error) return res.status(v.status || 400).json({ error: v.error });
     const { rows } = await db.query(
       'INSERT INTO entrenamientos (fecha, tipo, descripcion, equipo_id, hora, lugar) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
       [fecha, tipo, descripcion, a.equipo_id, a.hora, a.lugar]
@@ -50,6 +52,8 @@ exports.update = async (req, res) => {
       lugar: 'lugar' in req.body ? req.body.lugar : actual.lugar,
     });
     if (a.error) return res.status(a.status || 400).json({ error: a.error });
+    const v = await validarFechaHora('entrenamientos', { fecha, hora: a.hora, equipo_id: a.equipo_id }, actual);
+    if (v.error) return res.status(v.status || 400).json({ error: v.error });
     await db.query(
       'UPDATE entrenamientos SET fecha=$1, tipo=$2, descripcion=$3, equipo_id=$4, hora=$5, lugar=$6 WHERE id=$7',
       [fecha, tipo, descripcion, a.equipo_id, a.hora, a.lugar, req.params.id]

@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import SelectorFechaHora from './SelectorFechaHora'
 
 // Solo lo usan quienes crean o editan la agenda (administrador y entrenador); los demás roles no consultan equipos
 export function useEquiposAsignables(activo = true) {
@@ -30,7 +31,9 @@ export function equipoInicial(equipos, rol) {
   return rol !== 'administrador' && equipos.length === 1 ? String(equipos[0].id) : ''
 }
 
-export default function CamposAgenda({ form, onChange, equipos, lugarEjemplo = 'Ej. Cancha sintética' }) {
+// v2.6: fecha y hora se eligen en SelectorFechaHora (calendario sin días pasados y horas disponibles del equipo).
+// `tabla` es 'entrenamientos' o 'partidos'; `idActual` y `original` ({ fecha, hora }) identifican el registro que se edita.
+export default function CamposAgenda({ form, onChange, equipos, lugarEjemplo = 'Ej. Cancha sintética', tabla, idActual = null, original = {} }) {
   const { usuario } = useAuth()
   const esAdmin = usuario?.rol === 'administrador'
   // Agrupados por deporte para el administrador, que ve todos
@@ -58,9 +61,9 @@ export default function CamposAgenda({ form, onChange, equipos, lugarEjemplo = '
           <small className="ayuda-campo">Pide al administrador que cree un equipo de tu deporte.</small>
         )}
       </div>
-      <div className="form-group">
-        <label htmlFor="agenda-hora">Hora</label>
-        <input id="agenda-hora" name="hora" type="time" value={form.hora} onChange={onChange} />
+      <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+        <SelectorFechaHora fecha={form.fecha} hora={form.hora} equipoId={form.equipo_id} tabla={tabla}
+          idActual={idActual} original={original} onChange={(name, value) => onChange({ target: { name, value } })} />
       </div>
       <div className="form-group" style={{ gridColumn: '1 / -1' }}>
         <label htmlFor="agenda-lugar">Lugar</label>
