@@ -16,7 +16,7 @@ export default function Salud(){
  const save=async(e)=>{e.preventDefault();try{await api.post('/salud/controles',form);toast.success('Control médico registrado');setForm(blank);load()}catch(e){toast.error(e.message)}}
  const saveHistoria=async(e)=>{e.preventDefault();try{await api.post('/salud/historias',historiaForm);toast.success('Historia clínica guardada');setHistoriaForm(historiaBlank);load()}catch(e){toast.error(e.message)}}
  const read=async(id)=>{try{await api.patch(`/salud/notificaciones/${id}/leida`);setNotificaciones(n=>n.map(x=>x.id===id?{...x,leida:true}:x))}catch(e){toast.error(e.message)}}
- const cabecera=<div className="page-header"><h2><HeartPulse size={23} style={{display:'inline',marginRight:8}}/>Salud y seguimiento</h2><p>Controles médicos, aptitud deportiva y notificaciones del deportista.</p></div>
+ const cabecera=<div className="page-header"><h1><HeartPulse size={23} style={{display:'inline',marginRight:8}}/>Salud y seguimiento</h1><p>Controles médicos, aptitud deportiva y notificaciones del deportista.</p></div>
  // Filtro por el deporte de la cabecera (v1.9)
  const jugadoresV=jugadores.filter(j=>filtro.deDisciplina(j.disciplina_id)); const controlesV=controles.filter(c=>filtro.deDisciplina(c.disciplina_id)); const historiasV=historias.filter(h=>filtro.deDisciplina(h.disciplina_id))
  if(loading)return <div>{cabecera}<div className="card" style={{padding:0}}><Esqueleto tipo="panel" filas={8} etiqueta="Cargando salud…"/></div></div>

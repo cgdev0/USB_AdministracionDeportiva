@@ -10,7 +10,7 @@ export const MODULOS = [
     roles: ['administrador', 'head_coach', 'entrenador'] },
   { ruta: '/jugadores',      etiqueta: 'Deportistas',       corto: 'Deportistas',  icono: 'fa-solid fa-users',
     roles: ['administrador', 'head_coach', 'entrenador', 'personal_salud'] },
-  { ruta: '/entrenamientos', etiqueta: 'Entrenamientos',    corto: 'Entrenos',     icono: 'fa-solid fa-dumbbell',
+  { ruta: '/entrenamientos', etiqueta: 'Entrenamientos',    corto: 'Entrenos',     icono: 'fa-solid fa-stopwatch',
     roles: ['administrador', 'head_coach', 'entrenador', 'jugador'] },
   { ruta: '/asistencia',     etiqueta: 'Asistencia',        corto: 'Asistencia',   icono: 'fa-solid fa-clipboard-check',
     roles: ['administrador', 'head_coach', 'entrenador', 'jugador'] },
@@ -58,3 +58,10 @@ export function iniciales(nombre = '') {
   const partes = nombre.trim().split(/\s+/).filter(Boolean)
   return ((partes[0]?.[0] || '') + (partes[1]?.[0] || '')).toUpperCase() || '?'
 }
+
+// Secciones del menú lateral (v2.0): el juego, el cuidado del deportista y la administración
+export const GRUPOS = [
+  { titulo: 'Competencia', rutas: ['/', '/head-coach', '/equipos', '/jugadores', '/entrenamientos', '/asistencia', '/partidos', '/estadisticas'] },
+  { titulo: 'Salud y rendimiento', rutas: ['/lesiones', '/salud', '/evaluaciones', '/antropometria'] },
+  { titulo: 'Gestión', rutas: ['/usuarios'] },
+]

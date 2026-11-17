@@ -1,4 +1,5 @@
 const db     = require('../config/db');
+const { hoyLocal } = require('../utils/hoy');
 const { hashClave } = require('../utils/claves');
 const { responderError } = require('../utils/errores');
 
@@ -26,7 +27,18 @@ exports.getAll = async (_req, res) => {
   }
 };
 
+// Edad a partir de la fecha de nacimiento ('YYYY-MM-DD'); null si no es válida o es futura
+function validarNacimiento(valor) {
+  if (!valor) return { ok: true, valor: null };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(valor))) return { ok: false, error: 'La fecha de nacimiento no es válida.' };
+  const hoy = hoyLocal();
+  if (valor > hoy || valor < '1900-01-01') return { ok: false, error: 'La fecha de nacimiento no es válida.' };
+  return { ok: true, valor };
+}
+
 // POST /api/usuarios
+// v2.0: al crear un deportista se crea también su ficha en el plantel (deporte, equipo, posición y fecha de
+// nacimiento) y queda vinculada a la cuenta. Antes había que hacerlo por separado en Deportistas.
 exports.create = async (req, res) => {
   const { nombre, email, password, rol, jugador_id, head_coach_id, disciplina_id } = req.body;
   if (!nombre || !email || !password || !rol)
@@ -40,18 +52,42 @@ exports.create = async (req, res) => {
   if (req.usuario.rol === 'entrenador' && !['jugador', 'personal_salud'].includes(rol))
     return res.status(403).json({ error: 'El entrenador solo puede crear usuarios de tipo jugador o personal_salud' });
 
+  const ficha = req.body.ficha || null;
+  const nacimiento = validarNacimiento(ficha?.fecha_nacimiento);
+  if (!nacimiento.ok) return res.status(400).json({ error: nacimiento.error });
+  if (rol === 'jugador' && !jugador_id && !ficha?.disciplina_id) {
+    return res.status(400).json({ error: 'Elige el deporte del deportista.' });
+  }
+
+  const cliente = await db.connect();
   try {
     const { password_hash: hash, salt } = await hashClave(password);
-    const { rows } = await db.query(
+    await cliente.query('BEGIN');
+    let jugadorId = jugador_id || null;
+    if (rol === 'jugador' && !jugadorId) {
+      const genero = ['masculino', 'femenino'].includes(ficha.genero) ? ficha.genero : null;
+      const { rows: [j] } = await cliente.query(
+        `INSERT INTO jugadores (nombre, fecha_nacimiento, edad, genero, posicion, disciplina_id, equipo_id, entrenador_id)
+         VALUES ($1, $2::date, CASE WHEN $2::date IS NULL THEN NULL ELSE date_part('year', age($2::date))::int END, $3, $4, $5, $6, $7)
+         RETURNING id`,
+        [String(nombre).trim(), nacimiento.valor, genero, ficha.posicion || null, ficha.disciplina_id,
+         ficha.equipo_id || null, ficha.entrenador_id || null]);
+      jugadorId = j.id;
+    }
+    const { rows } = await cliente.query(
       `INSERT INTO usuarios (nombre, email, password_hash, salt, rol, jugador_id, head_coach_id, disciplina_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-      [nombre, email.toLowerCase().trim(), hash, salt, rol, jugador_id || null, head_coach_id || null,
+      [nombre, email.toLowerCase().trim(), hash, salt, rol, jugadorId, head_coach_id || null,
        ['entrenador', 'head_coach'].includes(rol) ? disciplina_id || null : null]
     );
-    res.status(201).json({ id: rows[0].id, nombre, email, rol, activo: true, primer_login: true });
+    await cliente.query('COMMIT');
+    res.status(201).json({ id: rows[0].id, nombre, email, rol, jugador_id: jugadorId, activo: true, primer_login: true });
   } catch (err) {
+    await cliente.query('ROLLBACK').catch(() => {});
     if (err.code === '23505') return res.status(409).json({ error: 'El email ya está registrado' });
     responderError(res, err);
+  } finally {
+    cliente.release();
   }
 };
 
@@ -101,12 +137,23 @@ exports.resetPassword = async (req, res) => {
 // DELETE /api/usuarios/:id  (desactivar, no borrar)
 exports.remove = async (req, res) => {
   try {
-    const { rowCount } = await db.query(
-      'UPDATE usuarios SET activo=false WHERE id=$1',
-      [req.params.id]
-    );
+    if (String(req.params.id) === String(req.usuario.id)) {
+      return res.status(400).json({ error: 'No puedes desactivar tu propia cuenta.' });
+    }
+    const { rowCount } = await db.query('UPDATE usuarios SET activo=false WHERE id=$1', [req.params.id]);
     if (rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json({ message: 'Usuario desactivado correctamente' });
+  } catch (err) {
+    responderError(res, err);
+  }
+};
+
+// PATCH /api/usuarios/:id/activar  (v2.0, DEF-043: antes un usuario desactivado no se podía recuperar)
+exports.activar = async (req, res) => {
+  try {
+    const { rowCount } = await db.query('UPDATE usuarios SET activo=true WHERE id=$1', [req.params.id]);
+    if (rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ message: 'Usuario reactivado correctamente' });
   } catch (err) {
     responderError(res, err);
   }

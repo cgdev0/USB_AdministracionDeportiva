@@ -11,15 +11,25 @@ const RAIZ = path.resolve(__dirname, '..');
 const RES = path.join(RAIZ, 'pruebas', 'resultados');
 const CAL = path.join(RAIZ, 'docs', 'calidad');
 const VERSION = process.argv[2] || 'sin-version';
+// v2.2: el entorno se describe con lo que realmente se usó (antes era un texto fijo)
+const ENTORNO = (() => {
+  const os = require('os');
+  const so = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' }[process.platform] || process.platform;
+  const extra = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'resultados', 'entorno.json'), 'utf8')); } catch { return {}; } })();
+  const ui = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'resultados', 'ui.json'), 'utf8')); } catch { return null; } })();
+  const navegadores = ui ? [...new Set((ui.config?.projects || []).map(p => p.name))] : [];
+  return [`${so} ${os.release()}`, `Node.js ${process.version}`, `${extra.postgres || 'PostgreSQL'} (base \`dt_deportivo_pruebas\`)`,
+    navegadores.length ? `${navegadores.join(', ')} (Playwright)` : 'sin pruebas de navegador', extra.zona ? `zona del sistema ${extra.zona}` : null].filter(Boolean).join(' · ');
+})();
 const HOY = new Date().toISOString().slice(0, 10);
 
 const leerJSON = (f, def = null) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return def; } };
 const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : null);
 
 // ── Requisitos y módulos ──────────────────────────────────────
-const RF = Array.from({ length: 23 }, (_, i) => `RF-${String(i + 1).padStart(2, '0')}`);
+const RF = Array.from({ length: 24 }, (_, i) => `RF-${String(i + 1).padStart(2, '0')}`);
 const MODULOS = {
-  Inicio: ['RF-18', 'RF-21', 'RF-22', 'RF-23'], Supervisión: ['RF-19'], Equipos: ['RF-07'], Partidos: ['RF-12', 'RF-20'], Deportistas: ['RF-08', 'RF-09'],
+  Inicio: ['RF-18', 'RF-21', 'RF-22', 'RF-23'], Supervisión: ['RF-19'], Equipos: ['RF-07', 'RF-24'], Partidos: ['RF-12', 'RF-20'], Deportistas: ['RF-08', 'RF-09'],
   Entrenamientos: ['RF-10'], Asistencia: ['RF-11'], Estadísticas: ['RF-13'],
   Lesiones: ['RF-14'], Salud: ['RF-15'], Evaluaciones: ['RF-16'], Antropometría: ['RF-17'], Usuarios: ['RF-03'],
 };
@@ -36,6 +46,8 @@ function clasificar(id) {
     [/^CP-CSV/, 'Integración', 'Funcionalidad · Interoperabilidad'],
     [/^CP-SEG-(00[1-3]|01[3-689]|020)/, 'Seguridad', 'Funcionalidad · Seguridad de acceso'],
     [/^CP-SEG/, 'Robustez', 'Fiabilidad · Tolerancia a fallos'],
+    [/^CP-(ADM|ZON)/, 'Integración', 'Funcionalidad · Seguridad de acceso / Exactitud'],
+    [/^CP-(COR|EST)/, 'Integración', 'Funcionalidad · Adecuación y exactitud'],
     [/^CP-MIG/, 'Migración', 'Portabilidad · Instalabilidad y reemplazo'],
     [/^CP-UI-REC/, 'Sistema', 'Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad'],
     [/^CP-UI-COM/, 'Compatibilidad', 'Portabilidad · Adaptabilidad'],
@@ -66,9 +78,11 @@ function casosApi() {
     const archivo = path.relative(RAIZ, ((attrs.match(/file="([^"]*)"/) || [])[1] || '')).replace(/\\/g, '/');
     const todo = (cuerpo.match(/<skipped type="todo" message="([^"]*)"/) || [])[1];
     const fallo = /<failure/.test(cuerpo) || /failure="/.test(attrs);
+    // v2.2: un caso omitido (t.skip) no cuenta como aprobado
+    const omitido = !todo && /<skipped type="skipped"/.test(cuerpo);
     const decod = (s) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
     casos.push({ ...partesDelTitulo(decod(titulo)), archivo, navegadores: ['—'],
-      estado: todo ? (fallo ? 'defecto' : 'aprobado') : (fallo ? 'fallido' : 'aprobado'), defecto: todo || null });
+      estado: todo ? (fallo ? 'defecto' : 'aprobado') : (fallo ? 'fallido' : omitido ? 'omitido' : 'aprobado'), defecto: todo || null });
   }
   return casos;
 }
@@ -198,7 +212,9 @@ function calcular(casos, defs) {
     M('M-P1', 'Portabilidad', 'Pantallas sin desborde', pct(recorrido.filter(r => r.desborde <= 0).length, recorrido.length), `${recorrido.filter(r => r.desborde <= 0).length} de ${recorrido.length} combinaciones`, '100 %', semaforo(pct(recorrido.filter(r => r.desborde <= 0).length, recorrido.length), 100, 95)),
     M('M-P2', 'Portabilidad', 'Navegadores compatibles', navegadores.length, `${navegadores.length} de 3 (${navegadores.join(', ') || 'ninguno'})`, '3 de 3', semaforo(navegadores.length, 3, 2)),
     M('M-P3', 'Portabilidad', 'Instalación desde cero', null, 'Pendiente: prueba de instalación', '100 % y ≤ 30 min', '⚪'),
-    M('M-P4', 'Portabilidad', 'Migración sin pérdida', con(/^CP-MIG-002/).some(c => c.estado === 'aprobado') ? 100 : 0, con(/^CP-MIG-002/).some(c => c.estado === 'aprobado') ? 'sí' : 'no', 'sí', con(/^CP-MIG-002/).some(c => c.estado === 'aprobado') ? '🟢' : '🔴'),
+    con(/^CP-MIG-002/).every(c => c.estado === 'omitido')
+      ? M('M-P4', 'Portabilidad', 'Migración sin pérdida', null, 'Pendiente: CP-MIG-002 omitido (falta la etiqueta v1-original)', 'sí', '⚪')
+      : M('M-P4', 'Portabilidad', 'Migración sin pérdida', con(/^CP-MIG-002/).some(c => c.estado === 'aprobado') ? 100 : 0, con(/^CP-MIG-002/).some(c => c.estado === 'aprobado') ? 'sí' : 'no', 'sí', con(/^CP-MIG-002/).some(c => c.estado === 'aprobado') ? '🟢' : '🔴'),
   ];
 }
 
@@ -262,7 +278,7 @@ function escribirInforme(casos, metricas, defs) {
 | Fecha de ejecución | ${HOY} |
 | Versión evaluada | ${VERSION} |
 | Plan de pruebas | PP-AD-01 (\`03_plan_de_pruebas.md\`) |
-| Entorno | Windows 11 · Node.js ${process.version} · PostgreSQL 17 (base \`dt_deportivo_pruebas\`) · Chromium, Firefox y WebKit (Playwright) |
+| Entorno | ${ENTORNO} |
 | Generado por | \`npm run test:reporte -- ${VERSION}\` |
 
 ## 1. Resumen

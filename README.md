@@ -65,7 +65,7 @@ npm run dev       # API + frontend en http://localhost:3000
 
 Las contraseñas no están en el código. `npm run seed` asigna a cada usuario nuevo una clave aleatoria y la muestra en la consola, o usa `SEED_CLAVE_INICIAL` si está definida en `.env`. Los usuarios que ya existen no se modifican.
 
-**Base existente de una versión anterior:** después de hacer un respaldo, ejecutar en orden los scripts de `backend/migrations/` que falten (`001_roles_y_salud.sql` a `004_valores_validos.sql`). Los usuarios existentes siguen entrando con su clave de siempre; su contraseña se protege con el hash nuevo la primera vez que inician sesión.
+**Base existente de una versión anterior:** después de hacer un respaldo, ejecutar en orden los scripts de `backend/migrations/` que falten (`001_roles_y_salud.sql` a `010_metricas_y_admin.sql`; en Railway, `database.sql` ya los aplica al desplegar). Los usuarios existentes siguen entrando con su clave de siempre; su contraseña se protege con el hash nuevo la primera vez que inician sesión.
 
 ## Ejecutar el frontend en desarrollo
 
@@ -98,8 +98,13 @@ El repositorio trae `railway.json`: Railway compila el frontend (`npm run build`
 | `SEED_CLAVE_INICIAL` | clave inicial de las cuentas base; cada usuario la cambia en Inicio → Mi sesión |
 | `UPLOADS_DIR` | `/data/uploads` |
 | `DATOS_DEMO` | `1` solo en la versión de pruebas (carga el plantel de demostración una vez) |
+| `DB_SSL` | `false` (la conexión a PostgreSQL va por la red privada de Railway, sin SSL) |
+| `ZONA_HORARIA` | opcional; por defecto `America/Bogota`. La app y PostgreSQL calculan "hoy" y "mañana" en esa zona aunque el servidor esté en UTC |
 
 4. En **Settings → Networking**, generar un dominio público. Railway entrega HTTPS, necesario para instalar la app en el celular.
+5. Entrar con `admin1` y la clave de `SEED_CLAVE_INICIAL`; el sistema pide cambiarla. Cuando todas las cuentas iniciales hayan cambiado su clave, borrar la variable `SEED_CLAVE_INICIAL`.
+
+Las variables `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` y `FRONTEND_URL` que Railway sugiere a partir de `.env.example` no hacen falta (se usa `DATABASE_URL` y el frontend se sirve desde el mismo dominio).
 
 Cada vez que se fusiona un cambio en `main`, Railway vuelve a desplegar. El esquema se actualiza solo (`database.sql` es idempotente) y los datos existentes se conservan. Si la preparación de la base falla, el servidor no arranca, el health check no pasa y la versión anterior sigue en línea.
 
@@ -108,6 +113,10 @@ Cada vez que se fusiona un cambio en `main`, Railway vuelve a desplegar. El esqu
 - `DOCUMENTACION.html`: documentación visual general del sistema.
 - `IMPLEMENTACION.md`: estado de las funcionalidades, limitaciones y tareas de validación.
 - `.env.example`: ejemplo de variables de entorno; revisar antes de iniciar el backend.
+- `docs/Inventario_usuarios_AdministracionDeportiva.pdf`: cuentas definidas en el código, roles y permisos (sin contraseñas).
+- `docs/entrega/Documento_proyecto_Administracion_Deportiva.docx`: documento completo del proyecto para la entrega (requisitos, casos de uso, historias, costos, EVM, riesgos, pruebas con capturas).
+- `docs/analisis/historias_y_casos_de_uso.md`: actores, diagrama y especificación de casos de uso, historias de usuario con criterios de aceptación y matriz de trazabilidad (HU → CU → RF → CP).
+- `docs/diseno/DESIGN.md`: sistema de diseño "Cancha" (colores, tipografía, estructura y perfil de cada deporte).
 - `backend/config/database.sql`: esquema completo de PostgreSQL (crea la base desde cero).
 - `backend/migrations/`: scripts para actualizar bases creadas con versiones anteriores.
 - `docs/calidad/`: plan de calidad (ISO/IEC 9126), casos de prueba, defectos e informes.
@@ -121,10 +130,10 @@ El proyecto se evalúa con la norma ISO/IEC 9126. El marco completo está en `do
 ```bash
 npx playwright install   # solo la primera vez
 npm test                 # API (unitarias e integración) y navegador; usa una base aparte, dt_deportivo_pruebas
-npm run test:reporte -- v1.4   # regenera el catálogo y escribe el informe de esa versión
+npm run test:reporte -- v2.2   # regenera el catálogo y escribe el informe de esa versión
 ```
 
-Detalle de los comandos y de cómo agregar casos: `pruebas/README.md`. Último informe: `docs/calidad/informes/v1.7.md`.
+Detalle de los comandos y de cómo agregar casos: `pruebas/README.md`. Último informe: `docs/calidad/informes/v2.2.md`.
 
 ## Alcance de esta versión
 

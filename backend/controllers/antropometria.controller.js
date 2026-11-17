@@ -1,111 +1,36 @@
+const path = require('path');
+const { pathToFileURL } = require('url');
 const pool = require('../config/db');
 
 const { responderError } = require('../utils/errores');
 const { puedeVerJugador } = require('../utils/alcance');
-const calculateAnthropometry = (data, genero = 'masculino') => {
-  const {
-    peso, estatura,
-    pliegue_biceps, pliegue_triceps, pliegue_subescapular, pliegue_suprailiaco,
-    pliegue_supraespinal, pliegue_abdominal, pliegue_muslo_anterior, pliegue_pierna_medial,
-    perimetro_brazo_contraido, perimetro_brazo_relajado, perimetro_pierna,
-    diametro_humero, diametro_femur,
-  } = data;
 
-  const numPeso = Number(peso) || 0;
-  const numEstatura = Number(estatura) || 0;
-  const estaturaCm = numEstatura > 3 ? numEstatura : numEstatura * 100;
-  const estaturaM = numEstatura > 3 ? numEstatura / 100 : numEstatura;
+// v2.5: las fórmulas viven en un solo archivo, el mismo que usa la pantalla (frontend/src/utils/anthropometry.js).
+// Antes había una copia aquí y el error de la masa ósea (diámetro de húmero en lugar de muñeca) estaba en las dos.
+const modulo = import(pathToFileURL(path.join(__dirname, '..', '..', 'frontend', 'src', 'utils', 'anthropometry.js')).href);
 
-  // 1. IMC
-  const imc = (numPeso > 0 && estaturaM > 0) ? Number((numPeso / Math.pow(estaturaM, 2)).toFixed(2)) : (data.imc ? Number(data.imc) : null);
+const numero = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 
-  // 2. Pliegues
-  const pt = Number(pliegue_triceps || 0);
-  const pse = Number(pliegue_subescapular || 0);
-  const psp = Number(pliegue_supraespinal || 0);
-  const pb = Number(pliegue_biceps || 0);
-  const psi = Number(pliegue_suprailiaco || 0);
-  const pab = Number(pliegue_abdominal || 0);
-  const pma = Number(pliegue_muslo_anterior || 0);
-  const ppm = Number(pliegue_pierna_medial || 0);
-
-  const sum3 = pt + pse + psp;
-  const sum6 = pt + pse + psp + pab + pma + ppm;
-  const sumAll = pb + pt + pse + psi + psp + pab + pma + ppm;
-
-  // 3. Somatotipo Heath-Carter
-  let endo = 0, meso = 0, ecto = 0, xSomato = 0, ySomato = 0;
-  if (numPeso > 0 && estaturaCm > 0) {
-    if (sum3 > 0) {
-      const sum3Corrected = sum3 * (170.18 / estaturaCm);
-      endo = -0.7182 + (0.1451 * sum3Corrected) - (0.00068 * sum3Corrected ** 2) + (0.0000014 * sum3Corrected ** 3);
-    }
-    const brazoCorr = (Number(perimetro_brazo_contraido || perimetro_brazo_relajado || 0)) - (pt / 10);
-    const piernaCorr = (Number(perimetro_pierna || 0)) - (ppm / 10);
-    const dHum = Number(diametro_humero || 6.8);
-    const dFem = Number(diametro_femur || 9.5);
-
-    meso = (0.858 * dHum) + (0.601 * dFem) + (0.188 * brazoCorr) + (0.161 * piernaCorr) - (0.131 * estaturaCm) + 4.5;
-
-    const HWR = estaturaCm / Math.pow(numPeso, 1 / 3);
-    ecto = HWR >= 40.75 ? (0.732 * HWR) - 28.58 : HWR > 38.25 ? (0.463 * HWR) - 17.63 : 0.1;
-
-    endo = Math.max(0.1, Number(endo.toFixed(2)));
-    meso = Math.max(0.1, Number(meso.toFixed(2)));
-    ecto = Math.max(0.1, Number(ecto.toFixed(2)));
-    xSomato = Number((ecto - endo).toFixed(2));
-    ySomato = Number(((2 * meso) - (endo + ecto)).toFixed(2));
-  }
-
-  // 4. % Grasa Corporal
-  let calcGrasa = data.porcentaje_grasa ? Number(data.porcentaje_grasa) : null;
-  const isFemale = genero === 'femenino' || genero === 'f';
-  if (!calcGrasa) {
-    if (sum6 > 0 && pt > 0 && pse > 0 && pab > 0) {
-      calcGrasa = isFemale ? (0.1548 * sum6) + 3.580 : (0.1051 * sum6) + 2.585;
-    } else if ((pt + pse + (psp || psi) + pab) > 0 && pt > 0 && pab > 0) {
-      calcGrasa = 5.783 + (0.153 * (pt + pse + (psp || psi) + pab));
-    } else if (sum3 > 0 && pt > 0 && pse > 0) {
-      calcGrasa = (0.153 * sum3) + 5.5;
-    }
-  }
-  if (calcGrasa) {
-    calcGrasa = Number(Math.max(3.0, Math.min(55.0, calcGrasa)).toFixed(1));
-  }
-
-  // 5. Masa Ósea (kg)
-  let calcOsea = data.masa_mineral_osea ? Number(data.masa_mineral_osea) : null;
-  if (!calcOsea && numPeso > 0) {
-    const dh = Number(diametro_humero || 0);
-    const df = Number(diametro_femur || 0);
-    if (estaturaM > 0 && dh > 0 && df > 0) {
-      calcOsea = 3.02 * Math.pow(Math.pow(estaturaM, 2) * (dh / 100) * (df / 100) * 400, 0.712);
-    } else {
-      calcOsea = numPeso * 0.145;
-    }
-    calcOsea = Number(calcOsea.toFixed(2));
-  }
-
-  // 6. Masa Residual y Masa Muscular Esquelética (kg)
-  let calcMusculo = data.masa_muscular_esqueletica ? Number(data.masa_muscular_esqueletica) : null;
-  if (!calcMusculo && numPeso > 0 && calcGrasa && calcOsea) {
-    const masaGrasaKg = (numPeso * calcGrasa) / 100;
-    const masaResidual = numPeso * (isFemale ? 0.209 : 0.240);
-    const masaMusc = numPeso - (masaGrasaKg + calcOsea + masaResidual);
-    calcMusculo = Number(Math.max(10, masaMusc).toFixed(2));
-  }
-
+// Calcula los valores derivados. Un % de grasa, masa ósea o masa muscular escrito a mano por el profesional
+// (por ejemplo, de una medición directa) tiene prioridad sobre el calculado.
+const calcularAntropometria = async (data, genero = 'masculino', edad = null) => {
+  const { calculateAnthropometry, masaMuscularPorDiferencia } = await modulo;
+  const c = calculateAnthropometry(data, genero, edad);
+  const porcentaje_grasa = numero(data.porcentaje_grasa) ?? c.porcentaje_grasa;
+  const masa_mineral_osea = numero(data.masa_mineral_osea) ?? c.masa_mineral_osea;
+  const masa_muscular_esqueletica = numero(data.masa_muscular_esqueletica)
+    ?? masaMuscularPorDiferencia(data.peso, porcentaje_grasa, masa_mineral_osea, genero);
   return {
-    imc: imc || data.imc || null,
-    porcentaje_grasa: calcGrasa || data.porcentaje_grasa || null,
-    masa_mineral_osea: calcOsea || data.masa_mineral_osea || null,
-    masa_muscular_esqueletica: calcMusculo || data.masa_muscular_esqueletica || null,
-    endomorfia: endo,
-    mesomorfia: meso,
-    ectomorfia: ecto,
-    x_somatocarta: xSomato,
-    y_somatocarta: ySomato,
-    sumatoria_pliegues: Number(sumAll.toFixed(1)),
+    imc: c.imc ?? numero(data.imc),
+    porcentaje_grasa,
+    masa_mineral_osea,
+    masa_muscular_esqueletica,
+    endomorfia: c.endomorfia,
+    mesomorfia: c.mesomorfia,
+    ectomorfia: c.ectomorfia,
+    x_somatocarta: c.x_somatocarta,
+    y_somatocarta: c.y_somatocarta,
+    sumatoria_pliegues: c.sumatoria_pliegues,
   };
 };
 
@@ -125,10 +50,14 @@ const COLUMNAS = [
 const soloColumnas = (obj) =>
   Object.fromEntries(Object.entries(obj).filter(([k]) => COLUMNAS.includes(k)));
 
-const generoDelJugador = async (jugadorId) => {
-  if (!jugadorId) return 'masculino';
-  const { rows } = await pool.query('SELECT genero FROM jugadores WHERE id = $1', [jugadorId]);
-  return rows[0]?.genero || 'masculino';
+// Sexo y edad del deportista: la ecuación de Durnin-Womersley usa coeficientes por sexo y grupo de edad
+const datosDelJugador = async (jugadorId) => {
+  if (!jugadorId) return { genero: 'masculino', edad: null };
+  const { rows } = await pool.query(
+    `SELECT genero, COALESCE(date_part('year', age(fecha_nacimiento))::int, edad) AS edad FROM jugadores WHERE id = $1`,
+    [jugadorId]
+  );
+  return { genero: rows[0]?.genero || 'masculino', edad: rows[0]?.edad ?? null };
 };
 
 const getAntropometriaByJugador = async (req, res) => {
@@ -152,8 +81,8 @@ const createAntropometria = async (req, res) => {
     const data = soloColumnas(req.body);
     for (const key in data) if (data[key] === '') data[key] = null;
 
-    const genero = await generoDelJugador(data.jugador_id);
-    const calculated = calculateAnthropometry(data, genero);
+    const { genero, edad } = await datosDelJugador(data.jugador_id);
+    const calculated = await calcularAntropometria(data, genero, edad);
     const fields = soloColumnas({ ...data, ...calculated });
     const keys   = Object.keys(fields);
     const vals   = Object.values(fields);
@@ -174,8 +103,8 @@ const updateAntropometria = async (req, res) => {
     const data = soloColumnas(req.body);
     for (const key in data) if (data[key] === '') data[key] = null;
 
-    const genero = await generoDelJugador(data.jugador_id);
-    const calculated = calculateAnthropometry(data, genero);
+    const { genero, edad } = await datosDelJugador(data.jugador_id);
+    const calculated = await calcularAntropometria(data, genero, edad);
     const fields = soloColumnas({ ...data, ...calculated });
     const keys   = Object.keys(fields);
     const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
@@ -200,4 +129,4 @@ const deleteAntropometria = async (req, res) => {
   }
 };
 
-module.exports = { getAntropometriaByJugador, createAntropometria, updateAntropometria, deleteAntropometria };
+module.exports = { calcularAntropometria, getAntropometriaByJugador, createAntropometria, updateAntropometria, deleteAntropometria };

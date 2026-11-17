@@ -19,10 +19,12 @@ import { useDeporte } from '../context/DeporteContext'
 import { formatImageUrl } from '../utils/image'
 import { calculateAnthropometry } from '../utils/anthropometry'
 import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
+import EncabezadoPagina from '../components/EncabezadoPagina'
+import { fechaTabla, hoyISO, numeroDia, mesCorto } from '../utils/fechas'
 
 const EMPTY_ANTRO = {
   jugador_id: '',
-  fecha: new Date().toISOString().split('T')[0],
+  fecha: hoyISO(),
   peso: '', estatura: '', imc: '',
   pliegue_biceps: '', pliegue_triceps: '', pliegue_subescapular: '', pliegue_suprailiaco: '',
   pliegue_supraespinal: '', pliegue_abdominal: '', pliegue_muslo_anterior: '', pliegue_pierna_medial: '',
@@ -33,8 +35,10 @@ const EMPTY_ANTRO = {
 }
 
 export default function Antropometria() {
-  const { tienePermiso } = useAuth()
+  const { tienePermiso, usuario } = useAuth()
   const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
+  // v2.0: el deportista solo ve su propio panel; no hay selector ni datos de sus compañeros
+  const esJugador = usuario?.rol === 'jugador'
   const puedeEditar = tienePermiso(['administrador', 'entrenador', 'personal_salud'])
 
   const [jugadores, setJugadores] = useState([])
@@ -71,6 +75,7 @@ export default function Antropometria() {
 
   // Filtrar jugadores por deporte activo si aplica
   const jugadoresDisponibles = jugadores.filter(j => {
+    if (esJugador) return String(j.id) === String(usuario?.jugador_id)
     if (selectedSportId && selectedSportId !== 'todos') {
       return String(j.disciplina_id) === String(selectedSportId)
     }
@@ -125,8 +130,9 @@ export default function Antropometria() {
 
   // Clasificación del Somatotipo predominante
   const getSomatotypeClassification = (reg) => {
-    if (!reg || reg.endomorfia === undefined) return 'Sin clasificar'
-    const { endomorfia: endo, mesomorfia: meso, ectomorfia: ecto } = reg
+    // Sin los tres componentes medidos no se clasifica (v2.5: ya no se completan con valores por defecto)
+    if (!reg || reg.endomorfia == null || reg.mesomorfia == null || reg.ectomorfia == null) return 'Sin clasificar'
+    const [endo, meso, ecto] = [reg.endomorfia, reg.mesomorfia, reg.ectomorfia].map(Number)
     if (meso >= endo && meso >= ecto) {
       if (endo > ecto) return 'Meso-Endomorfo (Potencia & Masa)'
       if (ecto > endo) return 'Meso-Ectomorfo (Potencia & Agilidad)'
@@ -145,15 +151,15 @@ export default function Antropometria() {
 
   // Datos para gráfico de evolución temporal (invertir para orden cronológico)
   const evolutionData = [...registros].reverse().map(r => ({
-    fecha: new Date(r.fecha).toLocaleDateString('es', { month: 'short', day: 'numeric' }),
+    fecha: `${numeroDia(r.fecha)} ${mesCorto(r.fecha)}`,
     peso: Number(r.peso) || 0,
     grasa: Number(r.porcentaje_grasa) || 0,
     musculo: Number(r.masa_muscular_esqueletica) || 0,
     imc: Number(r.imc) || 0,
     sumPliegues: Number(r.sumatoria_pliegues) || 0,
-    endo: Number(r.endomorfia) || 0,
-    meso: Number(r.mesomorfia) || 0,
-    ecto: Number(r.ectomorfia) || 0,
+    endo: r.endomorfia == null ? null : Number(r.endomorfia),
+    meso: r.mesomorfia == null ? null : Number(r.mesomorfia),
+    ecto: r.ectomorfia == null ? null : Number(r.ectomorfia),
   }))
 
   // Datos para gráfico de radar de pliegues cutáneos (último registro)
@@ -180,10 +186,11 @@ export default function Antropometria() {
   const somatocartaData = registros
     .filter(r => !filterPos || r.posicion_rugby === filterPos)
     .filter(r => !filterCat || r.categoria === filterCat)
+    .filter(r => r.x_somatocarta != null && r.y_somatocarta != null) // solo somatotipos completos
     .map(r => ({
       x: Number(r.x_somatocarta),
       y: Number(r.y_somatocarta),
-      nombre: new Date(r.fecha).toLocaleDateString('es'),
+      nombre: fechaTabla(r.fecha),
       posicion: r.posicion_rugby || jugadorActivo?.posicion || 'Deportista',
       somatotipo: `${r.endomorfia} - ${r.mesomorfia} - ${r.ectomorfia}`
     }))
@@ -198,13 +205,13 @@ export default function Antropometria() {
 
   const toggleSection = (s) => setExpandedSections(prev => ({ ...prev, [s]: !prev[s] }))
 
-  const liveCalculation = calculateAnthropometry(form, jugadorActivo?.genero)
+  const liveCalculation = calculateAnthropometry(form, jugadorActivo?.genero, jugadorActivo?.edad)
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm(f => {
       const updated = { ...f, [name]: value }
-      const calc = calculateAnthropometry(updated, jugadorActivo?.genero)
+      const calc = calculateAnthropometry(updated, jugadorActivo?.genero, jugadorActivo?.edad)
 
       if (calc.imc !== null) updated.imc = calc.imc
 
@@ -224,7 +231,7 @@ export default function Antropometria() {
   }
 
   const handleRecalculateNow = () => {
-    const calc = calculateAnthropometry(form, jugadorActivo?.genero)
+    const calc = calculateAnthropometry(form, jugadorActivo?.genero, jugadorActivo?.edad)
     setForm(f => ({
       ...f,
       imc: calc.imc ?? f.imc,
@@ -257,7 +264,7 @@ export default function Antropometria() {
   }
 
   const openEdit = (reg) => {
-    const formattedDate = reg.fecha ? new Date(reg.fecha).toISOString().split('T')[0] : ''
+    const formattedDate = reg.fecha ? String(reg.fecha).slice(0, 10) : ''
     setForm({
       ...reg,
       fecha: formattedDate,
@@ -330,11 +337,14 @@ export default function Antropometria() {
 
   return (
     <div>
-      {/* Encabezado del Módulo */}
-      <div className="page-header" style={{ marginBottom: 20 }}>
-        <h2>Dashboard de Rendimiento Antropométrico</h2>
-        <p>Análisis integral de composición corporal, somatotipo y evolución física individual</p>
-      </div>
+      <EncabezadoPagina
+        icono="fa-ruler-combined"
+        antetitulo={esJugador ? 'Mi cuerpo, mi rendimiento' : 'Composición corporal'}
+        titulo={esJugador ? 'Mi antropometría' : 'Antropometría'}
+        descripcion={esJugador
+          ? 'Tus medidas, tu somatotipo y cómo has evolucionado. Solo tú y tu cuerpo técnico ven esta información.'
+          : 'Composición corporal, somatotipo y evolución física individual.'}
+      />
 
       {/* Barra superior de Selección de Jugador y Acciones */}
       <div className="card" style={{ padding: '16px 20px', marginBottom: 24, background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -351,6 +361,13 @@ export default function Antropometria() {
               ) : <i className="fa-solid fa-user" aria-hidden="true" />}
             </div>
             <div style={{ flex: 1 }}>
+              {esJugador ? (
+                <div className="identidad-deportista">
+                  <span className="encabezado-ante">Mi ficha</span>
+                  <b>{jugadorActivo ? etiquetaJugador(jugadorActivo) : 'Tu usuario no está vinculado a una ficha'}</b>
+                  {jugadorActivo && <small>{[jugadorActivo.disciplina_nombre, jugadorActivo.posicion, jugadorActivo.equipo_nombre].filter(Boolean).join(' · ')}</small>}
+                </div>
+              ) : (<>
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent)' }}>
                 Deportista Seleccionado
               </span>
@@ -377,11 +394,12 @@ export default function Antropometria() {
                   </option>
                 ))}
               </select>
-              {selectedSportId && selectedSportId !== 'todos' && (
+              {selectedSportId && selectedSportId !== 'todos' && !esJugador && (
                 <div style={{ fontSize: 11, color: 'var(--accent2)', marginTop: 4, fontWeight: 600 }}>
                   Filtrando por deporte: {selectedSport?.nombre} ({jugadoresDisponibles.length} deportistas)
                 </div>
               )}
+              </>)}
             </div>
           </div>
 
@@ -491,7 +509,7 @@ export default function Antropometria() {
           <EstadoVacio
             icono="fa-ruler-combined"
             titulo={`Sin registros antropométricos para ${jugadorActivo?.nombre || 'este deportista'}`}
-            descripcion="Realiza la primera evaluación física y antropométrica para habilitar el dashboard individual y la somatocarta."
+            descripcion={esJugador ? "Cuando tu cuerpo técnico registre tu primera evaluación, aquí verás tus medidas y tu somatocarta." : "Realiza la primera evaluación física y antropométrica para habilitar el dashboard individual y la somatocarta."}
             accion={puedeEditar ? {
               texto: 'Crear primera evaluación', icono: 'fa-plus',
               onClick: () => {
@@ -580,7 +598,7 @@ export default function Antropometria() {
                   <span style={{ fontSize: 16, fontWeight: 700 }}>Somatocarta (Heath-Carter)</span>
                 </div>
                 <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={showAvg} onChange={e => setShowAvg(e.target.checked)} /> Mostrar Promedio
+                  <input type="checkbox" checked={showAvg} onChange={e => setShowAvg(e.target.checked)} /> {esJugador ? 'Mi promedio' : 'Promedio de sus evaluaciones'}
                 </label>
               </div>
               <Somatocarta data={somatocartaData} average={groupAverage} />
@@ -594,7 +612,7 @@ export default function Antropometria() {
                   <span style={{ fontSize: 16, fontWeight: 700 }}>Mapa de Pliegues Cutáneos (mm)</span>
                 </div>
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  Evaluación {ultimoRegistro ? new Date(ultimoRegistro.fecha).toLocaleDateString('es') : ''}
+                  Evaluación {ultimoRegistro ? fechaTabla(ultimoRegistro.fecha) : ''}
                 </span>
               </div>
 
@@ -742,9 +760,9 @@ export default function Antropometria() {
               <tbody>
                 {registros.map(r => (
                   <tr key={r.id}>
-                    <td>{new Date(r.fecha).toLocaleDateString('es')}</td>
+                    <td>{fechaTabla(r.fecha)}</td>
                     <td style={{ fontWeight: 700, color: 'var(--accent-light)' }}>
-                      {r.endomorfia} - {r.mesomorfia} - {r.ectomorfia}
+                      {r.endomorfia ?? '—'} - {r.mesomorfia ?? '—'} - {r.ectomorfia ?? '—'}
                     </td>
                     <td>{r.peso ? `${r.peso} kg` : '—'}</td>
                     <td>{r.estatura ? `${r.estatura} m` : '—'}</td>
@@ -838,7 +856,7 @@ export default function Antropometria() {
                     {liveCalculation.porcentaje_grasa ? `${liveCalculation.porcentaje_grasa}%` : '—'}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {liveCalculation.masa_grasa_kg ? `${liveCalculation.masa_grasa_kg} kg` : 'Fórmula ISAK'}
+                    {liveCalculation.masa_grasa_kg ? `${liveCalculation.masa_grasa_kg} kg · ${liveCalculation.ecuacion_grasa}` : 'Faltan pliegues'}
                   </div>
                 </div>
 
@@ -863,10 +881,10 @@ export default function Antropometria() {
                 <div style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Somatotipo</div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent-light)' }}>
-                    {liveCalculation.somatotipo_str !== '0.0 - 0.0 - 0.0' ? liveCalculation.somatotipo_str : '—'}
+                    {liveCalculation.endomorfia ?? '—'} - {liveCalculation.mesomorfia ?? '—'} - {liveCalculation.ectomorfia ?? '—'}
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--accent2)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {liveCalculation.clasificacion_somatotipo}
+                    {getSomatotypeClassification(liveCalculation)}
                   </div>
                 </div>
               </div>

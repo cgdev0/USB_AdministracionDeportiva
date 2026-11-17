@@ -12,10 +12,11 @@ import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
 import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
+import { fechaTabla, hoyISO } from '../utils/fechas'
 
 const EMPTY = {
   jugador_id: '',
-  fecha: new Date().toISOString().split('T')[0],
+  fecha: hoyISO(),
   sprint_30m: '',
   salto_vertical: '',
   resistencia_yoyo: '',
@@ -119,7 +120,7 @@ export default function Evaluaciones() {
   return (
     <div>
       <div className="page-header">
-        <h2>Evaluaciones de Rendimiento</h2>
+        <h1>Evaluaciones de Rendimiento</h1>
         <p>
           Análisis físico y composición corporal (Radar Chart)
           {selectedSportId && selectedSportId !== 'todos' ? ` — Deporte: ${selectedSport?.nombre}` : ''}
@@ -163,7 +164,7 @@ export default function Evaluaciones() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <h3 style={{ fontSize: 18, fontWeight: 700 }}>{nombreConDorsal(ev.jugador_nombre, ev.jugador_dorsal)}</h3>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(ev.fecha).toLocaleDateString('es')}</p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fechaTabla(ev.fecha)}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--accent2)' }}>{ev.score_general}</div>

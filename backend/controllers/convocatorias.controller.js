@@ -17,8 +17,9 @@ const enlacePartido = (partidoId) => `/partidos?convocatoria=${partidoId}`;
 async function cargarPartido(cliente, id, usuario) {
   const p = await buscar('partidos', usuario, id, cliente);
   if (!p) return null;
-  const f = p.fecha instanceof Date ? p.fecha : new Date(p.fecha);
-  const fecha = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+  // v2.4 (DEF-047): desde la v2.0 la fecha llega como texto 'YYYY-MM-DD'; convertirla con new Date() la leía
+  // como medianoche UTC y en Colombia quedaba un día antes. Se usa tal cual.
+  const fecha = typeof p.fecha === 'string' ? p.fecha.slice(0, 10) : hoyISO(p.fecha);
   return { id: p.id, fecha, rival: p.rival, tipo: p.tipo, hora: p.hora, lugar: p.lugar };
 }
 
@@ -64,8 +65,7 @@ async function armarRespuesta(cliente, partido, usuario) {
   };
 }
 
-function hoyISO() {
-  const d = new Date();
+function hoyISO(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 

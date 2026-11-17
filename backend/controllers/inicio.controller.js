@@ -131,7 +131,9 @@ exports.getInicio = async (req, res) => {
     const agenda = (alias) => { const pa = []; const c = condicionEquipos(vista, pa, `${alias}.equipo_id`); return { pa, c: c ? ` AND ${c}` : '' }; };
     const q1 = agenda('p');
     const { rows: [proximo] } = await db.query(
-      `SELECT p.id, p.fecha::text AS fecha, p.rival, p.tipo, p.resultado, p.hora, p.lugar FROM partidos p
+      `SELECT p.id, p.fecha::text AS fecha, p.rival, p.tipo, p.resultado, p.hora, p.lugar, eq.nombre AS equipo_nombre,
+              d.nombre AS disciplina_nombre FROM partidos p
+       LEFT JOIN equipos eq ON eq.id = p.equipo_id LEFT JOIN disciplinas d ON d.id = eq.disciplina_id
        WHERE p.fecha >= CURRENT_DATE${q1.c} ORDER BY p.fecha ASC, p.hora NULLS LAST, p.id ASC LIMIT 1`, q1.pa);
     const q2 = agenda('p');
     const { rows: partidos } = await db.query(
@@ -143,7 +145,7 @@ exports.getInicio = async (req, res) => {
        WHERE e.fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6${q3.c} ORDER BY e.fecha, e.hora NULLS LAST, e.id`, q3.pa);
     const cuandoDonde = (a) => [a.lugar, a.hora].filter(Boolean).join(' · ') || null;
     const semana = [
-      ...partidos.map(p => ({ clase: 'partido', id: p.id, fecha: p.fecha, hora: p.hora, lugar: p.lugar, titulo: `Unisimón vs. ${p.rival}`, etiqueta: p.tipo === 'liga' ? 'Liga' : 'Amistoso', detalle: cuandoDonde(p) })),
+      ...partidos.map(p => ({ clase: 'partido', id: p.id, fecha: p.fecha, hora: p.hora, lugar: p.lugar, titulo: `Unisimón vs. ${p.rival}`, etiqueta: ({ liga: 'Liga', amistoso: 'Amistoso', torneo: 'Torneo', competencia: 'Competencia' })[p.tipo] || p.tipo, detalle: cuandoDonde(p) })),
       ...entrenos.map(e => ({ clase: 'entrenamiento', id: e.id, fecha: e.fecha, hora: e.hora, lugar: e.lugar, titulo: e.tipo, detalle: cuandoDonde(e) || e.descripcion })),
     ].sort((a, b) => a.fecha.localeCompare(b.fecha) || (a.hora || '99').localeCompare(b.hora || '99') || (a.clase === 'partido' ? -1 : 1));
 

@@ -45,10 +45,20 @@ exports.crear = async (req, res) => {
     } else if (req.usuario.rol === 'administrador') {
       ({ rows: destinatarios } = await cliente.query('SELECT id FROM usuarios WHERE activo AND id <> $1', [req.usuario.id]));
     } else {
+      // v2.0 (DEF-044): "Todos mis deportistas" llega solo a los deportistas del entrenador que son de su
+      // deporte (si tiene uno asignado). Un deportista de otro deporte nunca recibe el aviso del DT de rugby.
       const params = [];
       const cond = condicionAlcance(req.usuario, params, 'j');
+      let deporte = '';
+      if (req.usuario.rol === 'entrenador') {
+        params.push(req.usuario.id);
+        const yo = `$${params.length}`;
+        deporte = ` AND ((SELECT disciplina_id FROM usuarios WHERE id = ${yo}) IS NULL
+          OR COALESCE(j.disciplina_id, eq.disciplina_id) = (SELECT disciplina_id FROM usuarios WHERE id = ${yo}))`;
+      }
       ({ rows: destinatarios } = await cliente.query(
-        `SELECT u.id FROM usuarios u JOIN jugadores j ON j.id = u.jugador_id WHERE u.activo AND ${cond}`, params));
+        `SELECT u.id FROM usuarios u JOIN jugadores j ON j.id = u.jugador_id LEFT JOIN equipos eq ON eq.id = j.equipo_id
+         WHERE u.activo AND ${cond}${deporte}`, params));
     }
 
     await cliente.query('BEGIN');

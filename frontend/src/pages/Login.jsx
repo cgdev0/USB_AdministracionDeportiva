@@ -47,15 +47,39 @@ export default function Login() {
   if (!cargandoSesion && usuario) return <Navigate to="/" replace />
   return (
     <div className="login-escena">
-      <div className="login-tarjeta">
-        <header className="login-banner">
-          <img src="/brand/logo-horizontal-blanco.png" alt="Universidad Simón Bolívar" />
-          <span className="login-sistema">ADMINISTRACIÓN DEPORTIVA</span>
-        </header>
-        <div className="franja" role="presentation"></div>
+      {/* Portada: la cancha de noche, con los deportes de la universidad */}
+      <section className="login-portada" aria-label="Deportes Unisimón">
+        <div className="login-cancha" aria-hidden="true">
+          <svg viewBox="0 0 600 900" preserveAspectRatio="xMidYMid slice">
+            <g fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="40" y="40" width="520" height="820" rx="4" />
+              <line x1="40" y1="450" x2="560" y2="450" />
+              <circle cx="300" cy="450" r="90" />
+              <circle cx="300" cy="450" r="4" fill="currentColor" />
+              <rect x="160" y="40" width="280" height="140" />
+              <rect x="230" y="40" width="140" height="56" />
+              <path d="M240 180 A70 70 0 0 0 360 180" />
+              <rect x="160" y="720" width="280" height="140" />
+              <rect x="230" y="804" width="140" height="56" />
+              <path d="M240 720 A70 70 0 0 1 360 720" />
+            </g>
+          </svg>
+        </div>
+        <div className="login-portada-in">
+          <img className="login-logo" src="/brand/logo-horizontal-blanco.png" alt="Universidad Simón Bolívar" />
+          <div className="login-lema">
+            <p className="login-ante">Administración Deportiva · Sede Cúcuta</p>
+            <h2>Cada entrenamiento <em>cuenta.</em></h2>
+            <p>Plantel, asistencia, partidos, salud y rendimiento de los equipos de la universidad, en un solo lugar.</p>
+          </div>
+        </div>
+      </section>
 
-        <main className="login-cuerpo">
-          <h1>Iniciar sesión</h1>
+      <main className="login-panel">
+        <div className="login-tarjeta">
+          <img className="login-monograma" src="/brand/monograma-u-verde-256.png" alt="" />
+          <h1>Entra a la cancha</h1>
+          <p className="login-sub">Inicia sesión con tu usuario institucional.</p>
 
           {error && (
             <div className="alerta alerta-error" role="alert">
@@ -68,15 +92,16 @@ export default function Login() {
             <div className="form-group">
               <label htmlFor="email">Usuario o correo</label>
               <div className="login-control">
+                <span className="login-icono-izq" aria-hidden="true"><i className="fa-solid fa-user"></i></span>
                 <input id="email" type="text" value={form.email} onChange={cambiar('email')}
-                  autoComplete="username" autoFocus aria-invalid={error ? 'true' : undefined} />
-                <span className="login-icono" aria-hidden="true"><i className="fa-solid fa-user"></i></span>
+                  autoComplete="username" autoFocus aria-invalid={error ? 'true' : undefined} placeholder="nombre@dtdeportivo.com" />
               </div>
             </div>
 
             <div className="form-group">
               <label htmlFor="password">Contraseña</label>
               <div className="login-control">
+                <span className="login-icono-izq" aria-hidden="true"><i className="fa-solid fa-lock"></i></span>
                 <input id="password" type={verClave ? 'text' : 'password'} value={form.password} onChange={cambiar('password')}
                   autoComplete="current-password" aria-invalid={error ? 'true' : undefined} />
                 <button type="button" className="login-icono" onClick={() => setVerClave(v => !v)}
@@ -87,12 +112,11 @@ export default function Login() {
             </div>
 
             <button type="submit" className="btn btn-primary btn-bloque login-boton" disabled={cargando}>
-              <i className="fa-solid fa-right-to-bracket" aria-hidden="true"></i>
-              {cargando ? 'Iniciando sesión…' : 'Iniciar sesión'}
+              {cargando ? 'Iniciando sesión…' : <>Iniciar sesión <i className="fa-solid fa-arrow-right" aria-hidden="true"></i></>}
             </button>
           </form>
 
-          <p className="login-ayuda">¿Olvidaste tu contraseña? Pídele al administrador del club que la restablezca.</p>
+          <p className="login-ayuda">¿Olvidaste tu contraseña? Pídele al administrador que la restablezca.</p>
 
           {import.meta.env.DEV && (
             <details className="login-demo">
@@ -109,26 +133,9 @@ export default function Login() {
               </ul>
             </details>
           )}
-        </main>
-
-        <footer className="pie">
-          <div className="login-pie">
-            <img className="pie-logo" src="/brand/logo-apilado-blanco.png" alt="Universidad Simón Bolívar, Barranquilla y Cúcuta, Colombia. Vigilada MinEducación" />
-            <div>
-              <h3>Administración Deportiva</h3>
-              <p>Plantel, entrenamientos, salud y rendimiento de los equipos deportivos de la sede Cúcuta. Uso interno.</p>
-            </div>
-            <div>
-              <h3>Portales</h3>
-              <ul>
-                <li><a href="https://www.unisimon.edu.co" target="_blank" rel="noreferrer">Unisimón</a></li>
-                <li><a href="https://cucuta.unisimon.edu.co/estudiante/" target="_blank" rel="noreferrer">Portal Estudiante</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="pie-final">Todos los derechos reservados © Universidad Simón Bolívar - {new Date().getFullYear()}</div>
-        </footer>
-      </div>
+        </div>
+        <p className="login-pie">© Universidad Simón Bolívar {new Date().getFullYear()} · Vigilada MinEducación · Uso interno</p>
+      </main>
     </div>
   )
 }

@@ -1,102 +1,122 @@
-import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, BarChart3 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-} from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { ANIMACION_GRAFICA } from '../utils/movimiento'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
-import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
+import { Esqueleto, EstadoVacio, EstadoError } from '../components/EstadoVista'
+import EncabezadoPagina from '../components/EncabezadoPagina'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
-import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
+import { perfilDeporte as perfilVisual } from '../config/deportes'
+import { etiquetaJugador, nombreConDorsal, tieneDorsal } from '../utils/jugador'
+import { fechaTabla } from '../utils/fechas'
 
-const EMPTY = { jugador_id: '', partido_id: '', goles: 0, asistencias: 0, minutos_jugados: 0 }
+// Estadísticas por deporte (v2.1): al entrar se ven todos los deportes; cada uno tiene sus propias métricas
+// (goles y tarjetas en fútbol, tries y tackles en rugby, rebotes en baloncesto…), definidas en el servidor
+// (backend/config/metricas_deportes.js) y servidas por GET /api/estadisticas/metricas.
+
+const valorDerivada = (d, metricas) => Object.entries(d.pesos).reduce((a, [k, peso]) => a + (Number(metricas?.[k]) || 0) * peso, 0)
 
 export default function EstadisticasJugador() {
-  const { tienePermiso } = useAuth()
+  const { usuario, tienePermiso } = useAuth()
   const puedeEditar = tienePermiso(['administrador', 'entrenador'])
-  const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
+  const esJugador = usuario?.rol === 'jugador'
+  const { selectedSportId } = useDeporte()
 
-  const [stats, setStats]         = useState([])
+  const [deportes, setDeportes] = useState([])
+  const [catalogo, setCatalogo] = useState([])
+  const [elegido, setElegido] = useState(null)
+  const [stats, setStats] = useState([])
   const [jugadores, setJugadores] = useState([])
-  const [partidos, setPartidos]   = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState(null)
-  const [modal, setModal]         = useState(false)
-  const [form, setForm]           = useState(EMPTY)
-  const [editId, setEditId]       = useState(null)
-  const [saving, setSaving]       = useState(false)
+  const [partidos, setPartidos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [orden, setOrden] = useState(null)
+  const [modal, setModal] = useState(false)
+  const [form, setForm] = useState({ jugador_id: '', partido_id: '', metricas: {} })
+  const [editId, setEditId] = useState(null)
+  const [saving, setSaving] = useState(false)
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, loading: false })
 
   const load = async () => {
     setLoading(true)
     setError(null)
     try {
-      const [sRes, jRes, pRes] = await Promise.all([
-        api.get('/estadisticas'), api.get('/jugadores'), api.get('/partidos'),
+      const [mRes, sRes, jRes, pRes] = await Promise.all([
+        api.get('/estadisticas/metricas'), api.get('/estadisticas'), api.get('/jugadores'), api.get('/partidos'),
       ])
+      setDeportes(mRes.data.deportes)
+      setCatalogo(mRes.data.catalogo)
       setStats(sRes.data); setJugadores(jRes.data); setPartidos(pRes.data)
+      // Deporte inicial: el de la cabecera, o el primero con registros, o el primero con deportistas
+      setElegido(prev => {
+        const lista = mRes.data.deportes
+        if (prev && lista.some(d => d.id === prev)) return prev
+        const cabecera = lista.find(d => String(d.id) === String(selectedSportId))
+        return (cabecera || lista.find(d => d.total_registros > 0) || lista.find(d => d.total_jugadores > 0) || lista[0])?.id ?? null
+      })
     } catch (e) { setError(e.message) }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Filtrar jugadores y estadísticas por el deporte seleccionado
-  const jugadoresFiltrados = jugadores.filter(j => {
-    if (selectedSportId && selectedSportId !== 'todos') {
-      return String(j.disciplina_id) === String(selectedSportId)
+  const deporte = deportes.find(d => d.id === elegido)
+  const perfil = deporte?.perfil
+  const visual = perfilVisual(deporte?.nombre)
+  const columnas = useMemo(() => perfil ? [...(perfil.derivadas || []), ...perfil.metricas] : [], [perfil])
+  const ordenActual = orden && columnas.some(c => c.clave === orden) ? orden : (perfil?.derivadas?.[0]?.clave || perfil?.principal)
+
+  const registros = stats.filter(s => s.disciplina_id === elegido)
+  const jugadoresDeporte = jugadores.filter(j => j.disciplina_id === elegido)
+  const partidosDeporte = partidos.filter(p => !p.disciplina_id || p.disciplina_id === elegido)
+
+  const valor = (col, metricas) => (col.pesos ? valorDerivada(col, metricas) : Number(metricas?.[col.clave]) || 0)
+
+  // Totales del equipo y tabla de líderes por deportista
+  const totales = useMemo(() => Object.fromEntries(columnas.map(c => [c.clave, registros.reduce((a, r) => a + valor(c, r.metricas), 0)])), [columnas, registros])
+  const lideres = useMemo(() => {
+    const porJugador = new Map()
+    for (const r of registros) {
+      const fila = porJugador.get(r.jugador_id) || { id: r.jugador_id, nombre: r.jugador_nombre, dorsal: r.jugador_dorsal, posicion: r.jugador_posicion, pj: 0, metricas: {} }
+      fila.pj += 1
+      for (const c of perfil?.metricas || []) fila.metricas[c.clave] = (fila.metricas[c.clave] || 0) + (Number(r.metricas?.[c.clave]) || 0)
+      porJugador.set(r.jugador_id, fila)
     }
-    return true
-  })
+    const col = columnas.find(c => c.clave === ordenActual)
+    return [...porJugador.values()].sort((a, b) => (col ? valor(col, b.metricas) - valor(col, a.metricas) : 0) || b.pj - a.pj)
+  }, [registros, perfil, columnas, ordenActual]) // eslint-disable-line react-hooks/exhaustive-deps
+  const colOrden = columnas.find(c => c.clave === ordenActual)
+  const grafica = lideres.slice(0, 10).map(l => ({ nombre: l.nombre.split(' ')[0], valor: colOrden ? valor(colOrden, l.metricas) : 0 })).filter(d => d.valor > 0)
 
-  const statsFiltradas = stats.filter(s => {
-    if (selectedSportId && selectedSportId !== 'todos') {
-      const j = jugadores.find(jug => jug.id === s.jugador_id)
-      return j ? String(j.disciplina_id) === String(selectedSportId) : true
-    }
-    return true
-  })
-
-  const openCreate = () => { setForm(EMPTY); setEditId(null); setModal(true) }
-  const openEdit   = (s) => {
-    setForm({
-      jugador_id:      s.jugador_id,
-      partido_id:      s.partido_id || '',
-      goles:           s.goles,
-      asistencias:     s.asistencias,
-      minutos_jugados: s.minutos_jugados,
-    })
+  const metricasVacias = () => Object.fromEntries((perfil?.metricas || []).map(c => [c.clave, '']))
+  const openCreate = () => {
+    setForm({ jugador_id: jugadoresDeporte.length === 1 ? String(jugadoresDeporte[0].id) : '', partido_id: '', metricas: metricasVacias() })
+    setEditId(null); setModal(true)
+  }
+  const openEdit = (s) => {
+    setForm({ jugador_id: String(s.jugador_id), partido_id: s.partido_id ? String(s.partido_id) : '', metricas: { ...metricasVacias(), ...s.metricas } })
     setEditId(s.id); setModal(true)
   }
-  const closeModal   = () => setModal(false)
-  const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+  const cambiarMetrica = (clave) => (e) => setForm(f => ({ ...f, metricas: { ...f.metricas, [clave]: e.target.value.replace(/\D/g, '') } }))
 
-  const handleSubmit = async () => {
-    if (!form.jugador_id) return toast.error('Jugador es obligatorio')
+  const handleSubmit = async (ev) => {
+    ev?.preventDefault()
+    if (!form.jugador_id) return toast.error('Elige el deportista')
     setSaving(true)
     try {
-      if (editId) {
-        await api.put(`/estadisticas/${editId}`, form)
-        toast.success('Estadística actualizada')
-      } else {
-        await api.post('/estadisticas', form)
-        toast.success('Estadística registrada')
-      }
-      closeModal(); load()
+      const cuerpo = { jugador_id: Number(form.jugador_id), partido_id: form.partido_id || null, metricas: form.metricas }
+      if (editId) await api.put(`/estadisticas/${editId}`, cuerpo)
+      else await api.post('/estadisticas', cuerpo)
+      toast.success(editId ? 'Estadística actualizada' : 'Estadística registrada')
+      setModal(false); load()
     } catch (e) { toast.error(e.message) }
     finally { setSaving(false) }
   }
 
-  const handleDelete = (id) => {
-    setDeleteModal({ isOpen: true, id, loading: false })
-  }
-
   const handleConfirmDelete = async () => {
-    if (!deleteModal.id) return
     setDeleteModal(prev => ({ ...prev, loading: true }))
     try {
       await api.delete(`/estadisticas/${deleteModal.id}`)
@@ -104,178 +124,233 @@ export default function EstadisticasJugador() {
       setDeleteModal({ isOpen: false, id: null, loading: false })
       load()
     } catch (e) {
-      toast.error(e.response?.data?.error || e.message)
+      toast.error(e.message)
       setDeleteModal(prev => ({ ...prev, loading: false }))
     }
   }
 
-  // Agrupar para gráfica
-  const chartData = jugadoresFiltrados.map(j => {
-    const rows = statsFiltradas.filter(s => s.jugador_id === j.id)
-    return {
-      nombre:    j.nombre.split(' ')[0],
-      goles:     rows.reduce((a, s) => a + Number(s.goles), 0),
-      asistencias: rows.reduce((a, s) => a + Number(s.asistencias), 0),
-      minutos:   rows.reduce((a, s) => a + Number(s.minutos_jugados), 0),
-    }
-  }).filter(d => d.goles || d.asistencias || d.minutos)
-
   return (
     <div>
-      <div className="page-header">
-        <h2>Estadísticas de Jugadores</h2>
-        <p>
-          Rendimiento individual por partido y acumulado
-          {selectedSportId && selectedSportId !== 'todos' ? ` — Deporte: ${selectedSport?.nombre}` : ''}
-        </p>
-      </div>
-
-      {/* Gráfica */}
-      {chartData.length > 0 && (
-        <div className="card" style={{ marginBottom: 24 }}>
-          <div className="card-title"><BarChart3 size={18} color="var(--accent)" /> Goles / Anotaciones y Asistencias por Jugador</div>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-              <XAxis dataKey="nombre" tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} />
-              <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} allowDecimals={false} />
-              <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border-hover)', borderRadius: 8, color: 'var(--text-primary)' }} />
-              <Legend wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }} />
-              <Bar {...ANIMACION_GRAFICA} dataKey="goles"       name="Goles / Puntos"       fill="var(--accent)"  radius={[6,6,0,0]} />
-              <Bar {...ANIMACION_GRAFICA} dataKey="asistencias" name="Asistencias" fill="var(--naranja)" radius={[6,6,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      <div className="page-toolbar">
-        <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-          {!loading && !error && `${statsFiltradas.length} registros estadísticos`}
-        </span>
-        {puedeEditar && (
+      <EncabezadoPagina
+        icono="fa-chart-column"
+        antetitulo={deporte ? deporte.nombre : 'Rendimiento'}
+        titulo={esJugador ? 'Mis estadísticas' : 'Estadísticas por deporte'}
+        descripcion="Cada deporte se mide con sus propias métricas. Elige un deporte para ver sus totales, sus líderes y cada registro."
+        acciones={puedeEditar && deporte && (
           <button className="btn btn-primary" onClick={openCreate}>
-            <Plus size={16} /> Agregar Estadística
+            <i className="fa-solid fa-plus" aria-hidden="true"></i> Registrar estadística
           </button>
         )}
-      </div>
+      />
 
-      <div className="card" style={{ padding: 0 }}>
-        {loading ? <Esqueleto tipo="tabla" columnas={6} /> : error ? (
-          <EstadoError mensaje={error} onReintentar={load} />
-        ) : stats.length === 0 ? (
-          <EstadoVacio
-            icono="fa-chart-column"
-            titulo="Aún no hay estadísticas registradas"
-            descripcion={puedeEditar
-              ? 'Después de cada partido, registra goles o anotaciones, asistencias y minutos de cada deportista para ver la gráfica y los máximos anotadores.'
-              : 'Cuando un entrenador registre estadísticas de un partido, aparecerán aquí.'}
-            accion={puedeEditar ? { texto: 'Agregar estadística', icono: 'fa-plus', onClick: openCreate } : null}
-          />
-        ) : statsFiltradas.length === 0 ? (
-          <EstadoSinResultados
-            descripcion={`No hay estadísticas de deportistas de ${selectedSport?.nombre || 'este deporte'}.`}
-            onLimpiar={() => setSelectedSportId('todos')}
-            textoLimpiar="Ver todos los deportes"
-          />
-        ) : (
-          <div className="table-wrapper" tabIndex={0} role="region" aria-label="Estadísticas por partido">
-            <table className="tabla-movil">
-              <thead>
-                <tr>
-                  <th>Jugador</th><th className="col-sec">Partido</th><th className="col-sec">Rival</th>
-                  <th>Goles / Puntos</th><th>Asistencias</th><th className="col-sec">Minutos</th>
-                  {puedeEditar && <th>Acciones</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {statsFiltradas.map(s => (
-                  <tr key={s.id}>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {nombreConDorsal(s.jugador_nombre, s.jugador_dorsal)}
-                      <span className="sub-movil">{s.rival ? `vs ${s.rival}` : 'Sin partido'} · {s.minutos_jugados} min</span>
-                    </td>
-                    <td className="col-sec" style={{ color: 'var(--text-muted)', fontSize: 12 }}> {s.partido_fecha ? new Date(s.partido_fecha).toLocaleDateString('es') : '—'}</td>
-                    <td className="col-sec">{s.rival || '—'}</td>
-                    <td style={{ fontWeight: 700, color: s.goles > 0 ? 'var(--verde-texto)' : 'var(--text-muted)' }}>
-                      {s.goles}
-                    </td>
-                    <td style={{ fontWeight: 700, color: s.asistencias > 0 ? 'var(--accent2)' : 'var(--text-muted)' }}>
-                      {s.asistencias}
-                    </td>
-                    <td className="col-sec">{s.minutos_jugados}</td>
-                    {puedeEditar && (
-                      <td>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button className="btn btn-ghost btn-sm" onClick={() => openEdit(s)} aria-label={`Editar la estadística de ${s.jugador_nombre || 'este deportista'}`}>
-                            <Pencil size={13} /> <span className="texto-pc">Editar</span>
-                          </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(s.id)} aria-label={`Eliminar la estadística de ${s.jugador_nombre || "este deportista"}`} title="Eliminar">
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {loading ? <Esqueleto tipo="tarjetas" filas={4} /> : error ? (
+        <div className="card"><EstadoError mensaje={error} onReintentar={load} /></div>
+      ) : deportes.length === 0 ? (
+        <div className="card"><EstadoVacio icono="fa-medal" titulo="No hay deportes disponibles"
+          descripcion={esJugador ? 'Tu ficha todavía no tiene un deporte asignado.' : 'El administrador puede crear los deportes desde el inicio.'} /></div>
+      ) : (
+        <>
+          {/* Todos los deportes a la vista, sin botones extra: un toque para elegir */}
+          <div className="rejilla-deportes" role="radiogroup" aria-label="Deporte">
+            {deportes.map(d => {
+              const v = perfilVisual(d.nombre)
+              return (
+                <button key={d.id} type="button" role="radio" aria-checked={d.id === elegido} className="tarjeta-deporte"
+                  style={{ '--deporte': v.color }} onClick={() => { setElegido(d.id); setOrden(null) }}>
+                  <span className="tarjeta-deporte-icono"><i className={`fa-solid ${v.icono}`} aria-hidden="true"></i></span>
+                  <span className="tarjeta-deporte-texto">
+                    <b>{d.nombre}</b>
+                    <small>{d.total_jugadores} {d.total_jugadores === 1 ? 'deportista' : 'deportistas'} · {d.total_registros} {d.total_registros === 1 ? 'registro' : 'registros'}</small>
+                    <span className="tarjeta-deporte-metricas">{[...(d.perfil.derivadas || []), ...d.perfil.metricas].slice(0, 5).map(x => x.corto).join(' · ')}</span>
+                  </span>
+                </button>
+              )
+            })}
           </div>
-        )}
-      </div>
 
-      {modal && (
+          {deporte && (
+            <section aria-labelledby="t-deporte" style={{ '--deporte': visual.color }}>
+              <h2 className="titulo-seccion" id="t-deporte"><i className={`fa-solid ${visual.icono}`} aria-hidden="true" style={{ color: visual.color }}></i> {deporte.nombre}</h2>
+
+              <div className="marcadores">
+                <div className="marcador"><span>Partidos jugados</span><b>{registros.length}</b></div>
+                {columnas.filter(c => c.clave !== 'minutos').slice(0, 7).map(c => (
+                  <div key={c.clave} className={`marcador ${c.pesos ? 'oro' : ''}`} title={c.etiqueta}><span>{c.etiqueta}</span><b>{totales[c.clave]}</b></div>
+                ))}
+              </div>
+
+              {registros.length === 0 ? (
+                <div className="card">
+                  <EstadoVacio icono="fa-chart-column" titulo={`Aún no hay estadísticas de ${deporte.nombre}`}
+                    descripcion={`En ${deporte.nombre} se registra: ${perfil.metricas.map(x => x.etiqueta.toLowerCase()).join(', ')}.`}
+                    accion={puedeEditar && jugadoresDeporte.length ? { texto: 'Registrar estadística', icono: 'fa-plus', onClick: openCreate } : null} />
+                </div>
+              ) : (
+                <div className="grid-dos">
+                  <div className="card" style={{ padding: 0 }}>
+                    <div className="card-title" style={{ padding: '16px 18px 0' }}><i className="fa-solid fa-ranking-star" aria-hidden="true"></i> {esJugador ? 'Mis totales' : 'Líderes'}
+                      <small className="texto-suave solo-ancho" style={{ fontFamily: 'var(--font)', textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>Toca una columna para ordenar</small>
+                      {/* En celular y tableta se ve una métrica a la vez: se elige aquí */}
+                      <label className="ordenar-por solo-angosto">
+                        <span>Ordenar por</span>
+                        <select value={ordenActual} onChange={e => setOrden(e.target.value)}>
+                          {columnas.map(c => <option key={c.clave} value={c.clave}>{c.etiqueta}</option>)}
+                        </select>
+                      </label></div>
+                    <div className="table-wrapper">
+                      <table className="tabla-stats">
+                        <thead>
+                          <tr>
+                            <th>Deportista</th>
+                            <th title="Partidos jugados">PJ</th>
+                            {columnas.map(c => (
+                              <th key={c.clave} title={c.etiqueta} aria-sort={c.clave === ordenActual ? 'descending' : 'none'} className={c.clave === ordenActual ? undefined : 'col-ancha'}>
+                                <button type="button" className={c.clave === ordenActual ? 'activo' : ''} onClick={() => setOrden(c.clave)}>{c.corto}</button>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lideres.map((l, i) => (
+                            <tr key={l.id}>
+                              <td><div className="celda-persona">
+                                <span className={`avatar dorsal ${i < 3 ? `podio-${i + 1}` : ''}`}>{tieneDorsal(l.dorsal) ? l.dorsal : '–'}</span>
+                                <span><b>{l.nombre}</b><small>{l.posicion || 'Sin posición'}</small></span>
+                              </div></td>
+                              <td>{l.pj}</td>
+                              {columnas.map(c => <td key={c.clave} className={c.clave === ordenActual ? 'col-activa' : 'col-ancha'}>{valor(c, l.metricas)}</td>)}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {grafica.length > 0 && (
+                    <div className="card">
+                      <div className="card-title"><i className="fa-solid fa-chart-column" aria-hidden="true"></i> {colOrden?.etiqueta}</div>
+                      <ResponsiveContainer width="100%" height={Math.max(220, grafica.length * 34)}>
+                        <BarChart data={grafica} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
+                          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                          <YAxis type="category" dataKey="nombre" width={84} tick={{ fontSize: 12 }} />
+                          <Tooltip formatter={(v) => [v, colOrden?.etiqueta]} />
+                          <Bar {...ANIMACION_GRAFICA} dataKey="valor" radius={[0, 6, 6, 0]}>
+                            {grafica.map((_, i) => <Cell key={i} fill={i === 0 ? visual.color : 'var(--cancha-700)'} />)}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {registros.length > 0 && (
+                <div className="card" style={{ padding: 0, marginTop: 18 }}>
+                  <div className="card-title" style={{ padding: '16px 18px 0' }}><i className="fa-solid fa-list" aria-hidden="true"></i> Registros por partido <span className="contador">{registros.length}</span></div>
+                  <div className="table-wrapper">
+                    <table className="tabla-stats tabla-movil">
+                      <thead>
+                        <tr>
+                          <th>Deportista</th><th className="col-sec">Partido</th>
+                          {perfil.metricas.map(c => <th key={c.clave} title={c.etiqueta} className={c.clave === perfil.principal ? undefined : 'col-ancha'}>{c.corto}</th>)}
+                          {puedeEditar && <th aria-label="Acciones"></th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {registros.map(s => (
+                          <tr key={s.id}>
+                            <td><b>{nombreConDorsal(s.jugador_nombre, s.jugador_dorsal)}</b>
+                              <span className="sub-movil">{s.rival ? `vs ${s.rival}` : 'Sin partido'}</span>
+                              <span className="resumen-metricas">{perfil.metricas.filter(c => c.clave !== perfil.principal).map(c => `${c.corto} ${Number(s.metricas?.[c.clave]) || 0}`).join(' · ')}</span></td>
+                            <td className="col-sec">{s.rival ? <>{s.rival}<small className="sub-agenda">{fechaTabla(s.partido_fecha)}</small></> : <span className="texto-suave">Sin partido</span>}</td>
+                            {perfil.metricas.map(c => <td key={c.clave} className={c.clave === perfil.principal ? undefined : 'col-ancha'}>{Number(s.metricas?.[c.clave]) || 0}</td>)}
+                            {puedeEditar && (
+                              <td><div className="acciones-fila">
+                                <button className="btn-icon" onClick={() => openEdit(s)} aria-label={`Editar la estadística de ${s.jugador_nombre}`}><i className="fa-solid fa-pen" aria-hidden="true"></i></button>
+                                <button className="btn-icon btn-danger" onClick={() => setDeleteModal({ isOpen: true, id: s.id, loading: false })} aria-label={`Eliminar la estadística de ${s.jugador_nombre}`}><i className="fa-solid fa-trash-can" aria-hidden="true"></i></button>
+                              </div></td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {!esJugador && (
+            <details className="card catalogo-metricas">
+              <summary><i className="fa-solid fa-book-open" aria-hidden="true"></i> Qué se mide en cada deporte</summary>
+              <div className="catalogo-rejilla">
+                {catalogo.map(c => {
+                  const v = perfilVisual(c.nombre)
+                  return (
+                    <div key={c.clave} className="catalogo-item" style={{ '--deporte': v.color }}>
+                      <b><i className={`fa-solid ${v.icono}`} aria-hidden="true"></i> {c.nombre}</b>
+                      <p>{[...c.derivadas, ...c.metricas].map(x => x.etiqueta).join(' · ')}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </details>
+          )}
+        </>
+      )}
+
+      {modal && perfil && (
         <Modal
-          title={editId ? 'Editar Estadística' : 'Nueva Estadística'}
-          onClose={closeModal}
+          title={`${editId ? 'Editar' : 'Registrar'} estadística · ${deporte.nombre}`}
+          onClose={() => setModal(false)}
           footer={
             <>
-              <button className="btn btn-ghost" onClick={closeModal}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
-                {saving ? 'Guardando…' : editId ? 'Actualizar' : 'Registrar'}
-              </button>
+              <button className="btn btn-ghost" onClick={() => setModal(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>{saving ? 'Guardando…' : editId ? 'Actualizar' : 'Registrar'}</button>
             </>
           }
         >
-          <div className="form-grid">
+          <form className="form-grid" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>Jugador *</label>
-              <select name="jugador_id" value={form.jugador_id} onChange={handleChange}>
+              <label htmlFor="st-jugador">Deportista *</label>
+              <select id="st-jugador" value={form.jugador_id} onChange={e => setForm(f => ({ ...f, jugador_id: e.target.value }))}>
                 <option value="">Seleccionar…</option>
-                {jugadoresFiltrados.map(j => <option key={j.id} value={j.id}>{etiquetaJugador(j)} {j.disciplina_nombre ? `(${j.disciplina_nombre})` : ''}</option>)}
+                {jugadoresDeporte.map(j => <option key={j.id} value={j.id}>{etiquetaJugador(j)}{j.posicion ? ` · ${j.posicion}` : ''}</option>)}
               </select>
             </div>
             <div className="form-group">
-              <label>Partido</label>
-              <select name="partido_id" value={form.partido_id} onChange={handleChange}>
-                <option value="">Sin partido…</option>
-                {partidos.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {new Date(p.fecha).toLocaleDateString('es')} – {p.rival}
-                  </option>
+              <label htmlFor="st-partido">Partido o competencia</label>
+              <select id="st-partido" value={form.partido_id} onChange={e => setForm(f => ({ ...f, partido_id: e.target.value }))}>
+                <option value="">Sin partido</option>
+                {partidosDeporte.map(p => <option key={p.id} value={p.id}>{fechaTabla(p.fecha)} – {p.rival}</option>)}
+              </select>
+            </div>
+            <fieldset className="resultado-campos" style={{ gridColumn: '1 / -1' }}>
+              <legend><i className={`fa-solid ${visual.icono}`} aria-hidden="true"></i> Métricas de {deporte.nombre}</legend>
+              <div className="rejilla-metricas">
+                {perfil.metricas.map(c => (
+                  <label key={c.clave} className="campo-metrica">
+                    <span>{c.etiqueta}</span>
+                    <input type="text" inputMode="numeric" value={form.metricas[c.clave] ?? ''} onChange={cambiarMetrica(c.clave)} placeholder="0" maxLength={4} />
+                    <small>{c.corto} · máx. {c.max}</small>
+                  </label>
                 ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Goles / Puntos</label>
-              <input name="goles" type="number" min="0" value={form.goles} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-              <label>Asistencias</label>
-              <input name="asistencias" type="number" min="0" value={form.asistencias} onChange={handleChange} />
-            </div>
-            <div className="form-group">
-              <label>Minutos jugados</label>
-              <input name="minutos_jugados" type="number" min="0" max="120" value={form.minutos_jugados} onChange={handleChange} />
-            </div>
-          </div>
+              </div>
+              {perfil.derivadas?.map(d => (
+                <p key={d.clave} className="ayuda-campo" style={{ marginTop: 10 }}>
+                  {d.etiqueta}: <b>{valorDerivada(d, form.metricas)}</b> (se calcula solo)
+                </p>
+              ))}
+            </fieldset>
+          </form>
         </Modal>
       )}
 
-      {/* Modal de confirmación para eliminar estadística */}
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         title="¿Eliminar estadística?"
-        message="¿Estás seguro de que deseas eliminar este registro estadístico? Esta acción no se puede deshacer."
-        confirmText="Sí, Eliminar"
+        message="Se eliminará este registro del deportista. Esta acción no se puede deshacer."
+        confirmText="Sí, eliminar"
         cancelText="Cancelar"
         confirmVariant="danger"
         loading={deleteModal.loading}

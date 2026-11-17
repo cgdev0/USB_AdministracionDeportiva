@@ -8,6 +8,10 @@ const fs = require('fs');
 const { spawnSync } = require('child_process');
 const { prepararBaseDePruebas, BD_PRUEBAS, RAIZ } = require('./utilidades/bd');
 
+const zonaSistema = process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone;
+// v2.2: las pruebas calculan "hoy" y "mañana" en la misma zona horaria que la app (db.js)
+process.env.TZ = process.env.ZONA_HORARIA || 'America/Bogota';
+
 (async () => {
   const resultados = path.join(RAIZ, 'pruebas', 'resultados');
   fs.mkdirSync(resultados, { recursive: true });
@@ -16,6 +20,14 @@ const { prepararBaseDePruebas, BD_PRUEBAS, RAIZ } = require('./utilidades/bd');
   process.stdout.write(`Preparando la base ${BD_PRUEBAS}… `);
   await prepararBaseDePruebas();
   console.log('lista.\n');
+  // Datos del entorno para el informe (versión de PostgreSQL y zona horaria del sistema)
+  try {
+    const { Client } = require(path.join(RAIZ, 'node_modules', 'pg'));
+    const { credenciales } = require('./utilidades/bd');
+    const c = new Client(credenciales(BD_PRUEBAS)); await c.connect();
+    const { rows: [v] } = await c.query('SHOW server_version'); await c.end();
+    fs.writeFileSync(path.join(resultados, 'entorno.json'), JSON.stringify({ postgres: `PostgreSQL ${v.server_version.split(' ')[0]}`, zona: zonaSistema }, null, 2));
+  } catch { /* el informe usa valores genéricos */ }
 
   const r = spawnSync(process.execPath, [
     '--test', '--test-concurrency=1',

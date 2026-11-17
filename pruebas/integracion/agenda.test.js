@@ -43,7 +43,7 @@ test('CP-AGE-002 [RF-10] Una actividad sin equipo es general y la ven todos', as
 test('CP-AGE-003 [RF-05] Un entrenador solo asigna equipos donde tiene deportistas', async () => {
   const r = await llamar('POST', '/api/partidos', T.entrenador2, { fecha: '2026-12-05', rival: 'ZZ agenda ajeno', tipo: 'amistoso', equipo_id: equipoDemo });
   assert.equal(r.status, 403);
-  assert.match(r.datos.error, /equipos donde tienes deportistas/);
+  assert.match(r.datos.error, /equipos de tu deporte/);
   const bien = await llamar('POST', '/api/partidos', T.entrenador, { fecha: '2026-12-05', rival: 'ZZ agenda propio', tipo: 'amistoso', equipo_id: equipoDemo, hora: '15:00', lugar: 'Estadio' });
   assert.equal(bien.status, 201);
   assert.equal(await ve(T.entrenador2, '/api/partidos', 'rival', 'ZZ agenda propio'), false);

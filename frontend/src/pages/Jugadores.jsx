@@ -11,20 +11,11 @@ import { useDeporte } from '../context/DeporteContext'
 import { formatImageUrl } from '../utils/image'
 import DorsalEditable from '../components/DorsalEditable'
 import { nombreConDorsal, ordenarPorDorsal, tieneDorsal } from '../utils/jugador'
+import EncabezadoPagina from '../components/EncabezadoPagina'
+import { perfilDeporte } from '../config/deportes'
+import { edadDesde, hoyISO } from '../utils/fechas'
 
-const EMPTY = { nombre: '', dorsal: '', edad: '', posicion: '', peso: '', altura: '', equipo_id: '', disciplina_id: '', entrenador_id: '' }
-
-// Sugerencias de posiciones comunes según el deporte
-const POSICIONES_POR_DEPORTE = {
-  'Rugby': ['Penetrador', 'Enlace', 'Trasportador', 'Wing', 'Forward', 'Back', 'Ala', 'Pilar', 'Hooker', 'Segunda Línea', 'Medio Melé', 'Apertura', 'Centro', 'Zaguero'],
-  'Fútbol': ['Portero', 'Defensa Central', 'Lateral Derecho', 'Lateral Izquierdo', 'Mediocampista Defensivo', 'Mediocampista Ofensivo', 'Extremo Derecho', 'Extremo Izquierdo', 'Delantero Centro'],
-  'Fútbol Sala': ['Portero', 'Cierre', 'Ala', 'Pívot', 'Universal'],
-  'Baloncesto': ['Base (Point Guard)', 'Escolta (Shooting Guard)', 'Alero (Small Forward)', 'Ala-Pívot (Power Forward)', 'Pívot (Center)'],
-  'Voleibol': ['Colocador / Armador', 'Opuesto', 'Receptor / Punta', 'Central', 'Líbero'],
-  'Atletismo': ['Velocista (100m/200m)', 'Medio Fondo (800m/1500m)', 'Fondo (5k/10k/Maratón)', 'Saltador', 'Lanzador', 'Vallista'],
-  'Natación': ['Estilo Libre / Crol', 'Espalda', 'Pecho / Braza', 'Mariposa', 'Combinado'],
-  'Hockey': ['Arquero', 'Defensor', 'Volante', 'Delantero'],
-}
+const EMPTY = { nombre: '', dorsal: '', edad: '', fecha_nacimiento: '', genero: '', posicion: '', peso: '', altura: '', equipo_id: '', disciplina_id: '', entrenador_id: '' }
 
 export default function Jugadores() {
   const { tienePermiso, usuario } = useAuth()
@@ -37,6 +28,7 @@ export default function Jugadores() {
     crearDisciplina,
     puedeGestionarDeportes,
     cargarDisciplinas,
+    deporteUnico,
   } = useDeporte()
 
   const [jugadores, setJugadores]         = useState([])
@@ -114,10 +106,13 @@ export default function Jugadores() {
     return true
   }).sort(ordenarPorDorsal)
 
-  // Obtener lista de posiciones sugeridas según el deporte seleccionado
-  const currentPositions = (currentSport?.nombre && POSICIONES_POR_DEPORTE[currentSport.nombre]) 
-    ? POSICIONES_POR_DEPORTE[currentSport.nombre] 
-    : ['Penetrador', 'Wing', 'Enlace', 'Trasportador', 'Forward', 'Back', 'Ala', 'Delantero', 'Mediocampo', 'Defensa', 'Portero']
+  // v2.0: posiciones propias de cada deporte (rugby no tiene las mismas que fútbol, natación o voleibol)
+  const nombreDeporte = (id) => disciplinas.find(d => String(d.id) === String(id))?.nombre
+  const perfilFiltro = perfilDeporte(currentSport?.esTodos ? null : currentSport?.nombre)
+  const perfilForm = perfilDeporte(nombreDeporte(form.disciplina_id))
+  const posicionesForm = perfilForm.posiciones.includes(form.posicion) || !form.posicion
+    ? perfilForm.posiciones : [form.posicion, ...perfilForm.posiciones]
+  const equiposForm = equipos.filter(e => !form.disciplina_id || !e.disciplina_id || String(e.disciplina_id) === String(form.disciplina_id))
 
   // Crear nuevo deporte
   const handleCrearDeporte = async (e) => {
@@ -150,6 +145,8 @@ export default function Jugadores() {
       nombre: j.nombre,
       dorsal: tieneDorsal(j.dorsal) ? String(j.dorsal) : '',
       edad: j.edad ?? '',
+      fecha_nacimiento: j.fecha_nacimiento ? String(j.fecha_nacimiento).slice(0, 10) : '',
+      genero: j.genero ?? '',
       posicion: j.posicion ?? '',
       peso: j.peso ?? '',
       altura: j.altura ?? '',
@@ -205,6 +202,8 @@ export default function Jugadores() {
     setSaving(true)
 
     const payload = { ...form }
+    if (payload.fecha_nacimiento) delete payload.edad
+    if (!payload.fecha_nacimiento) delete payload.fecha_nacimiento
     if (modoAsociacion === 'equipo') {
       if (!payload.equipo_id) payload.equipo_id = null
     } else {
@@ -248,161 +247,92 @@ export default function Jugadores() {
 
   return (
     <div>
-      {/* Header con título y descripción */}
-      <div className="page-header" style={{ marginBottom: 20 }}>
-        <h2>Gestión de Deportistas</h2>
-        <p>Selecciona y administra los deportistas por deporte o disciplina</p>
-      </div>
-
-      {/* Selector de Deporte / Disciplina interactivo */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: 24, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 260px', minWidth: 0 }}>
-            <div style={{ flex: 'none', width: 38, height: 38, borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-              <Trophy size={20} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <span id="t-deporte-gestion" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent2)' }}>
-                Deporte en Gestión
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
-                <select
-                  aria-labelledby="t-deporte-gestion"
-                  value={selectedSportId}
-                  onChange={e => setSelectedSportId(e.target.value)}
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    padding: '6px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    border: '1px solid var(--border-hover)',
-                    cursor: 'pointer',
-                    width: '100%',
-                    maxWidth: 360,
-                    minWidth: 0
-                  }}
-                >
-                  <option value="todos">Todos los deportes{loading || error ? '' : ` (${jugadores.length})`}</option>
-                  {disciplinas.map(d => {
-                    const count = jugadores.filter(j => String(j.disciplina_id) === String(d.id)).length
-                    return (
-                      <option key={d.id} value={d.id}>
-                        {d.nombre}{loading || error ? '' : ` (${count} deportistas)`}
-                      </option>
-                    )
-                  })}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Botones de acción: Crear deporte, Importar CSV, Nuevo Jugador */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-            {puedeEditar && (
-              <>
-                {puedeGestionarDeportes && <button
-                  className="btn btn-secondary"
-                  onClick={() => setModalNuevoDeporte(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
-                  title="Crear un nuevo deporte o disciplina"
-                >
-                  <Trophy size={15} color="var(--accent2)" /> + Crear Deporte
-                </button>}
-
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setModalCsv(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
-                  title="Importación masiva desde archivo CSV"
-                >
-                  <Upload size={15} color="var(--accent)" /> Importar CSV
-                </button>
-
-                <button
-                  className="btn btn-primary"
-                  onClick={openCreate}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                >
-                  <Plus size={16} /> Nuevo Deportista
-                </button>
-              </>
+      <EncabezadoPagina
+        icono={deporteUnico ? perfilDeporte(deporteUnico.nombre).icono : 'fa-people-group'}
+        antetitulo={deporteUnico ? deporteUnico.nombre : currentSport?.esTodos ? 'Todos los deportes' : currentSport?.nombre}
+        titulo="Deportistas"
+        descripcion={deporteUnico ? `Tu plantel de ${deporteUnico.nombre}: dorsales, posiciones y fichas.` : 'Plantel por deporte: dorsales, posiciones, equipos y fichas.'}
+        acciones={puedeEditar && (
+          <>
+            {puedeGestionarDeportes && (
+              <button className="btn btn-secondary" onClick={() => setModalNuevoDeporte(true)} title="Crear un nuevo deporte">
+                <i className="fa-solid fa-medal" aria-hidden="true"></i> Nuevo deporte
+              </button>
             )}
-          </div>
-        </div>
+            <button className="btn btn-secondary" onClick={() => setModalCsv(true)} title="Importación masiva desde archivo CSV">
+              <i className="fa-solid fa-file-arrow-up" aria-hidden="true"></i> Importar CSV
+            </button>
+            <button className="btn btn-primary" onClick={openCreate}>
+              <i className="fa-solid fa-user-plus" aria-hidden="true"></i> Nuevo deportista
+            </button>
+          </>
+        )}
+      />
 
-        {/* Chips de acceso rápido para deportes */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', marginRight: 4 }}>
-            Deportes rápidos:
-          </span>
-          <button
-            type="button"
-            className="chip-filtro"
-            aria-pressed={selectedSportId === 'todos'}
-            onClick={() => setSelectedSportId('todos')}
-          >
-            Todos
+      {/* v2.0: el selector de deporte solo aparece si hay más de un deporte para elegir.
+          El entrenador de un solo deporte (por ejemplo, rugby) ya ve únicamente su plantel. */}
+      {!deporteUnico && disciplinas.length > 1 && (
+        <div className="chips-deporte" role="group" aria-label="Filtrar por deporte">
+          <button type="button" className="chip-deporte-filtro" aria-pressed={selectedSportId === 'todos'} onClick={() => setSelectedSportId('todos')}>
+            <i className="fa-solid fa-layer-group" aria-hidden="true"></i> Todos <span>{jugadores.length}</span>
           </button>
           {disciplinas.map(d => {
-            const isSelected = String(d.id) === String(selectedSportId)
+            const perfil = perfilDeporte(d.nombre)
+            const count = jugadores.filter(j => String(j.disciplina_id) === String(d.id)).length
             return (
-              <button
-                key={d.id}
-                type="button"
-                className="chip-filtro"
-                aria-pressed={isSelected}
-                onClick={() => setSelectedSportId(String(d.id))}
-              >
-                {d.nombre}
+              <button key={d.id} type="button" className="chip-deporte-filtro" style={{ '--deporte': perfil.color }}
+                aria-pressed={String(d.id) === String(selectedSportId)} onClick={() => setSelectedSportId(String(d.id))}>
+                <i className={`fa-solid ${perfil.icono}`} aria-hidden="true"></i> {d.nombre} <span>{count}</span>
               </button>
             )
           })}
         </div>
-      </div>
+      )}
 
-      {/* Barra de herramientas / buscador */}
-      <div className="page-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-        <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-          {!loading && !error && <>
-            <Users size={15} style={{ display: 'inline', marginRight: 6 }} />
-            Mostrando <strong>{filteredJugadores.length}</strong> deportistas{' '}
-            {currentSport ? `en ${currentSport.nombre}` : 'en total'}
-          </>}
-        </span>
-
-        <div style={{ maxWidth: 300, width: '100%' }}>
-          <input
-            type="text"
-            placeholder="Buscar por nombre o posición..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '7px 12px',
-              fontSize: 13,
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-primary)'
-            }}
-          />
+      <div className="barra-herramientas">
+        <div className="buscador">
+          <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input type="search" placeholder="Buscar por nombre, dorsal, posición o equipo" value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)} aria-label="Buscar deportista" />
         </div>
+        <button className="btn btn-secondary" onClick={() => setMostrarFiltros(v => !v)} aria-expanded={mostrarFiltros}>
+          <i className="fa-solid fa-sliders" aria-hidden="true"></i> Filtros
+          {Object.values(filtros).filter(Boolean).length > 0 && <span className="contador">{Object.values(filtros).filter(Boolean).length}</span>}
+        </button>
+        <span className="barra-total">{!loading && !error && <><b>{filteredJugadores.length}</b> deportistas</>}</span>
       </div>
-
-      <div style={{display:'flex',justifyContent:'flex-end',margin:'10px 0'}}>
-        <button className="btn btn-secondary" onClick={()=>setMostrarFiltros(v=>!v)}><Filter size={15}/> {mostrarFiltros?'Ocultar filtros':'Filtros avanzados'}</button>
-      </div>
-      {mostrarFiltros && <div className="card" style={{padding:16,marginBottom:16}}>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12}}>
-          <label>Edad mínima<input type="number" min="0" value={filtros.edadMin} onChange={e=>setFiltros({...filtros,edadMin:e.target.value})} style={{display:'block',width:'100%',padding:8,marginTop:4}}/></label>
-          <label>Edad máxima<input type="number" min="0" value={filtros.edadMax} onChange={e=>setFiltros({...filtros,edadMax:e.target.value})} style={{display:'block',width:'100%',padding:8,marginTop:4}}/></label>
-          <label>Posición<input value={filtros.posicion} onChange={e=>setFiltros({...filtros,posicion:e.target.value})} placeholder="Ej. delantero" style={{display:'block',width:'100%',padding:8,marginTop:4}}/></label>
-          {['administrador','personal_salud','head_coach'].includes(usuario?.rol)&&<label>Entrenador<select value={filtros.entrenador} onChange={e=>setFiltros({...filtros,entrenador:e.target.value})} style={{display:'block',width:'100%',padding:8,marginTop:4}}><option value="">Todos</option>{[...new Map(jugadores.filter(j=>j.entrenador_id).map(j=>[j.entrenador_id,{id:j.entrenador_id,nombre:j.entrenador_nombre}])).values()].map(x=><option key={x.id} value={x.id}>{x.nombre||`Entrenador ${x.id}`}</option>)}</select></label>}
+      {mostrarFiltros && (
+        <div className="card panel-filtros">
+          <div className="form-grid">
+            <div className="form-group"><label htmlFor="f-emin">Edad mínima</label>
+              <input id="f-emin" type="number" min="0" value={filtros.edadMin} onChange={e => setFiltros({ ...filtros, edadMin: e.target.value })} /></div>
+            <div className="form-group"><label htmlFor="f-emax">Edad máxima</label>
+              <input id="f-emax" type="number" min="0" value={filtros.edadMax} onChange={e => setFiltros({ ...filtros, edadMax: e.target.value })} /></div>
+            <div className="form-group"><label htmlFor="f-pos">Posición</label>
+              {perfilFiltro.posiciones.length ? (
+                <select id="f-pos" value={filtros.posicion} onChange={e => setFiltros({ ...filtros, posicion: e.target.value })}>
+                  <option value="">Todas</option>
+                  {perfilFiltro.posiciones.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              ) : (
+                <input id="f-pos" value={filtros.posicion} onChange={e => setFiltros({ ...filtros, posicion: e.target.value })} placeholder="Elige un deporte o escribe" />
+              )}
+            </div>
+            {['administrador', 'personal_salud', 'head_coach'].includes(usuario?.rol) && (
+              <div className="form-group"><label htmlFor="f-ent">Entrenador</label>
+                <select id="f-ent" value={filtros.entrenador} onChange={e => setFiltros({ ...filtros, entrenador: e.target.value })}>
+                  <option value="">Todos</option>
+                  {[...new Map(jugadores.filter(j => j.entrenador_id).map(j => [j.entrenador_id, { id: j.entrenador_id, nombre: j.entrenador_nombre }])).values()]
+                    .map(x => <option key={x.id} value={x.id}>{x.nombre || `Entrenador ${x.id}`}</option>)}
+                </select></div>
+            )}
+          </div>
+          <div className="panel-filtros-pie">
+            <small>Filtros activos: {Object.values(filtros).filter(Boolean).length}</small>
+            <button className="btn btn-ghost btn-sm" onClick={() => setFiltros({ edadMin: '', edadMax: '', posicion: '', entrenador: '' })}>Limpiar filtros</button>
+          </div>
         </div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:12}}><small style={{color:'var(--text-muted)'}}>Filtros activos: {Object.values(filtros).filter(Boolean).length}</small><button className="btn btn-ghost" onClick={()=>setFiltros({edadMin:'',edadMax:'',posicion:'',entrenador:''})}>Limpiar filtros</button></div>
-      </div>}
+      )}
 
       {/* Tabla de Jugadores */}
       <div className="card" style={{ padding: 0 }}>
@@ -753,8 +683,8 @@ export default function Jugadores() {
             </div>
 
             <div className="form-group">
-              <label>Deporte / Disciplina</label>
-              <select name="disciplina_id" value={form.disciplina_id} onChange={handleChange}>
+              <label htmlFor="jug-deporte">Deporte</label>
+              <select id="jug-deporte" name="disciplina_id" value={form.disciplina_id} onChange={handleChange} disabled={!!deporteUnico}>
                 <option value="">Seleccionar deporte…</option>
                 {disciplinas.map(d => (
                   <option key={d.id} value={d.id}>{d.nombre}</option>
@@ -763,37 +693,46 @@ export default function Jugadores() {
             </div>
 
             <div className="form-group">
-              <label>Posición en el campo</label>
-              <input
-                list="posiciones-sugeridas"
-                name="posicion"
-                value={form.posicion}
-                onChange={handleChange}
-                placeholder="Selecciona o escribe la posición..."
-              />
-              <datalist id="posiciones-sugeridas">
-                {currentPositions.map(p => (
-                  <option key={p} value={p} />
-                ))}
-              </datalist>
+              <label htmlFor="jug-posicion">{perfilForm.formato === 'tiempo' ? 'Prueba o especialidad' : 'Posición'}</label>
+              {posicionesForm.length ? (
+                <select id="jug-posicion" name="posicion" value={form.posicion} onChange={handleChange}>
+                  <option value="">Sin definir</option>
+                  {posicionesForm.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              ) : (
+                <input id="jug-posicion" name="posicion" value={form.posicion} onChange={handleChange}
+                  placeholder={form.disciplina_id ? 'Escribe la posición' : 'Elige primero el deporte'} />
+              )}
             </div>
 
             <div className="form-group">
-              <label>Edad (años)</label>
-              <input name="edad" type="number" min="10" max="60" value={form.edad} onChange={handleChange} placeholder="22" />
+              <label htmlFor="jug-nac">Fecha de nacimiento</label>
+              <input id="jug-nac" name="fecha_nacimiento" type="date" max={hoyISO()} value={form.fecha_nacimiento} onChange={handleChange} />
+              <small className="ayuda-campo">
+                {form.fecha_nacimiento ? `Edad: ${edadDesde(form.fecha_nacimiento)} años (se actualiza sola)` : form.edad ? `Edad registrada: ${form.edad} años. Con la fecha, se actualiza sola.` : 'La edad se calcula y se actualiza sola.'}
+              </small>
             </div>
 
             <div className="form-group">
-              <label>Equipo / Club (opcional)</label>
-              <select name="equipo_id" value={form.equipo_id} onChange={handleChange}>
+              <label htmlFor="jug-genero">Género</label>
+              <select id="jug-genero" name="genero" value={form.genero} onChange={handleChange}>
+                <option value="">Sin especificar</option>
+                <option value="masculino">Masculino</option>
+                <option value="femenino">Femenino</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="jug-equipo">Equipo / categoría</label>
+              <select id="jug-equipo" name="equipo_id" value={form.equipo_id} onChange={handleChange}>
                 <option value="">Sin equipo asignado</option>
-                {equipos.map(e => (
-                  <option key={e.id} value={e.id}>{e.nombre} {e.categoria ? `(${e.categoria})` : ''}</option>
+                {equiposForm.map(e => (
+                  <option key={e.id} value={e.id}>{e.nombre}{(e.categoria_nombre || e.categoria) ? ` · ${e.categoria_nombre || e.categoria}` : ''}</option>
                 ))}
               </select>
             </div>
 
-            {usuario?.rol === 'administrador' && <div className="form-group"><label>Entrenador asignado</label><select name="entrenador_id" value={form.entrenador_id} onChange={handleChange}><option value="">Sin asignar</option>{entrenadores.map(t=><option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div>}
+            {usuario?.rol === 'administrador' && <div className="form-group"><label htmlFor="jug-entrenador">Entrenador asignado</label><select id="jug-entrenador" name="entrenador_id" value={form.entrenador_id} onChange={handleChange}><option value="">Sin asignar</option>{entrenadores.map(t=><option key={t.id} value={t.id}>{t.nombre}</option>)}</select></div>}
 
             <div className="form-group">
               <label>Peso corporal (kg)</label>

@@ -11,7 +11,10 @@ async function camposAgenda(usuario, cuerpo) {
   const hora = typeof cuerpo.hora === 'string' && cuerpo.hora.trim() ? cuerpo.hora.trim() : null;
   if (hora && !HORA.test(hora)) return { error: 'La hora debe tener el formato HH:MM.' };
   const lugar = typeof cuerpo.lugar === 'string' && cuerpo.lugar.trim() ? cuerpo.lugar.trim() : null;
-  if (!(await puedeUsarEquipo(db, usuario, equipo_id))) return { error: 'Solo puedes asignar equipos donde tienes deportistas.', status: 403 };
+  // v2.0 (DEF-042): solo el administrador crea actividades generales (para todos los equipos). Un entrenador
+  // debe elegir uno de sus equipos; si no, su entrenamiento le aparecía también a los equipos de otros deportes.
+  if (equipo_id === null && usuario?.rol !== 'administrador') return { error: 'Elige el equipo para esta actividad.' };
+  if (!(await puedeUsarEquipo(db, usuario, equipo_id))) return { error: 'Solo puedes asignar equipos de tu deporte.', status: 403 };
   return { equipo_id, hora, lugar };
 }
 
@@ -20,7 +23,8 @@ async function listar(tabla, usuario, extra = '') {
   const params = [];
   const cond = condicionEquipos(usuario, params, 'a.equipo_id');
   const { rows } = await db.query(`
-    SELECT a.*, eq.nombre AS equipo_nombre, eq.disciplina_id FROM ${tabla} a LEFT JOIN equipos eq ON eq.id = a.equipo_id
+    SELECT a.*, eq.nombre AS equipo_nombre, eq.disciplina_id, dd.nombre AS disciplina_nombre FROM ${tabla} a
+    LEFT JOIN equipos eq ON eq.id = a.equipo_id LEFT JOIN disciplinas dd ON dd.id = eq.disciplina_id
     ${cond ? `WHERE ${cond}` : ''} ${extra} ORDER BY a.fecha DESC, a.hora NULLS LAST, a.id DESC`, params);
   return rows;
 }
@@ -30,7 +34,8 @@ async function buscar(tabla, usuario, id, cliente = db) {
   const params = [id];
   const cond = condicionEquipos(usuario, params, 'a.equipo_id');
   const { rows } = await cliente.query(`
-    SELECT a.*, eq.nombre AS equipo_nombre, eq.disciplina_id FROM ${tabla} a LEFT JOIN equipos eq ON eq.id = a.equipo_id
+    SELECT a.*, eq.nombre AS equipo_nombre, eq.disciplina_id, dd.nombre AS disciplina_nombre FROM ${tabla} a
+    LEFT JOIN equipos eq ON eq.id = a.equipo_id LEFT JOIN disciplinas dd ON dd.id = eq.disciplina_id
     WHERE a.id = $1${cond ? ` AND ${cond}` : ''}`, params);
   return rows[0] || null;
 }

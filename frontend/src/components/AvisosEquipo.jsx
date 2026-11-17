@@ -8,6 +8,7 @@ import Modal from './Modal'
 import ConfirmModal from './ConfirmModal'
 import { useEquiposAsignables } from './CamposAgenda'
 import { fechaCorta } from '../utils/fechas'
+import { useDeporte } from '../context/DeporteContext'
 
 const VISIBLES = 3
 const FORM_VACIO = { equipo_id: '', titulo: '', mensaje: '' }
@@ -115,6 +116,8 @@ export default function AvisosEquipo() {
 }
 
 function EscribirAviso({ equipos, esAdmin, onCerrar, onEnviado }) {
+  // v2.0 (DEF-044): "Todos mis deportistas" llega solo a los deportistas del entrenador en su deporte
+  const { deporteUnico } = useDeporte()
   const [form, setForm] = useState(FORM_VACIO)
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -142,8 +145,8 @@ function EscribirAviso({ equipos, esAdmin, onCerrar, onEnviado }) {
         <div className="form-group">
           <label htmlFor="aviso-equipo">Para</label>
           <select id="aviso-equipo" name="equipo_id" value={form.equipo_id} onChange={cambiar}>
-            <option value="">{esAdmin ? 'Todos los usuarios del sistema' : 'Todos mis deportistas'}</option>
-            {equipos.map(eq => <option key={eq.id} value={eq.id}>{eq.nombre}{eq.categoria ? ` · ${eq.categoria}` : ''}</option>)}
+            <option value="">{esAdmin ? 'Todos los usuarios del sistema' : deporteUnico ? `Todos mis deportistas de ${deporteUnico.nombre}` : 'Todos mis deportistas'}</option>
+            {equipos.map(eq => <option key={eq.id} value={eq.id}>{eq.nombre}{(eq.categoria_nombre || eq.categoria) ? ` · ${eq.categoria_nombre || eq.categoria}` : ''}</option>)}
           </select>
         </div>
         <div className="form-group">

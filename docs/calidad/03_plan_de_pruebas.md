@@ -31,7 +31,7 @@ Comprobar que el software cumple los requisitos del catálogo y las característ
 | Tipo | Qué verifica | Herramienta | Automatizada | Requisitos y métricas |
 |---|---|---|---|---|
 | Unitaria | Funciones aisladas: motor antropométrico, formato de fechas y de dorsal | `node:test` | Sí | RF-17 · M-F3 |
-| Integración (API) | Cada ruta con la base de datos real: datos, validaciones, permisos | `node:test` + PostgreSQL de pruebas | Sí | RF-01 a RF-19 · M-F2, M-F4, M-F5, M-R3, M-E1 |
+| Integración (API) | Cada ruta con la base de datos real: datos, validaciones, permisos | `node:test` + PostgreSQL de pruebas | Sí | RF-01 a RF-24 · M-F2, M-F4, M-F5, M-R3, M-E1 |
 | Sistema (extremo a extremo) | Flujos completos en el navegador como lo haría cada rol | Playwright | Sí | RF-04, RF-05, RF-09, RF-18 · M-F2, M-P1 |
 | Regresión | Que nada que funcionaba deje de funcionar | Suite completa | Sí, en cada PR | RNF-10 · M-R2, M-M2 |
 | Seguridad de acceso | Rutas y pantallas prohibidas por rol, inyección SQL, tokens | `node:test` + Playwright | Sí | RF-04, RF-05, RNF-01, RNF-02 · M-F4, M-F5 |
@@ -115,6 +115,9 @@ Sigue la hoja de ruta acordada:
 | v1.4 | Seguridad | Seguridad de acceso, contraseñas, tokens, validaciones |
 | v1.5 | Pulido de los módulos por dentro | Adaptabilidad, accesibilidad y primera prueba con usuarios |
 | v1.6 | Despliegue en Railway | Instalación, configuración y humo en el entorno publicado |
+| v2.0 | Corrección del documento de errores de ejecución y rediseño "Cancha" | Regresión completa, casos CP-COR-001 a CP-COR-006, recorrido por rol con la nueva navegación |
+| v2.1 | Estadísticas propias de cada deporte y administrador `admin1` | Casos CP-EST-001 a CP-EST-004 y CP-ADM-001; inventario de usuarios en PDF |
+| v2.2 | Documentación al día y zona horaria de Colombia | Casos CP-ZON-001 y CP-ZON-002 (DEF-045); suite completa con el servidor en UTC, como en Railway |
 
 En cada versión: casos nuevos, suite completa, informe y tablero. Al cierre del proyecto: informe final consolidado.
 
@@ -123,7 +126,8 @@ En cada versión: casos nuevos, suite completa, informe y tablero. Al cierre del
 | Riesgo | Mitigación |
 |---|---|
 | Algún integrante no tiene PostgreSQL instalado | Instrucciones en `pruebas/README.md`. Más adelante, base de pruebas en la nube. |
-| Pruebas que dependen de la fecha (por ejemplo "partido mañana") | Los datos de prueba se generan relativos al día de ejecución. |
+| Pruebas que dependen de la fecha (por ejemplo "partido mañana") | Los datos de prueba se generan relativos al día de ejecución, y desde la v2.2 las pruebas y la app usan la misma zona horaria (`America/Bogota`), aunque el equipo o el servidor estén en UTC. |
+| La migración desde la versión original necesita la etiqueta git `v1-original` | Existe en el repositorio del equipo (cgdev0). En un repositorio creado desde el zip el caso CP-MIG-002 se marca como omitido, con el motivo, en lugar de fallar. |
 | Falta de tiempo del equipo para la prueba con usuarios | Planificarla con una semana de anticipación; mínimo 5 participantes. |
 | Resultados distintos entre equipos | La base de pruebas se recrea desde cero en cada ejecución. |
 

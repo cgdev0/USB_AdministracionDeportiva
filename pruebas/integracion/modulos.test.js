@@ -10,6 +10,8 @@ const cerca = (a, b, n) => assert.ok(Math.abs(Number(a) - b) <= 0.1, `${n}: obte
 test.before(async () => {
   await iniciar();
   for (const rol of ['administrador', 'entrenador', 'salud']) T[rol] = await token(rol);
+  // v2.0: el entrenador siempre elige el equipo de la actividad (las generales son solo del administrador)
+  ;({ rows: [{ id: T.equipo }] } = await sql(`SELECT id FROM equipos WHERE nombre = 'Unisimón Rugby (demo)'`));
 });
 test.after(async () => {
   await sql(`DELETE FROM jugadores WHERE nombre LIKE $1`, [PRE + '%']);
@@ -83,15 +85,16 @@ test('CP-MOD-005 [RF-08] Deportistas: crear, ver ficha, editar parcialmente y el
 });
 
 test('CP-MOD-006 [RF-10] Entrenamientos: crear, editar y eliminar', async () => {
-  const c = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: '2026-11-02', tipo: `${PRE}Fuerza`, descripcion: 'Gimnasio' });
+  const c = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: '2026-11-02', tipo: `${PRE}Fuerza`, descripcion: 'Gimnasio', equipo_id: T.equipo });
   assert.equal(c.status, 201);
   assert.equal((await llamar('PUT', `/api/entrenamientos/${c.datos.id}`, T.entrenador, { fecha: '2026-11-03', tipo: `${PRE}Fuerza`, descripcion: 'Cambio' })).status, 200);
   assert.equal((await llamar('DELETE', `/api/entrenamientos/${c.datos.id}`, T.entrenador)).status, 200);
 });
 
 test('CP-MOD-007 [RF-11] Asistencia: registrar y corregir', async () => {
-  const e = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: '2026-11-04', tipo: `${PRE}Táctica` });
-  const j = await jugadorDePrueba();
+  const e = await llamar('POST', '/api/entrenamientos', T.entrenador, { fecha: '2026-11-04', tipo: `${PRE}Táctica`, equipo_id: T.equipo });
+  // v2.0: el entrenador solo toma asistencia a sus propios deportistas
+  const j = (await llamar('GET', '/api/jugadores', T.entrenador)).datos[0].id;
   const a = await llamar('POST', '/api/asistencia', T.entrenador, { jugador_id: j, entrenamiento_id: e.datos.id, asistencia: true });
   assert.equal(a.status, 201);
   assert.equal((await llamar('PUT', `/api/asistencia/${a.datos.id}`, T.entrenador, { asistencia: false })).status, 200);
@@ -100,7 +103,7 @@ test('CP-MOD-007 [RF-11] Asistencia: registrar y corregir', async () => {
 });
 
 test('CP-MOD-008 [RF-12] Partidos: crear con resultado, editar y eliminar', async () => {
-  const c = await llamar('POST', '/api/partidos', T.entrenador, { fecha: '2026-11-08', rival: `${PRE}Rival`, tipo: 'amistoso' });
+  const c = await llamar('POST', '/api/partidos', T.entrenador, { fecha: '2026-11-08', rival: `${PRE}Rival`, tipo: 'amistoso', equipo_id: T.equipo });
   assert.equal(c.status, 201);
   assert.equal((await llamar('PUT', `/api/partidos/${c.datos.id}`, T.entrenador, { fecha: '2026-11-08', rival: `${PRE}Rival`, tipo: 'amistoso', resultado: '21-14' })).status, 200);
   assert.equal((await llamar('DELETE', `/api/partidos/${c.datos.id}`, T.entrenador)).status, 200);
@@ -155,13 +158,14 @@ test('CP-MOD-013 [RF-17] Antropometría: el backend guarda cálculos exactos', a
     jugador_id: j, fecha: '2026-10-10', peso: 80, estatura: 1.80,
     pliegue_biceps: 4.5, pliegue_triceps: 8, pliegue_subescapular: 9.5, pliegue_suprailiaco: 11,
     pliegue_supraespinal: 7.5, pliegue_abdominal: 12, pliegue_muslo_anterior: 10.5, pliegue_pierna_medial: 7,
-    perimetro_brazo_contraido: 35, perimetro_pierna: 37.5, diametro_humero: 6.8, diametro_femur: 9.6,
+    perimetro_brazo_contraido: 35, perimetro_pierna: 37.5, diametro_humero: 6.8, diametro_muneca: 5.8, diametro_femur: 9.6,
   });
   assert.equal(r.status, 201, JSON.stringify(r.datos));
   const { rows: [g] } = await sql('SELECT * FROM antropometria WHERE id = $1', [r.datos.id]);
   cerca(g.imc, 24.69, 'IMC');
   cerca(g.porcentaje_grasa, 8.3, '% grasa (Yuhasz, hombre)');
-  cerca(g.masa_mineral_osea, 13.81, 'masa ósea (Rocha)');
+  cerca(g.masa_mineral_osea, 12.33, 'masa ósea (Rocha, muñeca y fémur)');
+  cerca(g.masa_muscular_esqueletica, 41.75, 'masa muscular (por diferencia)');
   cerca(g.endomorfia, 2.35, 'endomorfia');
   cerca(g.mesomorfia, 4.88, 'mesomorfia');
   cerca(g.ectomorfia, 2.0, 'ectomorfia');

@@ -194,39 +194,43 @@
     <section id="casos-uso">
         <div class="card">
             <h2>👥 Casos de Uso</h2>
-            <p>Interacciones fundamentales entre los roles del staff y el ecosistema digital.</p>
+            <p>6 actores y 16 casos de uso de la v2.2. La especificación de cada caso, las 20 historias de usuario y la matriz de trazabilidad están en <code>docs/analisis/historias_y_casos_de_uso.md</code>.</p>
             <div class="mermaid">
                 graph LR
-                    subgraph Sistema ["Ecosistema de Gestión"]
-                        UC1([Gestionar Jugadores])
-                        UC2([Registrar Entrenamiento])
-                        UC3([Controlar Asistencia])
-                        UC4([Evaluar Antropometría])
-                        UC5([Registrar Lesión])
-                        UC6([Analizar Estadísticas])
-                        UC7([Ver Dashboard])
+                    ENT[Entrenador]
+                    ADM[Administrador]
+                    subgraph Sistema ["Sistema de Administración Deportiva v2.2"]
+                        CU05([CU-05 Gestionar equipos])
+                        CU06([CU-06 Deportistas y dorsales])
+                        CU07([CU-07 Programar entrenamientos])
+                        CU08([CU-08 Registrar asistencia])
+                        CU09([CU-09 Partidos y convocatoria])
+                        CU10([CU-10 Estadísticas por deporte])
+                        CU11([CU-11 Avisos al equipo])
+                        CU03([CU-03 Gestionar usuarios])
+                        CU04([CU-04 Deportes y categorías])
+                        CU01([CU-01 Iniciar sesión])
+                        CU02([CU-02 Cambiar contraseña])
+                        CU14([CU-14 Inicio y supervisión])
+                        CU12([CU-12 Lesiones y salud])
+                        CU13([CU-13 Evaluaciones y medidas])
+                        CU16([CU-16 Responder convocatoria])
+                        CU15([CU-15 Enviar recordatorios])
                     end
-                    
-                    CT[Cuerpo Técnico] --- UC1
-                    CT --- UC2
-                    CT --- UC3
-                    CT --- UC4
-                    CT --- UC6
-                    CT --- UC7
-                    
-                    PM[Staff Médico] --- UC5
-                    PM --- UC1
-
-                    style UC1 fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#fff
-                    style UC2 fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#fff
-                    style UC3 fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#fff
-                    style UC4 fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#fff
-                    style UC5 fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#fff
-                    style UC6 fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#fff
-                    style UC7 fill:#1e293b,stroke:#6366f1,stroke-width:2px,color:#fff
-                    style CT fill:#4f46e5,stroke:#fff,stroke-width:2px,color:#fff
-                    style PM fill:#a855f7,stroke:#fff,stroke-width:2px,color:#fff
+                    USR[Usuario: todos los roles]
+                    HC[Head coach]
+                    SAL[Personal de salud]
+                    DEP[Deportista]
+                    SIS[Sistema: tiempo]
+                    ENT --- CU05 & CU06 & CU07 & CU08 & CU09 & CU10 & CU11 & CU13
+                    ADM --- CU03 & CU04
+                    CU01 & CU02 & CU14 --- USR
+                    CU14 --- HC
+                    CU12 & CU13 --- SAL
+                    CU16 --- DEP
+                    CU15 --- SIS
             </div>
+            <p>El administrador puede hacer todos los casos de uso; en el diagrama solo se dibujan los exclusivos de su rol.</p>
         </div>
     </section>
 
@@ -328,7 +332,7 @@
 
     <section id="estado-frontend">
         <div class="card">
-            <h2>🧭 Estado actual del frontend</h2>
+            <h2>🧭 Estado actual del sistema (v2.2)</h2>
             <p>Esta sección describe la estructura de la versión actual del proyecto. La existencia de una pantalla no significa que todas sus operaciones estén conectadas y verificadas contra la base de datos.</p>
             <h3>Módulos identificados</h3>
             <ul>
@@ -337,17 +341,17 @@
                 <li><strong>Evaluación y salud:</strong> Evaluaciones, Antropometría, Lesiones y Salud y controles.</li>
                 <li><strong>Administración:</strong> Usuarios y Panel Head Coach.</li>
             </ul>
-            <h3>Roles contemplados en el frontend</h3>
-            <p>Administrador, Head Coach, Entrenador, Personal de Salud y Jugador. El menú filtra opciones por rol y la aplicación contiene rutas protegidas; sin embargo, la autorización también debe validarse en el backend para impedir el acceso mediante peticiones directas.</p>
-            <h3>Validaciones pendientes</h3>
+            <h3>Roles contemplados</h3>
+            <p>Administrador (cuenta inicial <code>admin1</code>), Head Coach, Entrenador, Personal de Salud y Jugador. El menú y las rutas protegidas salen de la misma lista, y cada endpoint del backend valida el rol y el alcance del registro. Detalle de cuentas y permisos: <code>docs/Inventario_usuarios_AdministracionDeportiva.pdf</code>.</p>
+            <h3>Novedades de la v2.0 a la v2.2</h3>
             <ul>
-                <li>Comprobar permisos por rol en todas las rutas y endpoints.</li>
-                <li>Comprobar que el jugador no pueda consultar la antropometría ni datos privados de otro deportista.</li>
-                <li>Comprobar que las cuentas de jugador estén vinculadas al perfil deportivo correcto.</li>
-                <li>Crear registros de prueba, recargar la página y confirmar la persistencia.</li>
-                <li>Compilar el frontend y probar los flujos con cuentas separadas por rol.</li>
+                <li>Diseño "Cancha": menú lateral verde noche con líneas de cancha, marcadores, fixture y planilla de asistencia (<code>docs/diseno/DESIGN.md</code>).</li>
+                <li>Cada deporte tiene su perfil: ícono, color, posiciones, formato del resultado y estadísticas propias (fútbol, baloncesto, rugby, voleibol, béisbol, natación, atletismo y más).</li>
+                <li>Categorías por deporte, reactivación de usuarios y ficha deportiva al crear un deportista.</li>
+                <li>Corrección de los errores en ejecución (fechas, asistencia, actividades generales, avisos) y de la zona horaria de Colombia en el servidor.</li>
             </ul>
-            <p><strong>Nota:</strong> las cuentas demo del frontend sirven para revisar la interfaz en desarrollo; no son prueba de autenticación o permisos de producción. No se declara la persistencia ni la seguridad como verificadas hasta completar las pruebas.</p>
+            <h3>Estado de las validaciones</h3>
+            <p>Los permisos por rol, la privacidad de los datos del deportista, la vinculación de cuentas, la persistencia y la compilación están cubiertos por pruebas automáticas (<code>npm test</code>). Resultados por versión en <code>docs/calidad/informes/</code>. Quedan pendientes la prueba con usuarios reales y la instalación desde cero (<code>docs/calidad/casos/manuales.md</code>).</p>
             <p>Para instrucciones de ejecución, consultar <code>README.md</code>. Para la lista de tareas y pruebas, consultar <code>IMPLEMENTACION.md</code>.</p>
         </div>
     </section>

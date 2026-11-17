@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { AlertTriangle, Trash2, X } from 'lucide-react'
 
 export default function ConfirmModal({
@@ -13,7 +14,7 @@ export default function ConfirmModal({
 }) {
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div 
       className="modal-overlay" 
       onClick={(e) => {
@@ -81,6 +82,7 @@ export default function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
