@@ -43,11 +43,11 @@ test('CP-UI-EST-003 [RF-08] Un filtro sin resultados ofrece limpiarlo y vuelve a
   await page.setViewportSize(ANCHOS.pc);
   await entrar(page, 'administrador');
   await page.goto('/jugadores');
-  await page.getByPlaceholder('Buscar por nombre o posición...').fill('zzzz-no-existe');
+  await page.getByPlaceholder('Buscar por nombre, dorsal, posición o equipo').fill('zzzz-no-existe');
   await expect(page.getByText('Ningún resultado con estos filtros')).toBeVisible();
   await page.getByRole('button', { name: 'Ver todos los deportistas' }).click();
   await expect(page.locator('table tbody tr').first()).toBeVisible();
-  await expect(page.getByPlaceholder('Buscar por nombre o posición...')).toHaveValue('');
+  await expect(page.getByPlaceholder('Buscar por nombre, dorsal, posición o equipo')).toHaveValue('');
 });
 
 test('CP-UI-EST-004 [RNF-07] La interfaz no usa emojis', async ({ page }) => {
@@ -69,9 +69,9 @@ test('CP-UI-EST-005 [RNF-08] Si la descarga de un módulo falla, se explica y se
   await expect(page.locator('.ini-banner')).toBeVisible();
   // El módulo de Lesiones se descarga aparte (carga por partes): se simula que esa descarga falla
   await page.route(/\/assets\/Lesiones-[^/]+\.js$/, route => route.abort());
-  await page.locator('.pestanas a', { hasText: 'Lesiones' }).click();
+  await page.locator('.lateral-nav a', { hasText: 'Lesiones' }).click();
   const alerta = page.getByRole('alert').filter({ hasText: 'No se pudo abrir esta sección' });
   await expect(alerta).toBeVisible();
   await expect(alerta.getByRole('button', { name: 'Reintentar' })).toBeVisible();
-  await expect(page.locator('.pestanas')).toBeVisible(); // el menú sigue disponible
+  await expect(page.locator('.lateral-nav')).toBeVisible(); // el menú sigue disponible
 });

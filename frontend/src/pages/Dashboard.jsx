@@ -13,8 +13,9 @@ import AgregarCalendario from '../components/AgregarCalendario'
 import AvisosEquipo from '../components/AvisosEquipo'
 import CampoClave from '../components/CampoClave'
 import { ROLES, iniciales } from '../config/navegacion'
-import { capitalizar, diaCorto, fechaCorta, fechaLarga, fechaRelativa, numeroDia } from '../utils/fechas'
+import { capitalizar, diaCorto, diasHasta, fechaCorta, fechaLarga, fechaRelativa, numeroDia } from '../utils/fechas'
 import { nombreConDorsal, tieneDorsal } from '../utils/jugador'
+import { perfilDeporte, TEXTO_TIPO } from '../config/deportes'
 
 // Acciones del panel "Mi sesión" según el rol (la primera es la destacada en naranja)
 const ACCIONES = {
@@ -110,12 +111,33 @@ function BannerPartido({ partido, resumen, esJugador, rol, convocatoria, onCambi
     : partido
   return (
     <section className="ini-banner orden-1" aria-labelledby="t-partido">
-      <img className="ini-marca-agua" src="/brand/monograma-u-blanco-256.png" alt="" />
+      <div className="ini-cancha" aria-hidden="true"></div>
       {partido ? (
         <>
-          <p className="ini-banner-tipo">Próximo partido {partido.tipo === 'liga' ? 'de liga' : 'amistoso'}</p>
-          <h2 id="t-partido">Unisimón vs. {partido.rival}</h2>
-          <p className="ini-banner-dato"><i className="fa-regular fa-calendar" aria-hidden="true"></i> {capitalizar(fechaRelativa(partido.fecha))}{fechaRelativa(partido.fecha) !== fechaLarga(partido.fecha) ? `, ${fechaLarga(partido.fecha)}` : ''}</p>
+          <p className="ini-banner-tipo">
+            <span className="chip-deporte claro"><i className={`fa-solid ${perfilDeporte(partido.disciplina_nombre).icono}`} aria-hidden="true"></i> {partido.disciplina_nombre || 'Próximo evento'}</span>
+            <span>{TEXTO_TIPO[partido.tipo] || partido.tipo}{partido.equipo_nombre ? ` · ${partido.equipo_nombre}` : ''}</span>
+          </p>
+          <div className="ini-versus">
+            <div className="ini-equipo">
+              <span className="ini-escudo"><img src="/brand/monograma-u-blanco-256.png" alt="" /></span>
+              <b>Unisimón</b>
+            </div>
+            <div className="ini-cuenta" aria-hidden="true">
+              <span className="ini-cuenta-numero">{Math.max(diasHasta(partido.fecha), 0)}</span>
+              <span className="ini-cuenta-texto">{diasHasta(partido.fecha) === 0 ? '¡Hoy!' : diasHasta(partido.fecha) === 1 ? 'día' : 'días'}</span>
+            </div>
+            <div className="ini-equipo">
+              <span className="ini-escudo rival">{partido.rival.slice(0, 2).toUpperCase()}</span>
+              <b>{partido.rival}</b>
+            </div>
+          </div>
+          <h2 id="t-partido" className="sr-only">Unisimón vs. {partido.rival}</h2>
+          <p className="ini-banner-dato">
+            <i className="fa-regular fa-calendar" aria-hidden="true"></i> {capitalizar(fechaRelativa(partido.fecha))}{fechaRelativa(partido.fecha) !== fechaLarga(partido.fecha) ? `, ${fechaLarga(partido.fecha)}` : ''}
+            {partido.hora && <> · <i className="fa-regular fa-clock" aria-hidden="true"></i> {partido.hora}</>}
+            {partido.lugar && <> · <i className="fa-solid fa-location-dot" aria-hidden="true"></i> {partido.lugar}</>}
+          </p>
           <ResumenConvocatoria convocatoria={convocatoria} esJugador={esJugador} />
           <div className="ini-banner-acciones">
             {(convocatoria?.publicada || esJugador ? convocatoria : puedeConvocar) ? (
@@ -128,17 +150,17 @@ function BannerPartido({ partido, resumen, esJugador, rol, convocatoria, onCambi
             {!esJugador && resumen.total > 0 && (
               <span className="ini-banner-disponibles">
                 <i className="fa-solid fa-user-check" aria-hidden="true"></i>
-                <span><b>{resumen.disponibles + resumen.restringidos} de {resumen.total}</b> jugadores disponibles</span>
+                <span><b>{resumen.disponibles + resumen.restringidos} de {resumen.total}</b> disponibles</span>
               </span>
             )}
           </div>
         </>
       ) : (
         <>
-          <p className="ini-banner-tipo">Calendario</p>
-          <h2 id="t-partido">No hay partidos programados</h2>
-          <p className="ini-banner-dato">Cuando se registre el próximo partido aparecerá aquí con la disponibilidad del plantel.</p>
-          {puedeProgramar && <div className="ini-banner-acciones"><Link className="btn btn-naranja" to="/partidos">Programar partido</Link></div>}
+          <p className="ini-banner-tipo"><span>Calendario</span></p>
+          <h2 id="t-partido">Sin partidos en el horizonte</h2>
+          <p className="ini-banner-dato">Cuando se programe el próximo partido o competencia, aparecerá aquí con la cuenta regresiva y la disponibilidad del plantel.</p>
+          {puedeProgramar && <div className="ini-banner-acciones"><Link className="btn btn-naranja" to="/partidos"><i className="fa-solid fa-plus" aria-hidden="true"></i> Programar partido</Link></div>}
         </>
       )}
       {abierta && <Convocatoria partido={abierta} onCerrar={() => setAbierta(null)} onCambio={onCambio} />}
@@ -531,12 +553,17 @@ function EstaSemana({ items }) {
   )
 }
 
-/* ── Deportes (crear y eliminar; antes estaba en el inicio antiguo) ── */
+/* ── Deportes y sus categorías (v2.0): el administrador define qué categorías maneja cada deporte ── */
 function Deportes() {
   const { disciplinas, selectedSportId, setSelectedSportId, crearDisciplina, eliminarDisciplina, puedeGestionarDeportes } = useDeporte()
   const [nombre, setNombre] = useState('')
   const [aEliminar, setAEliminar] = useState(null)
   const [ocupado, setOcupado] = useState(false)
+  const [categorias, setCategorias] = useState([])
+  const [abierto, setAbierto] = useState(null)
+  const [nuevaCat, setNuevaCat] = useState('')
+  const cargarCategorias = useCallback(() => api.get('/disciplinas/categorias').then(r => setCategorias(r.data)).catch(() => {}), [])
+  useEffect(() => { if (puedeGestionarDeportes) cargarCategorias() }, [puedeGestionarDeportes, cargarCategorias])
   if (!puedeGestionarDeportes) return null
 
   const crear = async (e) => {
@@ -549,22 +576,63 @@ function Deportes() {
     setOcupado(true)
     try { await eliminarDisciplina(aEliminar.id, aEliminar.nombre); setAEliminar(null) } catch { /* idem */ } finally { setOcupado(false) }
   }
+  const agregarCategoria = async (e, disciplinaId) => {
+    e.preventDefault()
+    if (!nuevaCat.trim()) return
+    try {
+      await api.post(`/disciplinas/${disciplinaId}/categorias`, { nombre: nuevaCat.trim() })
+      setNuevaCat(''); cargarCategorias()
+    } catch (err) { toast.error(err.message) }
+  }
+  const quitarCategoria = async (c) => {
+    try { await api.delete(`/disciplinas/categorias/${c.id}`); cargarCategorias() } catch (err) { toast.error(err.message) }
+  }
 
   return (
     <section className="panel orden-8" aria-labelledby="t-dep">
-      <div className="panel-cabecera"><h2 id="t-dep">Deportes</h2><span className="panel-contador">{disciplinas.length}</span></div>
+      <div className="panel-cabecera"><h2 id="t-dep">Deportes y categorías</h2><span className="panel-contador">{disciplinas.length}</span></div>
       <div className="panel-cuerpo">
         <ul className="ini-deportes">
           {disciplinas.map(d => {
             const activo = String(selectedSportId) === String(d.id)
+            const perfil = perfilDeporte(d.nombre)
+            const cats = categorias.filter(c => String(c.disciplina_id) === String(d.id))
+            const expandido = abierto === d.id
             return (
-              <li key={d.id} className={activo ? 'activo' : undefined}>
-                <button type="button" className="ini-deporte-nombre" onClick={() => setSelectedSportId(activo ? 'todos' : d.id)} aria-pressed={activo}>
-                  <i className={`fa-solid ${activo ? 'fa-circle-dot' : 'fa-circle'}`} aria-hidden="true"></i> {d.nombre}
-                </button>
-                <button type="button" className="btn-icon btn-danger" onClick={() => setAEliminar(d)} aria-label={`Eliminar ${d.nombre}`}>
-                  <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
-                </button>
+              <li key={d.id} className={activo ? 'activo' : undefined} style={{ '--deporte': perfil.color }}>
+                <div className="ini-deporte-fila">
+                  <button type="button" className="ini-deporte-nombre" onClick={() => setSelectedSportId(activo ? 'todos' : d.id)} aria-pressed={activo}>
+                    <span className="ini-deporte-icono"><i className={`fa-solid ${perfil.icono}`} aria-hidden="true"></i></span> {d.nombre}
+                    <small>{cats.length ? `${cats.length} ${cats.length === 1 ? 'categoría' : 'categorías'}` : 'Sin categorías'}</small>
+                  </button>
+                  <button type="button" className="btn-icon" onClick={() => { setAbierto(expandido ? null : d.id); setNuevaCat('') }}
+                    aria-expanded={expandido} aria-label={`Categorías de ${d.nombre}`} title="Categorías">
+                    <i className={`fa-solid ${expandido ? 'fa-chevron-up' : 'fa-layer-group'}`} aria-hidden="true"></i>
+                  </button>
+                  <button type="button" className="btn-icon btn-danger" onClick={() => setAEliminar(d)} aria-label={`Eliminar ${d.nombre}`}>
+                    <i className="fa-solid fa-trash-can" aria-hidden="true"></i>
+                  </button>
+                </div>
+                {expandido && (
+                  <div className="ini-categorias">
+                    {cats.length === 0 && <p className="ini-texto-suave">¿Qué categorías maneja {d.nombre} en la universidad? Agrégalas aquí (ej. Masculino, Femenino, Sub-20).</p>}
+                    <ul>
+                      {cats.map(c => (
+                        <li key={c.id}>
+                          <span>{c.nombre}</span><small>{c.total_equipos} {c.total_equipos === 1 ? 'equipo' : 'equipos'}</small>
+                          <button type="button" className="btn-icon btn-danger" onClick={() => quitarCategoria(c)} aria-label={`Quitar la categoría ${c.nombre}`}>
+                            <i className="fa-solid fa-xmark" aria-hidden="true"></i>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <form className="ini-deporte-form" onSubmit={(e) => agregarCategoria(e, d.id)}>
+                      <label className="sr-only" htmlFor={`cat-${d.id}`}>Nueva categoría de {d.nombre}</label>
+                      <input id={`cat-${d.id}`} placeholder="Nueva categoría" value={nuevaCat} onChange={e => setNuevaCat(e.target.value)} maxLength={60} />
+                      <button className="btn btn-secondary" type="submit" disabled={!nuevaCat.trim()}>Agregar</button>
+                    </form>
+                  </div>
+                )}
               </li>
             )
           })}
@@ -578,7 +646,7 @@ function Deportes() {
       <ConfirmModal
         isOpen={!!aEliminar}
         title={`Eliminar ${aEliminar?.nombre || ''}`}
-        message="Los deportistas y equipos de este deporte quedarán sin deporte asignado. Esta acción no se puede deshacer."
+        message="Los deportistas y equipos de este deporte quedarán sin deporte asignado, y se borrarán sus categorías. Esta acción no se puede deshacer."
         confirmText="Eliminar deporte"
         onConfirm={eliminar}
         onCancel={() => setAEliminar(null)}

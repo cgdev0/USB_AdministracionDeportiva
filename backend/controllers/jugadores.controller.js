@@ -1,4 +1,5 @@
 const db   = require('../config/db');
+const { hoyLocal } = require('../utils/hoy');
 const path = require('path');
 const fs   = require('fs');
 const multer = require('multer');
@@ -51,7 +52,7 @@ exports.getAll = async (req, res) => {
     // Si es jugador, solo devuelve su propio registro
     if (req.usuario?.rol === 'jugador') {
       const { rows } = await db.query(
-        `SELECT j.*, eq.nombre AS equipo_nombre, d.nombre AS disciplina_nombre
+        `SELECT j.*, COALESCE(date_part('year', age(j.fecha_nacimiento))::int, j.edad) AS edad, eq.nombre AS equipo_nombre, d.nombre AS disciplina_nombre
          FROM jugadores j
          LEFT JOIN equipos eq ON j.equipo_id = eq.id
          LEFT JOIN disciplinas d ON j.disciplina_id = d.id
@@ -62,7 +63,7 @@ exports.getAll = async (req, res) => {
     }
 
     let query = `
-      SELECT j.*, eq.nombre AS equipo_nombre, d.nombre AS disciplina_nombre, u.nombre AS entrenador_nombre
+      SELECT j.*, COALESCE(date_part('year', age(j.fecha_nacimiento))::int, j.edad) AS edad, eq.nombre AS equipo_nombre, d.nombre AS disciplina_nombre, u.nombre AS entrenador_nombre
       FROM jugadores j
       LEFT JOIN equipos eq ON j.equipo_id = eq.id
       LEFT JOIN disciplinas d ON j.disciplina_id = d.id
@@ -85,8 +86,8 @@ exports.getAll = async (req, res) => {
     if (equipo_id && equipo_id !== 'todos') { params.push(equipo_id); conditions.push(`j.equipo_id = $${params.length}`); }
     if (entrenador_id && ['administrador','personal_salud','head_coach'].includes(req.usuario?.rol)) { params.push(entrenador_id); conditions.push(`j.entrenador_id = $${params.length}`); }
     if (posicion) { params.push(`%${posicion}%`); conditions.push(`j.posicion ILIKE $${params.length}`); }
-    if (edad_min !== undefined && edad_min !== '') { params.push(Number(edad_min)); conditions.push(`j.edad >= $${params.length}`); }
-    if (edad_max !== undefined && edad_max !== '') { params.push(Number(edad_max)); conditions.push(`j.edad <= $${params.length}`); }
+    if (edad_min !== undefined && edad_min !== '') { params.push(Number(edad_min)); conditions.push(`COALESCE(date_part('year', age(j.fecha_nacimiento))::int, j.edad) >= $${params.length}`); }
+    if (edad_max !== undefined && edad_max !== '') { params.push(Number(edad_max)); conditions.push(`COALESCE(date_part('year', age(j.fecha_nacimiento))::int, j.edad) <= $${params.length}`); }
     if (conditions.length) query += ` WHERE ${conditions.join(' AND ')}`;
 
     query += ` ORDER BY j.nombre ASC`;
@@ -102,7 +103,7 @@ exports.getAll = async (req, res) => {
 exports.getOne = async (req, res) => {
   try {
     const { rows: playerRows } = await db.query(
-      `SELECT j.*, eq.nombre AS equipo_nombre, d.nombre AS disciplina_nombre
+      `SELECT j.*, COALESCE(date_part('year', age(j.fecha_nacimiento))::int, j.edad) AS edad, eq.nombre AS equipo_nombre, d.nombre AS disciplina_nombre
        FROM jugadores j
        LEFT JOIN equipos eq ON j.equipo_id = eq.id
        LEFT JOIN disciplinas d ON j.disciplina_id = d.id
@@ -185,7 +186,14 @@ async function verificarPermisoEscritura(req, jugadorId, accion = 'modificar') {
 
 // POST /api/jugadores
 exports.create = async (req, res) => {
-  const { nombre, edad, posicion, peso, altura, equipo_id, disciplina_id } = req.body;
+  const { nombre, posicion, peso, altura, equipo_id, disciplina_id } = req.body;
+  let { edad } = req.body;
+  const fecha_nacimiento = req.body.fecha_nacimiento ? String(req.body.fecha_nacimiento).slice(0, 10) : null;
+  if (fecha_nacimiento && (!/^\d{4}-\d{2}-\d{2}$/.test(fecha_nacimiento) || fecha_nacimiento > hoyLocal())) {
+    return res.status(400).json({ error: 'La fecha de nacimiento no es válida.' });
+  }
+  if (fecha_nacimiento) edad = null;
+  const genero = ['masculino', 'femenino'].includes(req.body.genero) ? req.body.genero : null;
   const entrenador_id = req.usuario?.rol === 'entrenador' ? req.usuario.id : (req.body.entrenador_id || null);
   if (!nombre || !String(nombre).trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   const dorsal = normalizarDorsal(req.body.dorsal);
@@ -193,10 +201,10 @@ exports.create = async (req, res) => {
 
   try {
     const { rows } = await db.query(
-      `INSERT INTO jugadores (nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, entrenador_id, dorsal)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      `INSERT INTO jugadores (nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, entrenador_id, dorsal, fecha_nacimiento, genero)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
       [String(nombre).trim(), edad || null, posicion || null, peso || null, altura || null,
-       equipo_id || null, disciplina_id || null, entrenador_id, dorsal.valor]
+       equipo_id || null, disciplina_id || null, entrenador_id, dorsal.valor, fecha_nacimiento, genero]
     );
     res.status(201).json({ id: rows[0].id, nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, dorsal: dorsal.valor });
   } catch (err) {
@@ -308,7 +316,7 @@ exports.bulkCreate = async (req, res) => {
 // Actualización parcial: solo se modifican los campos presentes en el body.
 // Así, asignar un equipo desde otra pantalla no borra el dorsal ni el entrenador.
 exports.update = async (req, res) => {
-  const permitidos = ['nombre', 'edad', 'posicion', 'peso', 'altura', 'equipo_id', 'disciplina_id', 'entrenador_id', 'dorsal'];
+  const permitidos = ['nombre', 'edad', 'fecha_nacimiento', 'genero', 'posicion', 'peso', 'altura', 'equipo_id', 'disciplina_id', 'entrenador_id', 'dorsal'];
   const presente = (campo) => Object.prototype.hasOwnProperty.call(req.body, campo);
   const vacioANull = (v) => (v === '' || v === undefined ? null : v);
 
@@ -325,6 +333,16 @@ exports.update = async (req, res) => {
     if ('nombre' in cambios) cambios.nombre = String(cambios.nombre).trim();
     // Un entrenador no puede reasignar sus deportistas a otro entrenador
     if (req.usuario?.rol === 'entrenador') delete cambios.entrenador_id;
+    // v2.0: con fecha de nacimiento, la edad se calcula sola cada vez que se consulta
+    if ('fecha_nacimiento' in cambios && cambios.fecha_nacimiento) {
+      const f = String(cambios.fecha_nacimiento).slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(f) || f > hoyLocal()) {
+        return res.status(400).json({ error: 'La fecha de nacimiento no es válida.' });
+      }
+      cambios.fecha_nacimiento = f;
+      delete cambios.edad;
+    }
+    if ('genero' in cambios && cambios.genero && !['masculino', 'femenino'].includes(cambios.genero)) delete cambios.genero;
     if ('dorsal' in cambios) {
       const dorsal = normalizarDorsal(cambios.dorsal);
       if (!dorsal.ok) return res.status(400).json({ error: dorsal.error });

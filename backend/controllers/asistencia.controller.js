@@ -1,7 +1,14 @@
 const db = require('../config/db');
 
 const { responderError } = require('../utils/errores');
-const { condicionAlcance } = require('../utils/alcance');
+const { condicionAlcance, puedeVerJugador } = require('../utils/alcance');
+const { buscar } = require('../utils/agenda');
+
+// v2.0 (DEF-041): la columna `asistencia` es BOOLEAN. El frontend enviaba 1/0 y comparaba con `=== 1`,
+// así que lo guardado nunca se veía como "Presente". Ahora el valor siempre se normaliza a true/false
+// y cada deportista tiene un solo registro por entrenamiento (índice único + upsert).
+const aBooleano = (v) => v === true || v === 1 || v === '1' || v === 'true';
+
 exports.getAll = async (req, res) => {
   try {
     const { entrenamiento_id } = req.query;
@@ -29,29 +36,78 @@ exports.getAll = async (req, res) => {
   }
 };
 
+// Guarda (crea o actualiza) la asistencia de un deportista en un entrenamiento
+async function guardar(cliente, jugadorId, entrenamientoId, valor) {
+  const { rows } = await cliente.query(
+    `INSERT INTO asistencia_entrenamiento (jugador_id, entrenamiento_id, asistencia) VALUES ($1, $2, $3)
+     ON CONFLICT (jugador_id, entrenamiento_id) DO UPDATE SET asistencia = EXCLUDED.asistencia
+     RETURNING id, jugador_id, entrenamiento_id, asistencia`,
+    [jugadorId, entrenamientoId, valor]
+  );
+  return rows[0];
+}
+
+// POST /api/asistencia  { jugador_id, entrenamiento_id, asistencia }
 exports.create = async (req, res) => {
-  const { jugador_id, entrenamiento_id, asistencia } = req.body;
+  const { jugador_id, entrenamiento_id } = req.body;
   if (!jugador_id || !entrenamiento_id) return res.status(400).json({ error: 'jugador_id y entrenamiento_id son obligatorios' });
   try {
-    const { rows } = await db.query(
-      'INSERT INTO asistencia_entrenamiento (jugador_id, entrenamiento_id, asistencia) VALUES ($1,$2,$3) RETURNING id',
-      [jugador_id, entrenamiento_id, asistencia ?? false]
-    );
-    res.status(201).json({ id: rows[0].id, jugador_id, entrenamiento_id, asistencia });
+    if (!(await buscar('entrenamientos', req.usuario, entrenamiento_id))) {
+      return res.status(404).json({ error: 'Entrenamiento no encontrado o fuera de tu alcance.' });
+    }
+    if (!(await puedeVerJugador(db, req.usuario, jugador_id))) {
+      return res.status(403).json({ error: 'Solo puedes tomar asistencia a tus deportistas.' });
+    }
+    const registro = await guardar(db, jugador_id, entrenamiento_id, aBooleano(req.body.asistencia));
+    res.status(201).json(registro);
   } catch (err) {
     responderError(res, err);
   }
 };
 
-exports.update = async (req, res) => {
-  const { asistencia } = req.body;
+// PUT /api/asistencia/lote  { entrenamiento_id, jugadores: [id…], asistencia }
+// "Todos presentes" / "Todos ausentes" en una sola petición y una sola transacción
+exports.lote = async (req, res) => {
+  const { entrenamiento_id, jugadores } = req.body;
+  if (!entrenamiento_id || !Array.isArray(jugadores) || jugadores.length === 0) {
+    return res.status(400).json({ error: 'Indica el entrenamiento y los deportistas.' });
+  }
+  const valor = aBooleano(req.body.asistencia);
+  const cliente = await db.connect();
   try {
-    const { rowCount } = await db.query(
-      'UPDATE asistencia_entrenamiento SET asistencia=$1 WHERE id=$2',
-      [asistencia, req.params.id]
+    if (!(await buscar('entrenamientos', req.usuario, entrenamiento_id, cliente))) {
+      return res.status(404).json({ error: 'Entrenamiento no encontrado o fuera de tu alcance.' });
+    }
+    // Solo los deportistas del alcance del usuario
+    const params = [jugadores.map(Number).filter(Number.isInteger)];
+    const cond = condicionAlcance(req.usuario, params);
+    const { rows: permitidos } = await cliente.query(
+      `SELECT j.id FROM jugadores j WHERE j.id = ANY($1::int[])${cond ? ` AND ${cond}` : ''}`, params);
+    await cliente.query('BEGIN');
+    const registros = [];
+    for (const { id } of permitidos) registros.push(await guardar(cliente, id, entrenamiento_id, valor));
+    await cliente.query('COMMIT');
+    res.json({ actualizados: registros.length, registros });
+  } catch (err) {
+    await cliente.query('ROLLBACK').catch(() => {});
+    responderError(res, err);
+  } finally {
+    cliente.release();
+  }
+};
+
+exports.update = async (req, res) => {
+  try {
+    const params = [aBooleano(req.body.asistencia), req.params.id];
+    const cond = condicionAlcance(req.usuario, params);
+    const { rows } = await db.query(
+      `UPDATE asistencia_entrenamiento ae SET asistencia = $1 FROM jugadores j
+       WHERE ae.id = $2 AND j.id = ae.jugador_id${cond ? ` AND ${cond}` : ''}
+       RETURNING ae.id, ae.jugador_id, ae.entrenamiento_id, ae.asistencia`,
+      params
     );
-    if (rowCount === 0) return res.status(404).json({ error: 'Registro no encontrado' });
-    res.json({ message: 'Asistencia actualizada correctamente' });
+    if (!rows.length) return res.status(404).json({ error: 'Registro no encontrado' });
+    res.json(rows[0]);
   } catch (err) {
     responderError(res, err);
   }
@@ -59,7 +115,11 @@ exports.update = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
-    await db.query('DELETE FROM asistencia_entrenamiento WHERE id = $1', [req.params.id]);
+    const params = [req.params.id];
+    const cond = condicionAlcance(req.usuario, params);
+    await db.query(
+      `DELETE FROM asistencia_entrenamiento ae USING jugadores j
+       WHERE ae.id = $1 AND j.id = ae.jugador_id${cond ? ` AND ${cond}` : ''}`, params);
     res.json({ message: 'Registro eliminado' });
   } catch (err) {
     responderError(res, err);

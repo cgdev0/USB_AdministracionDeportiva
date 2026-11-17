@@ -8,6 +8,7 @@ import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
 import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
+import { fechaTabla } from '../utils/fechas'
 
 const EMPTY = { jugador_id: '', tipo: '', descripcion: '', fecha_inicio: '', fecha_fin: '' }
 
@@ -108,7 +109,7 @@ export default function Lesiones() {
   return (
     <div>
       <div className="page-header">
-        <h2>Lesiones</h2>
+        <h1>Lesiones</h1>
         <p>
           Control y seguimiento de lesiones del plantel
           {selectedSportId && selectedSportId !== 'todos' ? ` — Deporte: ${selectedSport?.nombre}` : ''}
@@ -163,8 +164,8 @@ export default function Lesiones() {
                   <tr key={l.id}>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{nombreConDorsal(l.jugador_nombre, l.jugador_dorsal)}</td>
                     <td>{l.tipo || '—'}</td>
-                    <td>{l.fecha_inicio ? new Date(l.fecha_inicio).toLocaleDateString('es') : '—'}</td>
-                    <td>{l.fecha_fin    ? new Date(l.fecha_fin).toLocaleDateString('es')    : '—'}</td>
+                    <td>{l.fecha_inicio ? fechaTabla(l.fecha_inicio) : '—'}</td>
+                    <td>{l.fecha_fin    ? fechaTabla(l.fecha_fin)    : '—'}</td>
                     <td>
                       <span className={`badge ${l.fecha_fin ? 'badge-green' : 'badge-red'}`}>
                         {l.fecha_fin ? 'Recuperado' : 'Activa'}

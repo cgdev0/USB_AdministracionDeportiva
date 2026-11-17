@@ -1,6 +1,6 @@
 # Plan de calidad y pruebas — Administración Deportiva
 
-Estado: **en marcha desde v1.3.1** (10 de octubre de 2026). Las partes 1, 2 y 3 están hechas; las partes 4, 5 y 6 se actualizan en cada Pull Request. Línea base: `informes/v1.3.1.md`.
+Estado: **en marcha desde v1.3.1** (10 de octubre de 2026); último informe: **v2.2** (5 de noviembre de 2026). Las partes 1, 2 y 3 están hechas; las partes 4, 5 y 6 se actualizan en cada Pull Request. Línea base: `informes/v1.3.1.md`.
 
 ## Norma de referencia
 
@@ -53,12 +53,12 @@ Así no hay que reconstruir al final qué se probó en cada versión, y las evid
 
 | # | Parte | Dónde está | Estado |
 |---|---|---|---|
-| — | Requisitos | `00_requisitos.md` | Hecho (RF-01 a RF-19, RNF-01 a RNF-10) |
+| — | Requisitos | `00_requisitos.md` | Hecho (RF-01 a RF-24, RNF-01 a RNF-11; actualizado en la v2.2) |
 | 1 | Características de calidad | `01_caracteristicas.md` | Hecho |
 | 2 | Métricas e indicadores | `02_metricas.md` | Hecho (26 métricas, índice global con meta ≥ 85) |
 | 3 | Plan de pruebas | `03_plan_de_pruebas.md` | Hecho (PP-AD-01) |
-| 4 | Casos de prueba | `casos/catalogo.md` (automáticos, generado) y `casos/manuales.md` | 118 automáticos y 7 manuales pendientes de ejecutar |
-| 5 | Informe de ejecución | `informes/` | v1.3.1 (línea base): 92,6 %, índice 67 · v1.4: 100 %, índice 72 · v1.5: 100 %, índice 100 (22 de 26 métricas; faltan las manuales) |
+| 4 | Casos de prueba | `casos/catalogo.md` (automáticos, generado) y `casos/manuales.md` | 179 automáticos (v2.2) y 7 manuales pendientes de ejecutar |
+| 5 | Informe de ejecución | `informes/` | v1.3.1 (línea base): 92,6 %, índice 67 · v1.4: 100 %, índice 72 · v1.5: 100 %, índice 100 (22 de 26 métricas; faltan las manuales) · v1.6 a v1.9: 100 %, índice 100 · **v2.2 (cubre v2.0 a v2.2): 100 %, índice 95 (20 de 26 métricas; ver `informes/v2.2.md`)** |
 | 6 | Repositorio y tableros | esta carpeta, `defectos.md`, [tablero de GitHub Projects](https://github.com/users/cgdev0/projects/1) | Hecho: cada defecto y prueba manual es un issue en el tablero |
 
 Las pruebas que antes vivían fuera del repositorio ya están en `pruebas/` (ver `pruebas/README.md`). Cualquier integrante puede repetirlas con `npm test`.

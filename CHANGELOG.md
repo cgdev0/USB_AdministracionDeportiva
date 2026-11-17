@@ -3,6 +3,105 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v2.5 — Fórmulas de antropometría revisadas
+
+**Etiqueta:** `v2.5` · Sin cambios en la base de datos. Los registros guardados antes conservan sus valores; al editarlos y pulsar "Recalcular" se actualizan.
+
+Correcciones (revisión de las fórmulas antes de la auditoría de fisioterapia)
+- DEF-049 · Masa ósea de Rocha con el diámetro **biestiloideo (muñeca)** y el del fémur; antes usaba el del húmero (sobreestimaba la masa ósea ~1,5 kg y subestimaba la masa muscular en lo mismo). Sin diámetros ya no se estima como 14,5 % del peso.
+- DEF-050 · Somatotipo Heath-Carter solo con mediciones reales: sin diámetros de húmero y fémur, brazo contraído y pierna no hay mesomorfia (antes usaba 6,8 y 9,5 cm por defecto y el brazo relajado). La somatocarta solo dibuja somatotipos completos.
+- DEF-051 · % de grasa: Yuhasz-Carter exige los 6 pliegues; se retira la "estimación 3 pliegues" sin respaldo; Durnin-Womersley usa los coeficientes por sexo y edad del deportista (o la ecuación general si no se conoce la edad); masa residual de Würch 24,1 % en hombres.
+- La tarjeta "Somatotipo" del cálculo en vivo siempre salía vacía (leía campos que no existían).
+
+Mejora técnica
+- Una sola fuente de las fórmulas: el backend importa `frontend/src/utils/anthropometry.js` en lugar de tener su propia copia. La pantalla indica qué ecuación de % de grasa se usó.
+
+Pruebas: CP-UNI-004 y CP-MOD-013 con valores corregidos; nuevas CP-UNI-017 a 020 (incluida una que compara el cálculo del servidor con el de la pantalla).
+
+## v2.4 — Documento del proyecto y dos correcciones de interfaz
+
+**Etiqueta:** `v2.4` · Sin cambios en la base de datos.
+
+Correcciones (encontradas al ejecutar los casos de prueba del documento del proyecto)
+- DEF-047 · La convocatoria y su aviso mostraban el partido un día antes: el controlador convertía la fecha (texto desde la v2.0) con `new Date()`. Ahora se usa tal cual. Prueba nueva CP-CNV-011.
+- DEF-048 · En computador, la ventana de avisos de la campanita quedaba corrida hacia arriba y ocultaba los avisos más recientes: la barra superior tiene `backdrop-filter`, que cambia la referencia de `position: fixed`. `Modal` y `ConfirmModal` ahora se dibujan en el `body` con un portal de React.
+
+Documentación
+- `docs/entrega/Documento_proyecto_Administracion_Deportiva.docx`: documento completo del proyecto, con roles, requisitos (RF, RNF, RU, RS y RD), casos de uso, historias, cronograma, Poker Planning, costos, EVM, reglas de negocio, riesgos, planificación del Sprint 1, burndown, 20 casos de prueba con capturas, incidencias, calidad y funcionalidades.
+
+Pruebas: 137 de API (136 aprobadas y 1 omitida) y 44 de navegador, todas en verde.
+
+## v2.3 — Historias de usuario y casos de uso
+
+**Etiqueta:** `v2.3` · Solo documentación; sin cambios en el código ni en la base de datos.
+
+- Nuevo `docs/analisis/historias_y_casos_de_uso.md`, con:
+  - los 6 actores y sus permisos;
+  - el diagrama de 16 casos de uso (`docs/analisis/diagrama_casos_de_uso.png`);
+  - la especificación completa de CU-01, CU-03, CU-08, CU-09, CU-10 y CU-12;
+  - 20 historias de usuario con criterios de aceptación;
+  - la matriz de trazabilidad hacia requisitos y casos de prueba.
+- `DOCUMENTACION.html`: el diagrama de casos de uso se reemplaza por el actual (antes tenía 7 casos y 2 actores).
+
+## v2.2 — Documentación al día y hora de Colombia
+
+**Etiqueta:** `v2.2` · Sin cambios en la base de datos.
+
+Corrección
+- DEF-045 · Con el servidor en UTC (Railway), de 7 p. m. a medianoche de Colombia "hoy" y "mañana" se calculaban con el día siguiente y el recordatorio "Mañana tienes entrenamiento" no salía. Ahora la app y PostgreSQL trabajan en `America/Bogota` (`backend/config/db.js`, variable opcional `ZONA_HORARIA`) y las validaciones de fecha usan `backend/utils/hoy.js`.
+
+Accesibilidad · DEF-046 (recupera lo que bajó con el rediseño de la v2.0)
+- Contraste AA en el contador del filtro de deporte, el avatar del rol jugador y el dorsal del deportista ausente en la planilla de asistencia.
+- Título principal (h1) en Lesiones, Salud y Evaluaciones, y orden correcto de títulos en Equipos.
+- En pantallas táctiles, la campana, los buscadores, los selectores, las pestañas y los encabezados ordenables miden 44 px.
+
+Pruebas
+- Casos nuevos CP-ZON-001 y CP-ZON-002. Los casos de la v2.0 y la v2.1 pasan a llamarse CP-COR-001 a 006, CP-EST-001 a 004 y CP-ADM-001, con sus requisitos, para que aparezcan en el catálogo y en el informe.
+- CP-MIG-002 se marca como omitido (con el motivo) cuando el repositorio no tiene la etiqueta `v1-original`, en lugar de quedarse colgado.
+- El informe cuenta RF-01 a RF-24, no cuenta como aprobado un caso omitido y describe el entorno real de la ejecución.
+
+Documentación
+- `docs/diseno/DESIGN.md` reescrito para el diseño "Cancha" (tokens, tipografía Barlow, estructura, componentes y perfil de cada deporte). Capturas nuevas en `docs/diseno/capturas/`; las de la v1.3 pasan a `capturas/v1.3/`.
+- `docs/calidad/00_requisitos.md`: RF-03, RF-06, RF-10 a RF-13 ampliados; nuevos RF-24 (categorías por deporte) y RNF-11 (hora de Colombia).
+- Plan de pruebas, plan de calidad, catálogo de casos e informe de ejecución v2.2 con sus conclusiones.
+
+## v2.1 — Estadísticas por deporte y usuario admin1
+
+**Etiqueta:** `v2.1` · Base de datos: `backend/migrations/010_metricas_y_admin.sql` (incluida en `database.sql`; Railway la aplica al desplegar).
+
+- Estadísticas propias de cada deporte (`backend/config/metricas_deportes.js`): fútbol (goles, asistencias, tarjetas amarillas y rojas, minutos), fútbol sala, baloncesto (puntos, rebotes, asistencias, robos, faltas), rugby (tries, conversiones, penales, drops, pases de try, tackles; puntos calculados), voleibol (puntos, aces, bloqueos, recepciones, errores de saque, sets), béisbol y sóftbol (carreras, hits, impulsadas, jonrones, ponches), natación y atletismo (pruebas, medallas, finales, marcas personales), tenis, ajedrez, balonmano y hockey. "Partidos jugados" se calcula solo. Un deporte nuevo usa un perfil general.
+- Pantalla Estadísticas: todos los deportes aparecen al entrar y se eligen con un toque; cada uno muestra sus totales, líderes ordenables por métrica, gráfica y registros, y el formulario pide solo las métricas de ese deporte.
+- Se guardan en la columna nueva `estadisticas_jugador.metricas` (JSONB). Las columnas goles / asistencias / minutos_jugados se siguen llenando, así el inicio y los reconocimientos no cambian. Los registros anteriores se muestran con las métricas de su deporte sin modificarlos.
+- El servidor valida cada métrica (entero ≥ 0 con tope razonable) y solo deja registrar estadísticas de deportistas del propio alcance.
+- El administrador inicial pasa de `robinson_meza` a **`admin1`** (`admin1@dtdeportivo.com`). Conserva id, datos y contraseña. Inicia sesión con `admin1` o con el correo.
+- En celular, el nombre y el rol vuelven a verse en la barra superior (observación de la v1.9).
+- Documento `Inventario_usuarios_AdministracionDeportiva.pdf` con las cuentas definidas en el código, roles y permisos.
+
+## v2.0 — Errores en ejecución y nuevo diseño "Cancha"
+
+**Etiqueta:** `v2.0` · Base de datos: `backend/migrations/009_correcciones_v2.sql` (también incluida en `database.sql`, se aplica sola al desplegar en Railway).
+
+Errores corregidos (documento "Errores en ejecución")
+- DEF-040 · Las fechas se guardaban y mostraban un día antes (12 oct → 11 oct): `pg` ahora devuelve las columnas DATE como texto y todas las pantallas usan `utils/fechas.js`.
+- DEF-041 · Asistencia: marcar "Presente" no quedaba a la vista (la columna es booleana y la pantalla comparaba con `=== 1`). Además, un solo registro por deportista y sesión (índice único + upsert) y "Todos presentes/ausentes" en una sola petición.
+- DEF-042 · El entrenador podía crear entrenamientos y partidos "Generales (todos los equipos)", que les aparecían a otros deportes. Ahora solo el administrador; el entrenador elige entre los equipos de su deporte (también validado en el servidor).
+- DEF-043 · Un usuario desactivado no se podía volver a activar: nueva pestaña "Inactivos" y botón "Reactivar".
+- DEF-044 · "Todos mis deportistas" en los avisos del entrenador llega solo a sus deportistas de su deporte, y la opción lo dice ("Todos mis deportistas de Rugby").
+- El deportista ve solo su propia antropometría ("Mi antropometría"), sin selector de compañeros.
+
+Mejoras
+- Resultado según el deporte: marcador (fútbol, rugby, baloncesto), sets (voleibol) y tiempo/marca + puesto (natación, atletismo). Tipos de evento: liga, torneo, amistoso y competencia.
+- Posiciones propias de cada deporte (`config/deportes.js`).
+- Categorías por deporte administrables (Inicio → Deportes y categorías, y al crear un equipo). Tabla `categorias`, `equipos.categoria_id`.
+- Al crear un deportista en Usuarios se crea también su ficha: deporte, equipo, posición, género, entrenador y fecha de nacimiento. La edad se calcula y se actualiza sola.
+- Equipos: filtro desplegable por deporte y categoría (pensado para celular).
+- Convocatoria: "Confirmaron / Sin responder / No pueden" son botones que filtran.
+- Panel del Head Coach: tarjetas por entrenador que filtran sus deportistas.
+- El entrenador de un solo deporte ya no ve el selector de deporte en Deportistas.
+
+Diseño
+- Nuevo sistema visual "Cancha": menú lateral verde noche con líneas de cancha, tipografía de marcador (Barlow Condensed), tableros de cifras, color e ícono por deporte, fixture de partidos con marcador, asistencia con fichas tipo camiseta, portada deportiva en el inicio de sesión y banner de próximo partido con cuenta regresiva.
+
 ## v1.9 — Observaciones del tester (primera entrega)
 
 **Autor:** Carlos Gamboa · **Etiqueta:** `v1.9`

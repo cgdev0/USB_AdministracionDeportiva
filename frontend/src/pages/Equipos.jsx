@@ -12,32 +12,41 @@ import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
 import { formatImageUrl } from '../utils/image'
 import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
+import EncabezadoPagina from '../components/EncabezadoPagina'
+import { perfilDeporte } from '../config/deportes'
 
 const EMPTY_EQUIPO = {
   nombre: '',
   categoria: '',
+  categoria_id: '',
   descripcion: '',
   disciplina_id: '',
   logo_url: ''
 }
 
-const CATEGORIAS_SUGERIDAS = [
-  'Primera División',
-  'Reserva',
-  'Sub-20',
-  'Sub-18',
-  'Juvenil',
-  'Cadete',
-  'Infantil',
-  'Senior',
-  'Femenino Principal',
-  'Masculino Principal'
-]
-
 export default function Equipos() {
-  const { tienePermiso } = useAuth()
+  const { tienePermiso, usuario } = useAuth()
   const puedeEditar = tienePermiso(['administrador', 'entrenador'])
-  const { disciplinas, selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
+  const esAdmin = usuario?.rol === 'administrador'
+  const { disciplinas, selectedSportId, selectedSport, setSelectedSportId, deporteUnico } = useDeporte()
+  // v2.0: categorías que maneja cada deporte (las define el administrador)
+  const [categorias, setCategorias] = useState([])
+  const [filtroCategoria, setFiltroCategoria] = useState('')
+  const [nuevaCategoria, setNuevaCategoria] = useState('')
+  const cargarCategorias = () => api.get('/disciplinas/categorias').then(r => setCategorias(r.data)).catch(() => {})
+  useEffect(() => { cargarCategorias() }, [])
+  const categoriasDe = (disciplinaId) => categorias.filter(c => String(c.disciplina_id) === String(disciplinaId))
+  const agregarCategoria = async () => {
+    const nombre = nuevaCategoria.trim()
+    if (!nombre || !form.disciplina_id) return
+    try {
+      const { data } = await api.post(`/disciplinas/${form.disciplina_id}/categorias`, { nombre })
+      await cargarCategorias()
+      setForm(f => ({ ...f, categoria_id: String(data.id), categoria: data.nombre }))
+      setNuevaCategoria('')
+      toast.success(`Categoría "${data.nombre}" agregada`)
+    } catch (e) { toast.error(e.message) }
+  }
 
   const [equipos, setEquipos]             = useState([])
   const [todosJugadores, setTodosJugadores] = useState([])
@@ -99,7 +108,8 @@ export default function Equipos() {
                       (eq.categoria || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                       (eq.disciplina_nombre || '').toLowerCase().includes(searchTerm.toLowerCase())
 
-    return coincideDeporte && matchText
+    const coincideCategoria = !filtroCategoria || String(eq.categoria_id) === String(filtroCategoria)
+    return coincideDeporte && matchText && coincideCategoria
   })
 
   // Abrir modal de creación
@@ -107,6 +117,7 @@ export default function Equipos() {
     setForm({
       nombre: '',
       categoria: '',
+      categoria_id: '',
       descripcion: '',
       disciplina_id: selectedSportId && selectedSportId !== 'todos' ? selectedSportId : (disciplinas[0]?.id || ''),
       logo_url: ''
@@ -122,6 +133,7 @@ export default function Equipos() {
     setForm({
       nombre: eq.nombre || '',
       categoria: eq.categoria || '',
+      categoria_id: eq.categoria_id ? String(eq.categoria_id) : '',
       descripcion: eq.descripcion || '',
       disciplina_id: eq.disciplina_id || '',
       logo_url: eq.logo_url || ''
@@ -153,6 +165,7 @@ export default function Equipos() {
       const payload = {
         nombre: form.nombre.trim(),
         categoria: form.categoria ? form.categoria.trim() : null,
+        categoria_id: form.categoria_id || null,
         descripcion: form.descripcion ? form.descripcion.trim() : null,
         disciplina_id: form.disciplina_id || null,
         logo_url: form.logo_url || null
@@ -341,60 +354,45 @@ export default function Equipos() {
         onChange={handleQuickFileUpload}
       />
 
-      {/* Header Principal */}
-      <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: 'linear-gradient(135deg, rgba(8,135,50,0.10), rgba(0,145,111,0.10))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: '1px solid var(--border)'
-          }}>
-            <Shield size={24} color="var(--accent)" />
-          </div>
-          <div>
-            <h2>Módulo de Equipos</h2>
-            <p>
-              Organización de plantillas, escudos identificadores y deportistas inscritos
-              {selectedSportId && selectedSportId !== 'todos' ? ` · Deporte: ${selectedSport?.nombre}` : ''}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Toolbar */}
-      <div className="page-toolbar" style={{ flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: '1 1 300px' }}>
-          <div className="search-bar" style={{ flex: 1, maxWidth: 360 }}>
-            <Search size={16} />
-            <input
-              type="text"
-              placeholder="Buscar equipo, categoría o disciplina..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-          <span style={{ color: 'var(--text-muted)', fontSize: 13, whiteSpace: 'nowrap' }}>
-            {!loading && !error && <>
-              <Shield size={14} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-              {equiposFiltrados.length} {equiposFiltrados.length === 1 ? 'equipo' : 'equipos'}
-            </>}
-          </span>
-        </div>
-
-        {puedeEditar && (
-          <button className="btn btn-primary" onClick={openCreate} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Plus size={16} /> Crear Equipo
+      <EncabezadoPagina
+        icono="fa-shield-halved"
+        antetitulo={deporteUnico ? deporteUnico.nombre : selectedSport?.esTodos === false ? selectedSport.nombre : 'Todos los deportes'}
+        titulo="Equipos"
+        descripcion="Plantillas por deporte y categoría, con su escudo y sus deportistas inscritos."
+        acciones={puedeEditar && (
+          <button className="btn btn-primary" onClick={openCreate}>
+            <i className="fa-solid fa-plus" aria-hidden="true"></i> Crear equipo
           </button>
         )}
+      />
+
+      {/* v2.0: filtro por deporte desplegable (en el celular es más cómodo que escribir) y por categoría */}
+      <div className="barra-herramientas">
+        {!deporteUnico && disciplinas.length > 1 && (
+          <div className="filtro-select">
+            <label htmlFor="eq-deporte"><i className="fa-solid fa-medal" aria-hidden="true"></i> Deporte</label>
+            <select id="eq-deporte" value={selectedSportId || 'todos'} onChange={e => { setSelectedSportId(e.target.value); setFiltroCategoria('') }}>
+              <option value="todos">Todos los deportes ({equipos.length})</option>
+              {disciplinas.map(d => (
+                <option key={d.id} value={d.id}>{d.nombre} ({equipos.filter(e => String(e.disciplina_id) === String(d.id)).length})</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {selectedSportId && selectedSportId !== 'todos' && categoriasDe(selectedSportId).length > 0 && (
+          <div className="filtro-select">
+            <label htmlFor="eq-cat"><i className="fa-solid fa-layer-group" aria-hidden="true"></i> Categoría</label>
+            <select id="eq-cat" value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}>
+              <option value="">Todas</option>
+              {categoriasDe(selectedSportId).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="buscador solo-pc">
+          <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input type="search" placeholder="Buscar equipo o categoría" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} aria-label="Buscar equipo" />
+        </div>
+        <span className="barra-total">{!loading && !error && <><b>{equiposFiltrados.length}</b> {equiposFiltrados.length === 1 ? 'equipo' : 'equipos'}</>}</span>
       </div>
 
       {/* Grid de Equipos */}
@@ -430,6 +428,7 @@ export default function Equipos() {
               key={eq.id}
               className="card team-card"
               style={{
+                '--deporte': perfilDeporte(eq.disciplina_nombre).color,
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
@@ -439,6 +438,7 @@ export default function Equipos() {
                 border: '1px solid var(--border)'
               }}
             >
+              <i className={`fa-solid ${perfilDeporte(eq.disciplina_nombre).icono} team-card-fondo`} aria-hidden="true"></i>
               {/* Header de la tarjeta del equipo */}
               <div>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
@@ -508,7 +508,7 @@ export default function Equipos() {
 
                   {/* Información del Equipo */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h3 style={{
+                    <h2 style={{
                       fontSize: 17,
                       fontWeight: 700,
                       margin: '0 0 4px',
@@ -518,7 +518,7 @@ export default function Equipos() {
                       textOverflow: 'ellipsis'
                     }}>
                       {eq.nombre}
-                    </h3>
+                    </h2>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
                       {eq.categoria && (
                         <span className="badge badge-purple" style={{ fontSize: 11, padding: '2px 8px' }}>
@@ -526,8 +526,8 @@ export default function Equipos() {
                         </span>
                       )}
                       {eq.disciplina_nombre && (
-                        <span className="badge badge-blue" style={{ fontSize: 11, padding: '2px 8px' }}>
-                          {eq.disciplina_nombre}
+                        <span className="chip-deporte" style={{ '--deporte': perfilDeporte(eq.disciplina_nombre).color }}>
+                          <i className={`fa-solid ${perfilDeporte(eq.disciplina_nombre).icono}`} aria-hidden="true"></i> {eq.disciplina_nombre}
                         </span>
                       )}
                     </div>
@@ -714,35 +714,40 @@ export default function Equipos() {
               />
             </div>
 
-            {/* Categoría */}
+            {/* Deporte */}
             <div className="form-group">
-              <label>Categoría</label>
-              <input
-                type="text"
-                list="categorias-list"
-                placeholder="Ej: Primera División, Sub-20, Juvenil"
-                value={form.categoria}
-                onChange={e => setForm({ ...form, categoria: e.target.value })}
-              />
-              <datalist id="categorias-list">
-                {CATEGORIAS_SUGERIDAS.map(c => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
-            </div>
-
-            {/* Deporte / Disciplina */}
-            <div className="form-group">
-              <label>Deporte / Disciplina</label>
-              <select
-                value={form.disciplina_id}
-                onChange={e => setForm({ ...form, disciplina_id: e.target.value })}
-              >
-                <option value="">Sin disciplina específica</option>
+              <label htmlFor="eq-form-deporte">Deporte</label>
+              <select id="eq-form-deporte" value={form.disciplina_id} disabled={!!deporteUnico && !esAdmin}
+                onChange={e => setForm({ ...form, disciplina_id: e.target.value, categoria_id: '', categoria: '' })}>
+                <option value="">Sin deporte específico</option>
                 {disciplinas.map(d => (
                   <option key={d.id} value={d.id}>{d.nombre}</option>
                 ))}
               </select>
+            </div>
+
+            {/* v2.0: categoría del catálogo de ese deporte */}
+            <div className="form-group">
+              <label htmlFor="eq-form-cat">Categoría</label>
+              {form.disciplina_id && categoriasDe(form.disciplina_id).length > 0 ? (
+                <select id="eq-form-cat" value={form.categoria_id}
+                  onChange={e => setForm({ ...form, categoria_id: e.target.value, categoria: categorias.find(c => String(c.id) === e.target.value)?.nombre || '' })}>
+                  <option value="">Sin categoría</option>
+                  {categoriasDe(form.disciplina_id).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              ) : (
+                <input id="eq-form-cat" type="text" placeholder={form.disciplina_id ? 'Este deporte aún no tiene categorías' : 'Elige primero el deporte'}
+                  value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })} disabled={esAdmin && !!form.disciplina_id} />
+              )}
+              {esAdmin && form.disciplina_id && (
+                <div className="agregar-inline">
+                  <input aria-label="Nueva categoría" placeholder="Nueva categoría, ej. Femenino" value={nuevaCategoria}
+                    onChange={e => setNuevaCategoria(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); agregarCategoria() } }} />
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={agregarCategoria} disabled={!nuevaCategoria.trim()}>
+                    <i className="fa-solid fa-plus" aria-hidden="true"></i> Agregar
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Descripción */}

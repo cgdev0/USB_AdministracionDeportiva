@@ -55,7 +55,7 @@ test.describe('Navegación', () => {
     await page.setViewportSize(ANCHOS.pc);
     await entrar(page, 'administrador');
     await page.goto('/');
-    const selector = page.locator('#deporte-pc');
+    const selector = page.locator('#deporte-lateral');
     await selector.selectOption({ label: 'Rugby' });
     await expect(page.getByRole('heading', { name: /Disponibilidad del plantel: Rugby/ })).toBeVisible();
     await selector.selectOption({ label: 'Atletismo' });
@@ -114,7 +114,7 @@ test.describe('Dorsal', () => {
       await page.reload();
       await expect(boton()).toHaveText('10');
 
-      await page.getByPlaceholder('Buscar por nombre o posición...').fill('#10');
+      await page.getByPlaceholder('Buscar por nombre, dorsal, posición o equipo').fill('#10');
       await expect(page.locator('table tbody tr')).toHaveCount(1);
     });
   }
@@ -141,7 +141,7 @@ test('CP-UI-AGE-001 [RF-10] El entrenador programa un entrenamiento con equipo, 
   const page = await paginaEn(browser, 'celular');
   await entrar(page, 'entrenador');
   await page.goto('/entrenamientos');
-  await page.getByRole('button', { name: /Nuevo Entrenamiento/ }).click();
+  await page.getByRole('button', { name: /Nuevo entrenamiento/i }).click();
   const hoja = page.locator('.modal-box, .modal').first();
   await hoja.locator('input[name="fecha"]').fill('2026-12-10');
   await hoja.locator('select[name="tipo"]').selectOption('Táctica');
@@ -151,9 +151,12 @@ test('CP-UI-AGE-001 [RF-10] El entrenador programa un entrenamiento con equipo, 
   await hoja.getByLabel('Hora').fill('17:30');
   await hoja.getByLabel('Lugar').fill('Cancha UI prueba');
   await hoja.getByRole('button', { name: 'Crear' }).click();
-  await expect(page.locator('table')).toContainText('Unisimón Rugby (demo) · Cancha UI prueba · 17:30');
+  // v2.0: los entrenamientos se ven como lista de sesiones con equipo, lugar y hora
+  const sesion = page.locator('.lista-sesiones li', { hasText: 'Cancha UI prueba' }).first();
+  await expect(sesion).toContainText('Unisimón Rugby (demo)');
+  await expect(sesion).toContainText('17:30');
   // El botón de cerrar de los modales tiene nombre para lectores de pantalla
-  await page.getByRole('button', { name: /Nuevo Entrenamiento/ }).click();
+  await page.getByRole('button', { name: /Nuevo entrenamiento/i }).click();
   await expect(page.getByRole('button', { name: 'Cerrar' })).toBeVisible();
   await page.context().close();
 });

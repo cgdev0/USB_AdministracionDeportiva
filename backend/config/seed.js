@@ -8,7 +8,8 @@ const pool = require('./db');
 const { hashClave, claveAleatoria } = require('../utils/claves');
 
 const USUARIOS_BASE = [
-  { nombre: 'Robinson Meza',  email: 'robinson_meza@dtdeportivo.com', rol: 'administrador'  },
+  // v2.1: el administrador inicial es admin1 (antes robinson_meza). Inicia sesión con "admin1" o con el correo.
+  { nombre: 'Administrador',  email: 'admin1@dtdeportivo.com',        rol: 'administrador'  },
   { nombre: 'Cesar DT',       email: 'cesar_dt@dtdeportivo.com',      rol: 'entrenador'     },
   { nombre: 'Juan Moreno',    email: 'juan_moreno@dtdeportivo.com',   rol: 'entrenador'     },
   { nombre: 'Personal Salud', email: 'salud@dtdeportivo.com',         rol: 'personal_salud' },

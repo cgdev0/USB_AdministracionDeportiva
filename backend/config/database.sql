@@ -468,3 +468,43 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_notificaciones_clave ON notificaciones(usua
 -- -------------------------------------------------------
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS disciplina_id INT REFERENCES disciplinas(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_usuarios_disciplina ON usuarios(disciplina_id);
+
+-- -------------------------------------------------------
+-- v2.0 (igual que migrations/009_correcciones_v2.sql)
+-- -------------------------------------------------------
+-- Asistencia: un solo registro por deportista y entrenamiento (antes se podían duplicar)
+DELETE FROM asistencia_entrenamiento a USING asistencia_entrenamiento b
+  WHERE a.jugador_id = b.jugador_id AND a.entrenamiento_id = b.entrenamiento_id AND a.id < b.id;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_asistencia_jugador_entrenamiento
+  ON asistencia_entrenamiento(jugador_id, entrenamiento_id);
+
+-- Partidos: el resultado depende del deporte (marcador, tiempo, marca o puesto)
+ALTER TABLE partidos ALTER COLUMN resultado TYPE VARCHAR(80);
+ALTER TABLE partidos DROP CONSTRAINT IF EXISTS partidos_tipo_check;
+ALTER TABLE partidos ALTER COLUMN tipo TYPE VARCHAR(20);
+ALTER TABLE partidos ADD CONSTRAINT partidos_tipo_check CHECK (tipo IN ('liga','amistoso','torneo','competencia'));
+
+-- Categorías que maneja cada deporte (las define el administrador)
+CREATE TABLE IF NOT EXISTS categorias (
+  id            SERIAL PRIMARY KEY,
+  disciplina_id INT NOT NULL REFERENCES disciplinas(id) ON DELETE CASCADE,
+  nombre        VARCHAR(60) NOT NULL,
+  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (disciplina_id, nombre)
+);
+ALTER TABLE equipos ADD COLUMN IF NOT EXISTS categoria_id INT REFERENCES categorias(id) ON DELETE SET NULL;
+
+-- -------------------------------------------------------
+-- v2.1 (igual que migrations/010_metricas_y_admin.sql)
+-- -------------------------------------------------------
+-- Métricas propias de cada deporte (goles y tarjetas en fútbol, tries y tackles en rugby, rebotes en baloncesto…).
+-- Los registros anteriores quedan con '{}' y se muestran a partir de goles / asistencias / minutos_jugados.
+ALTER TABLE estadisticas_jugador ADD COLUMN IF NOT EXISTS metricas JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- El administrador inicial pasa de robinson_meza a admin1 (usuario formal). Conserva su contraseña, su id y sus datos.
+-- Solo si todavía no existe admin1, para que se pueda repetir sin error.
+UPDATE usuarios
+   SET email = 'admin1@dtdeportivo.com',
+       nombre = CASE WHEN nombre = 'Robinson Meza' THEN 'Administrador' ELSE nombre END
+ WHERE email = 'robinson_meza@dtdeportivo.com'
+   AND NOT EXISTS (SELECT 1 FROM usuarios WHERE email = 'admin1@dtdeportivo.com');

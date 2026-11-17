@@ -42,12 +42,20 @@ function condicionEquipos(usuario, params, columna) {
 }
 
 // ¿Puede este usuario asignar actividades a este equipo? (administrador: cualquiera; entrenador: equipos de sus deportistas)
+// v2.0: también los equipos del deporte asignado al entrenador (por ejemplo, una categoría nueva de rugby
+// que aún no tiene deportistas). Un equipo de otro deporte nunca.
 async function puedeUsarEquipo(db, usuario, equipoId) {
   if (!equipoId) return true;
   const params = [equipoId];
   const cond = condicionAlcance(usuario, params, 'j');
   if (!cond) return true;
-  const { rows } = await db.query(`SELECT 1 FROM jugadores j WHERE j.equipo_id = $1 AND ${cond} LIMIT 1`, params);
+  params.push(usuario.id);
+  const { rows } = await db.query(`
+    SELECT 1 FROM jugadores j WHERE j.equipo_id = $1 AND ${cond}
+    UNION ALL
+    SELECT 1 FROM equipos eq JOIN usuarios u ON u.id = $${params.length}
+      WHERE eq.id = $1 AND u.disciplina_id IS NOT NULL AND eq.disciplina_id = u.disciplina_id
+    LIMIT 1`, params);
   return rows.length > 0;
 }
 

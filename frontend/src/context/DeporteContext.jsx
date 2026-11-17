@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import api from '../services/api'
 import { useAuth } from './AuthContext'
 import toast from 'react-hot-toast'
@@ -19,6 +19,8 @@ export function DeporteProvider({ children }) {
     return localStorage.getItem(STORAGE_KEY) || ''
   })
   const [loadingDisciplinas, setLoadingDisciplinas] = useState(true)
+  const usuarioRol = useRef(usuario?.rol)
+  usuarioRol.current = usuario?.rol
 
   const cargarDisciplinas = useCallback(async () => {
     try {
@@ -30,6 +32,10 @@ export function DeporteProvider({ children }) {
       // Conserva el deporte elegido si sigue existiendo; si no hay ninguno, se muestran todos.
       // (Antes se elegía el primero de la lista y podía ocultar el plantel de un entrenador de otro deporte.)
       setSelectedSportIdState(prev => {
+        // v2.0: quien tiene un solo deporte (el entrenador de rugby, sus deportistas) queda siempre en ese deporte
+        if (!['administrador', 'personal_salud'].includes(usuarioRol.current) && lista.length === 1) {
+          return String(lista[0].id)
+        }
         const stored = localStorage.getItem(STORAGE_KEY)
         if (stored === 'todos') return 'todos'
         if (stored && lista.some(d => String(d.id) === String(stored))) {
@@ -124,6 +130,8 @@ export function DeporteProvider({ children }) {
         eliminarDisciplina,
         puedeGestionarDeportes,
         veTodosLosDeportes,
+        // Un solo deporte posible: no tiene sentido mostrar un selector (v2.0)
+        deporteUnico: !veTodosLosDeportes && disciplinas.length === 1 ? disciplinas[0] : null,
       }}
     >
       {children}

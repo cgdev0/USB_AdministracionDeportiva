@@ -51,9 +51,9 @@ test('CP-UI-OBS-004 [RF-06] El entrenador ve su deporte fijo y no puede crear de
   const page = await paginaEn(browser, 'pc');
   await entrar(page, 'entrenador');
   await page.goto('/jugadores');
-  await expect(page.locator('.cabecera .selector-deporte-fijo')).toContainText('Rugby');
-  await expect(page.locator('#deporte-pc')).toHaveCount(0);
-  await expect(page.getByText('+ Crear Deporte')).toHaveCount(0);
+  await expect(page.locator('.lateral .deporte-activo.fijo')).toContainText('Rugby');
+  await expect(page.locator('#deporte-lateral')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Nuevo deporte' })).toHaveCount(0);
   await page.context().close();
 });
 
@@ -61,8 +61,8 @@ test('CP-UI-OBS-005 [RF-04] El personal de salud no tiene Estadísticas', async 
   const page = await paginaEn(browser, 'pc');
   await entrar(page, 'salud');
   await page.goto('/');
-  await expect(page.locator('.pestanas a', { hasText: 'Lesiones' })).toBeVisible();
-  await expect(page.locator('.pestanas a', { hasText: 'Estadísticas' })).toHaveCount(0);
+  await expect(page.locator('.lateral-nav a', { hasText: 'Lesiones' })).toBeVisible();
+  await expect(page.locator('.lateral-nav a', { hasText: 'Estadísticas' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Máximos anotadores' })).toHaveCount(0);
   await page.goto('/estadisticas');
   await expect(page).toHaveURL(/\/$/);

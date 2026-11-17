@@ -1,0 +1,17 @@
+[
+  {
+    "intento": 1,
+    "cache": false,
+    "segundos": 2.321
+  },
+  {
+    "intento": 2,
+    "cache": true,
+    "segundos": 2.315
+  },
+  {
+    "intento": 3,
+    "cache": true,
+    "segundos": 2.302
+  }
+]

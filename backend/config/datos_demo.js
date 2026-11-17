@@ -103,10 +103,14 @@ async function run() {
       (CURRENT_DATE + 6, 'Resistencia', 'Intervalos de resistencia', $1, '17:30', 'Pista atlética')`, [equipo.id]);
 
     // Estadísticas de anotación
-    for (const [dorsal, goles, asist] of [[10, 4, 6], [11, 5, 1], [15, 3, 2], [9, 1, 5], [12, 2, 2]]) {
+    // v2.1: con las métricas propias del rugby (tries, conversiones, penales, pases de try, tackles, minutos)
+    for (const [dorsal, tries, conv, pen, pases, tackles] of [
+      [10, 1, 6, 3, 2, 5], [11, 3, 0, 0, 1, 4], [15, 2, 0, 0, 1, 6], [9, 1, 0, 0, 3, 7], [12, 1, 0, 0, 1, 9],
+      [10, 0, 3, 2, 2, 4], [11, 2, 0, 0, 0, 3], [6, 0, 0, 0, 0, 14], [7, 1, 0, 0, 0, 12], [2, 0, 0, 0, 0, 11]]) {
+      const metricas = { tries, conversiones: conv, penales: pen, drops: 0, pases_try: pases, tackles, minutos: 80 };
       await client.query(
-        'INSERT INTO estadisticas_jugador (jugador_id, goles, asistencias, minutos_jugados) VALUES ($1, $2, $3, 240)',
-        [ids[dorsal], goles, asist]);
+        `INSERT INTO estadisticas_jugador (jugador_id, goles, asistencias, minutos_jugados, metricas) VALUES ($1, $2, $3, 80, $4)`,
+        [ids[dorsal], tries, pases, metricas]);
     }
 
     // El usuario jugador de prueba queda vinculado al #9

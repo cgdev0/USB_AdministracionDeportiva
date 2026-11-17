@@ -11,6 +11,7 @@ router.get('/',            autorizar('administrador'), ctrl.getAll);
 router.post('/',           autorizar('administrador'), ctrl.create);
 router.put('/:id',         autorizar('administrador'), ctrl.update);
 router.put('/:id/reset',   autorizar('administrador'), ctrl.resetPassword);
+router.patch('/:id/activar', autorizar('administrador'), ctrl.activar);
 router.delete('/:id',      autorizar('administrador'), ctrl.remove);
 router.post('/csv',        autorizar('administrador'), upload.single('archivo'), ctrl.createFromCSV);
 

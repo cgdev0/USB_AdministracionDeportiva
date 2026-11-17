@@ -33,7 +33,7 @@ Capacidad del software de proporcionar las funciones que satisfacen las necesida
 
 | Subcaracterística (factor) | ¿Se evalúa? | Justificación |
 |---|---|---|
-| Adecuación | Sí | Cada módulo debe cubrir lo que el cuerpo técnico necesita (catálogo RF-01 a RF-19). |
+| Adecuación | Sí | Cada módulo debe cubrir lo que el cuerpo técnico necesita (catálogo RF-01 a RF-24). |
 | Exactitud | Sí | Los cálculos antropométricos, los puntajes de evaluación y los conteos de disponibilidad y asistencia deben dar resultados correctos: de ellos dependen decisiones deportivas y de salud. |
 | Interoperabilidad | Parcial | La importación de usuarios y deportistas por CSV debe aceptar los archivos de la plantilla. No hay integración con otros sistemas. |
 | Seguridad de acceso | Sí, prioritaria | Maneja datos de salud. Cada rol debe ver y modificar solo lo que le corresponde, y la API debe rechazar accesos sin permiso e intentos de inyección. |

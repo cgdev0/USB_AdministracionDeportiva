@@ -163,3 +163,12 @@ test('CP-CNV-010 [RF-20] Guardar sin hora ni lugar no borra los que ya estaban',
   assert.equal(r.hora_presentacion, '14:00');
   assert.equal(r.lugar, 'Cancha principal');
 });
+
+test('CP-CNV-011 [RF-20] [DEF-047] La convocatoria muestra la misma fecha del partido, sin correrla un día', async () => {
+  const { rows: [p] } = await sql('SELECT fecha::text AS fecha FROM partidos WHERE id = $1', [partido.id]);
+  const r = await llamar('GET', `/api/convocatorias/partido/${partido.id}`, T.entrenador);
+  assert.equal(r.status, 200);
+  assert.equal(r.datos.partido.fecha, p.fecha);
+  const g = await guardar(T.entrenador, { convocados: [{ jugador_id: propio, rol: 'titular' }] });
+  assert.equal(g.datos.partido.fecha, p.fecha);
+});

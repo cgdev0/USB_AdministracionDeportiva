@@ -3,7 +3,7 @@
 const { CLAVE_PRUEBAS } = require('./bd');
 
 module.exports = {
-  administrador: ['robinson_meza@dtdeportivo.com', CLAVE_PRUEBAS],
+  administrador: ['admin1@dtdeportivo.com', CLAVE_PRUEBAS],
   head_coach:    ['headcoach@dtdeportivo.com', CLAVE_PRUEBAS],
   entrenador:    ['cesar_dt@dtdeportivo.com', CLAVE_PRUEBAS],
   entrenador2:   ['juan_moreno@dtdeportivo.com', CLAVE_PRUEBAS],

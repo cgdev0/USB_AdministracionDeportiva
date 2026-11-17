@@ -71,6 +71,7 @@ function Editor({ partido, datos, plantel, alGuardar }) {
   const [notas, setNotas] = useState(conv?.notas || '')
   const [guardando, setGuardando] = useState(false)
   const [verHistorial, setVerHistorial] = useState(false)
+  const [filtro, setFiltro] = useState('todos')
 
   const respuestas = useMemo(() => new Map((conv?.convocados || []).map(c => [c.jugador_id, c])), [conv])
   const titulares = [...seleccion.values()].filter(r => r === 'titular').length
@@ -102,10 +103,12 @@ function Editor({ partido, datos, plantel, alGuardar }) {
   return (
     <>
       {conv?.publicada ? (
-        <div className="convocatoria-resumen" aria-label="Respuestas de los convocados">
-          <span className="badge badge-green"><i className="fa-solid fa-circle-check" aria-hidden="true"></i> {conv.resumen.confirmados} confirmaron</span>
-          <span className="badge badge-blue"><i className="fa-solid fa-clock" aria-hidden="true"></i> {conv.resumen.pendientes} sin responder</span>
-          <span className="badge badge-red"><i className="fa-solid fa-circle-xmark" aria-hidden="true"></i> {conv.resumen.no_pueden} no pueden</span>
+        // v2.0: las cifras son botones que filtran la lista (confirmados, sin responder, no pueden)
+        <div className="convocatoria-resumen" role="group" aria-label="Filtrar por respuesta de los convocados">
+          <FiltroRespuesta valor="todos" actual={filtro} onElegir={setFiltro} clase="badge-neutro" icono="fa-users" texto={`${seleccion.size} convocados`} />
+          <FiltroRespuesta valor="confirmado" actual={filtro} onElegir={setFiltro} clase="badge-green" icono="fa-circle-check" texto={`${conv.resumen.confirmados} confirmaron`} />
+          <FiltroRespuesta valor="pendiente" actual={filtro} onElegir={setFiltro} clase="badge-blue" icono="fa-clock" texto={`${conv.resumen.pendientes} sin responder`} />
+          <FiltroRespuesta valor="no_puede" actual={filtro} onElegir={setFiltro} clase="badge-red" icono="fa-circle-xmark" texto={`${conv.resumen.no_pueden} no pueden`} />
         </div>
       ) : (
         <p className="alerta alerta-info"><i className="fa-solid fa-circle-info" aria-hidden="true"></i>
@@ -121,12 +124,13 @@ function Editor({ partido, datos, plantel, alGuardar }) {
           <textarea id="conv-notas" value={notas} onChange={e => setNotas(e.target.value)} placeholder="Ej. Traer uniforme blanco" /></div>
       </div>
 
-      <div className="convocatoria-cuenta"><b>{titulares}</b> titulares · <b>{suplentes}</b> suplentes</div>
+      <div className="convocatoria-cuenta"><b>{titulares}</b> titulares · <b>{suplentes}</b> suplentes
+        {filtro !== 'todos' && <button type="button" className="enlace-boton" onClick={() => setFiltro('todos')}>Ver todo el plantel</button>}</div>
       {plantel.length === 0 ? (
         <EstadoVacio compacto icono="fa-people-group" titulo="No tienes deportistas para convocar" descripcion="Registra deportistas en el módulo Deportistas." />
       ) : (
         <ul className="convocatoria-lista">
-          {plantel.map(j => {
+          {plantel.filter(j => filtro === 'todos' || (seleccion.has(j.id) && respuestas.get(j.id)?.confirmacion === filtro)).map(j => {
             const rol = seleccion.get(j.id) || ''
             const e = ESTADO[j.estado] || ESTADO.disponible
             const resp = respuestas.get(j.id)
@@ -169,6 +173,15 @@ function Editor({ partido, datos, plantel, alGuardar }) {
         </div>
       )}
     </>
+  )
+}
+
+function FiltroRespuesta({ valor, actual, onElegir, clase, icono, texto }) {
+  return (
+    <button type="button" className={`badge filtro-badge ${clase}`} aria-pressed={actual === valor}
+      onClick={() => onElegir(actual === valor && valor !== 'todos' ? 'todos' : valor)}>
+      <i className={`fa-solid ${icono}`} aria-hidden="true"></i> {texto}
+    </button>
   )
 }
 
@@ -217,6 +230,7 @@ function Vista({ datos, alResponder, partido }) {
   const [motivo, setMotivo] = useState('')
   const [pidiendoMotivo, setPidiendoMotivo] = useState(false)
   const [enviando, setEnviando] = useState(false)
+  const [filtro, setFiltro] = useState('todos')
 
   if (!conv) {
     return <EstadoVacio compacto icono="fa-clipboard-list" titulo="La convocatoria aún no se ha publicado" descripcion="Cuando el entrenador la publique, la verás aquí y, si estás convocado, recibirás un aviso." />
@@ -237,7 +251,7 @@ function Vista({ datos, alResponder, partido }) {
   }
 
   const grupo = (rol, titulo) => {
-    const lista = conv.convocados.filter(c => c.rol === rol)
+    const lista = conv.convocados.filter(c => c.rol === rol && (filtro === 'todos' || c.confirmacion === filtro))
     return (
       <div className="convocatoria-grupo">
         <h3>{titulo} <span>({lista.length})</span></h3>
@@ -291,6 +305,15 @@ function Vista({ datos, alResponder, partido }) {
           {conv.hora_presentacion && <p><i className="fa-regular fa-clock" aria-hidden="true"></i> Presentación: <b>{conv.hora_presentacion}</b></p>}
           {conv.lugar && <p><i className="fa-solid fa-location-dot" aria-hidden="true"></i> {conv.lugar}</p>}
           {conv.notas && <p><i className="fa-solid fa-clipboard" aria-hidden="true"></i> {conv.notas}</p>}
+        </div>
+      )}
+      {conv.convocados.some(c => c.confirmacion) && (
+        <div className="convocatoria-resumen" role="group" aria-label="Filtrar por respuesta">
+          {[['todos', 'badge-neutro', 'fa-users', 'Todos'], ['confirmado', 'badge-green', 'fa-circle-check', 'Confirmados'],
+            ['pendiente', 'badge-blue', 'fa-clock', 'Sin responder'], ['no_puede', 'badge-red', 'fa-circle-xmark', 'No pueden']].map(([v, c, i, t]) => (
+            <FiltroRespuesta key={v} valor={v} actual={filtro} onElegir={setFiltro} clase={c} icono={i}
+              texto={`${t} (${v === 'todos' ? conv.convocados.length : conv.convocados.filter(x => x.confirmacion === v).length})`} />
+          ))}
         </div>
       )}
       {grupo('titular', 'Titulares')}

@@ -1,5 +1,16 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 require('dotenv').config();
+
+// v2.0 (DEF-040): las columnas DATE se devuelven como texto 'YYYY-MM-DD'. Antes `pg` las convertía en una
+// fecha a medianoche UTC y el navegador en Colombia (UTC-5) mostraba el día anterior (12 oct → 11 oct).
+types.setTypeParser(1082, (valor) => valor);
+
+// v2.2 (DEF-045): la app trabaja en hora de Colombia aunque el servidor esté en UTC (Railway).
+// Antes, de 7 p. m. a medianoche, "hoy" y "mañana" se calculaban con la fecha UTC (un día después) y,
+// por ejemplo, el recordatorio de "mañana tienes entrenamiento" no salía. Se puede cambiar con ZONA_HORARIA.
+const ZONA_HORARIA = process.env.ZONA_HORARIA || 'America/Bogota';
+process.env.TZ = ZONA_HORARIA;
+const opcionesZona = `-c timezone=${ZONA_HORARIA}`;
 
 // Conexión nativa a PostgreSQL. Orden de prioridad:
 //   1. DATABASE_URL  (Neon, Render, Railway, etc.)
@@ -12,6 +23,7 @@ function crearPool() {
       // DB_SSL=false para conexiones por red privada que no usan SSL
       ssl: process.env.NODE_ENV === 'production' && process.env.DB_SSL !== 'false' ? { rejectUnauthorized: false } : false,
       connectionTimeoutMillis: 10000,
+      options: opcionesZona,
     });
   }
 
@@ -23,6 +35,7 @@ function crearPool() {
       database: process.env.SQL_DB_NAME,
       max: 10,
       connectionTimeoutMillis: 10000,
+      options: opcionesZona,
     });
   }
 
@@ -33,6 +46,7 @@ function crearPool() {
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'dt_deportivo',
     connectionTimeoutMillis: 5000,
+    options: opcionesZona,
   });
 }
 
@@ -44,3 +58,4 @@ pool.on('error', (err) => {
 });
 
 module.exports = pool;
+module.exports.ZONA_HORARIA = ZONA_HORARIA;

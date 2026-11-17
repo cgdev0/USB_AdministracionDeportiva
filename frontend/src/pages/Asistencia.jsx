@@ -1,57 +1,60 @@
-import { useEffect, useState, useCallback } from 'react'
-import { CheckCircle2, XCircle, ClipboardList, Users } from 'lucide-react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
+import EncabezadoPagina from '../components/EncabezadoPagina'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
-import { useDeporte } from '../context/DeporteContext'
+import { useFiltroDeporte } from '../context/DeporteContext'
 import { formatImageUrl } from '../utils/image'
-import { etiquetaJugador, nombreConDorsal } from '../utils/jugador'
+import { ordenarPorDorsal, tieneDorsal } from '../utils/jugador'
+import { fechaConDia, hoyISO } from '../utils/fechas'
+
+// v2.0 (DEF-041): la asistencia es true/false (BOOLEAN en la base). Antes se enviaba 1/0 y se comparaba con
+// `=== 1`, así que el registro guardado siempre se veía como "Ausente". Ahora el cambio se ve al instante
+// (actualización optimista) y se revierte si el servidor no lo guarda.
+const presente = (reg) => reg?.asistencia === true
 
 export default function Asistencia() {
-  const { tienePermiso } = useAuth()
+  const { usuario, tienePermiso } = useAuth()
   const puedeEditar = tienePermiso(['administrador', 'entrenador'])
-  const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
+  const esJugador = usuario?.rol === 'jugador'
+  const filtro = useFiltroDeporte()
+  const [params, setParams] = useSearchParams()
   const [entrenamientos, setEntrenamientos] = useState([])
-  const [jugadores, setJugadores]           = useState([])
-  const [asistencia, setAsistencia]         = useState([])
-  const [selectedId, setSelectedId]         = useState('')
-  const [loading, setLoading]               = useState(true)
-  const [loadingAsist, setLoadingAsist]     = useState(false)
-  const [error, setError]                   = useState(null)
-  const [errorAsist, setErrorAsist]         = useState(null)
-  const [saving, setSaving]                 = useState(null) // id guardando
+  const [jugadores, setJugadores] = useState([])
+  const [asistencia, setAsistencia] = useState([])
+  const [selectedId, setSelectedId] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [loadingAsist, setLoadingAsist] = useState(false)
+  const [error, setError] = useState(null)
+  const [errorAsist, setErrorAsist] = useState(null)
+  const [saving, setSaving] = useState(null)
+  const [busqueda, setBusqueda] = useState('')
 
-  // Cargar datos iniciales
   const fetchBase = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [eRes, jRes] = await Promise.all([
-        api.get('/entrenamientos'),
-        api.get('/jugadores'),
-      ])
+      const [eRes, jRes] = await Promise.all([api.get('/entrenamientos'), api.get('/jugadores')])
       setEntrenamientos(eRes.data)
       setJugadores(jRes.data)
-      if (eRes.data.length > 0) setSelectedId(String(eRes.data[0].id))
+      // El entrenamiento que llega desde Entrenamientos (?entrenamiento=ID), o el más reciente que ya empezó
+      const pedido = params.get('entrenamiento')
+      const hoy = hoyISO()
+      const inicial = eRes.data.find(e => String(e.id) === pedido)
+        || eRes.data.find(e => e.fecha <= hoy) || eRes.data[0]
+      if (inicial) setSelectedId(String(inicial.id))
+      if (pedido) { params.delete('entrenamiento'); setParams(params, { replace: true }) }
     } catch (e) {
       setError(e.message)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchBase() }, [fetchBase])
 
-  // Filtrar jugadores por disciplina seleccionada
-  const jugadoresFiltrados = jugadores.filter(j => {
-    if (selectedSportId && selectedSportId !== 'todos') {
-      return String(j.disciplina_id) === String(selectedSportId)
-    }
-    return true
-  })
-
-  // Cargar asistencia del entrenamiento seleccionado
   const loadAsistencia = useCallback(async (id) => {
     if (!id) return
     setLoadingAsist(true)
@@ -66,58 +69,50 @@ export default function Asistencia() {
     }
   }, [])
 
-  useEffect(() => {
-    loadAsistencia(selectedId)
-  }, [selectedId, loadAsistencia])
+  useEffect(() => { loadAsistencia(selectedId) }, [selectedId, loadAsistencia])
 
-  const getRegistro = (jugadorId) =>
-    asistencia.find(a => Number(a.jugador_id) === Number(jugadorId))
+  const entrenamiento = entrenamientos.find(e => String(e.id) === selectedId)
+  const entrenamientosVisibles = entrenamientos.filter(filtro.deActividad)
+
+  // Plantel del entrenamiento: los deportistas de su equipo (o todos los del alcance si es general)
+  const plantel = useMemo(() => jugadores
+    .filter(j => !entrenamiento?.equipo_id || String(j.equipo_id) === String(entrenamiento.equipo_id))
+    .filter(j => entrenamiento?.equipo_id || filtro.deDisciplina(j.disciplina_id))
+    .sort(ordenarPorDorsal), [jugadores, entrenamiento, filtro])
+  const plantelVisible = plantel.filter(j => !busqueda || j.nombre.toLowerCase().includes(busqueda.toLowerCase()) || String(j.dorsal) === busqueda)
+
+  const getRegistro = (jugadorId) => asistencia.find(a => Number(a.jugador_id) === Number(jugadorId))
 
   const handleToggle = async (jugador) => {
+    if (!puedeEditar || saving) return
     const registro = getRegistro(jugador.id)
+    const nuevo = !presente(registro)
+    const previo = asistencia
     setSaving(jugador.id)
-
+    // Optimista: se ve marcado de inmediato
+    setAsistencia(prev => registro
+      ? prev.map(a => (a.id === registro.id ? { ...a, asistencia: nuevo } : a))
+      : [...prev, { id: `tmp-${jugador.id}`, jugador_id: jugador.id, asistencia: nuevo }])
     try {
-      if (registro) {
-        // Actualizar existente
-        const nuevoValor = registro.asistencia ? 0 : 1
-        await api.put(`/asistencia/${registro.id}`, { asistencia: nuevoValor })
-      } else {
-        // Crear nuevo registro (ausente → presente)
-        await api.post('/asistencia', {
-          jugador_id:       jugador.id,
-          entrenamiento_id: selectedId,
-          asistencia:       1,
-        })
-      }
-      await loadAsistencia(selectedId)
+      const { data } = await api.post('/asistencia', { jugador_id: jugador.id, entrenamiento_id: Number(selectedId), asistencia: nuevo })
+      setAsistencia(prev => prev.map(a => (Number(a.jugador_id) === Number(jugador.id) ? { ...a, ...data } : a)))
     } catch (e) {
-      toast.error(e.message)
+      setAsistencia(previo)
+      toast.error(e.message || 'No se pudo guardar la asistencia')
     } finally {
       setSaving(null)
     }
   }
 
-  // Marcar todos presentes
   const marcarTodos = async (valor) => {
+    if (!plantel.length) return
     setSaving('all')
     try {
-      await Promise.all(
-        jugadoresFiltrados.map(async (j) => {
-          const reg = getRegistro(j.id)
-          if (reg) {
-            await api.put(`/asistencia/${reg.id}`, { asistencia: valor })
-          } else if (valor === 1) {
-            await api.post('/asistencia', {
-              jugador_id:       j.id,
-              entrenamiento_id: selectedId,
-              asistencia:       1,
-            })
-          }
-        })
-      )
+      const { data } = await api.put('/asistencia/lote', {
+        entrenamiento_id: Number(selectedId), jugadores: plantel.map(j => j.id), asistencia: valor,
+      })
       await loadAsistencia(selectedId)
-      toast.success(valor === 1 ? 'Todos marcados presentes' : 'Todos marcados ausentes')
+      toast.success(`${data.actualizados} ${valor ? 'marcados presentes' : 'marcados ausentes'}`)
     } catch (e) {
       toast.error(e.message)
     } finally {
@@ -125,250 +120,115 @@ export default function Asistencia() {
     }
   }
 
-  const entrenSelected = entrenamientos.find(e => String(e.id) === selectedId)
-  const presentes  = jugadoresFiltrados.filter(j => getRegistro(j.id)?.asistencia === 1).length
-  const ausentes   = jugadoresFiltrados.length - presentes
-  const pct        = jugadoresFiltrados.length ? Math.round((presentes / jugadoresFiltrados.length) * 100) : 0
+  const presentes = plantel.filter(j => presente(getRegistro(j.id))).length
+  const sinMarcar = plantel.filter(j => !getRegistro(j.id)).length
+  const ausentes = plantel.length - presentes
+  const pct = plantel.length ? Math.round((presentes / plantel.length) * 100) : 0
 
   return (
     <div>
-      <div className="page-header">
-        <h2>Asistencia</h2>
-        <p>
-          Control de presencia en sesiones de entrenamiento
-          {selectedSportId && selectedSportId !== 'todos' ? ` — Deporte: ${selectedSport?.nombre}` : ''}
-        </p>
-      </div>
+      <EncabezadoPagina
+        icono="fa-clipboard-check"
+        antetitulo={entrenamiento?.equipo_nombre || (filtro.hay ? filtro.nombre : 'Control de presencia')}
+        titulo={esJugador ? 'Mi asistencia' : 'Asistencia'}
+        descripcion={puedeEditar ? 'Toca a cada deportista para marcarlo presente. Se guarda al instante.' : 'Registro de presencia en las sesiones de entrenamiento.'}
+      />
 
-      {loading ? <Esqueleto tipo="tabla" columnas={5} filas={6} /> : error ? (
+      {loading ? <div className="card"><Esqueleto tipo="tarjetas" filas={6} /></div> : error ? (
         <div className="card"><EstadoError mensaje={error} onReintentar={fetchBase} /></div>
+      ) : entrenamientos.length === 0 ? (
+        <div className="card">
+          <EstadoVacio
+            icono="fa-clipboard-check"
+            titulo="Aún no hay entrenamientos para tomar asistencia"
+            descripcion="La asistencia se toma sobre una sesión de entrenamiento. Crea la primera en Entrenamientos y vuelve aquí."
+            accion={puedeEditar ? { texto: 'Ir a Entrenamientos', icono: 'fa-stopwatch', a: '/entrenamientos' } : null}
+          />
+        </div>
       ) : (
         <>
-          {/* Selector de entrenamiento */}
-          <div className="card" style={{ marginBottom: 20, padding: '20px 24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, flexBasis: 240 }}>
-                <ClipboardList size={18} color="var(--accent)" style={{ flexShrink: 0 }} />
-                <select
-                  id="select-entrenamiento"
-                  aria-label="Entrenamiento para tomar asistencia"
-                  value={selectedId}
-                  onChange={e => setSelectedId(e.target.value)}
-                  style={{
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '9px 14px',
-                    color: 'var(--text-primary)',
-                    fontSize: 14,
-                    flex: 1,
-                    minWidth: 0,
-                    width: '100%',
-                    outline: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {entrenamientos.length === 0
-                    ? <option value="">Sin entrenamientos registrados</option>
-                    : entrenamientos.map(e => (
-                      <option key={e.id} value={e.id}>
-                        {new Date(e.fecha).toLocaleDateString('es', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })} — {e.tipo}
-                      </option>
-                    ))
-                  }
-                </select>
+          <div className="card barra-sesion">
+            <label htmlFor="select-entrenamiento" className="barra-sesion-etiqueta"><i className="fa-solid fa-stopwatch" aria-hidden="true"></i> Sesión</label>
+            <select id="select-entrenamiento" value={selectedId} onChange={e => setSelectedId(e.target.value)}>
+              {entrenamientosVisibles.map(e => (
+                <option key={e.id} value={e.id}>
+                  {fechaConDia(e.fecha)} — {e.tipo}{e.equipo_nombre ? ` · ${e.equipo_nombre}` : ''}{e.hora ? ` · ${e.hora}` : ''}
+                </option>
+              ))}
+            </select>
+            {puedeEditar && plantel.length > 0 && (
+              <div className="barra-sesion-acciones">
+                <button className="btn btn-primary btn-sm" onClick={() => marcarTodos(true)} disabled={saving === 'all'}>
+                  <i className="fa-solid fa-check-double" aria-hidden="true"></i> Todos presentes
+                </button>
+                <button className="btn btn-danger btn-sm" onClick={() => marcarTodos(false)} disabled={saving === 'all'}>
+                  <i className="fa-solid fa-xmark" aria-hidden="true"></i> Todos ausentes
+                </button>
               </div>
-
-              {selectedId && puedeEditar && (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    className="btn btn-success btn-sm"
-                    onClick={() => marcarTodos(1)}
-                    disabled={saving === 'all'}
-                  >
-                    <CheckCircle2 size={14} /> Todos presentes
-                  </button>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => marcarTodos(0)}
-                    disabled={saving === 'all'}
-                  >
-                    <XCircle size={14} /> Todos ausentes
-                  </button>
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* Resumen */}
-          {selectedId && jugadores.length > 0 && !loadingAsist && !errorAsist && (
-            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', marginBottom: 20 }}>
-              <div className="card" style={{ padding: 20, textAlign: 'center' }}>
-                <div style={{ fontSize: 36, fontWeight: 800, color: 'var(--accent2)' }}>{presentes}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>Presentes</div>
+          {!loadingAsist && !errorAsist && plantel.length > 0 && (
+            <div className="tablero-asistencia">
+              <div className="marcadores">
+                <div className="marcador ok"><span>Presentes</span><b>{presentes}</b></div>
+                <div className="marcador error"><span>Ausentes</span><b>{ausentes}</b></div>
+                {puedeEditar && <div className="marcador"><span>Sin marcar</span><b>{sinMarcar}</b></div>}
+                <div className="marcador"><span>Plantel</span><b>{plantel.length}</b></div>
               </div>
-              <div className="card" style={{ padding: 20, textAlign: 'center' }}>
-                <div style={{ fontSize: 36, fontWeight: 800, color: 'var(--danger)' }}>{ausentes}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>Ausentes</div>
-              </div>
-              <div className="card" style={{ padding: 20, textAlign: 'center' }}>
-                <div style={{ fontSize: 36, fontWeight: 800, color: pct >= 70 ? 'var(--success)' : 'var(--warning)' }}>{pct}%</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>Asistencia</div>
-              </div>
-              <div className="card" style={{ padding: 20, textAlign: 'center' }}>
-                <div style={{ fontSize: 36, fontWeight: 800, color: 'var(--text-primary)' }}>{jugadores.length}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>
-                  <Users size={12} style={{ display: 'inline', marginRight: 4 }} />
-                  Total plantel
-                </div>
+              <div className="anillo" style={{ '--pct': pct }} role="img" aria-label={`${pct} % de asistencia`}>
+                <b>{pct}<small>%</small></b><span>asistencia</span>
               </div>
             </div>
           )}
 
-          {/* Barra de progreso */}
-          {selectedId && jugadores.length > 0 && !loadingAsist && !errorAsist && (
-            <div className="card" style={{ marginBottom: 20, padding: '16px 24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
-                <span>Progreso de asistencia</span>
-                <span style={{ fontWeight: 700, color: pct >= 70 ? 'var(--success)' : 'var(--warning)' }}>{pct}%</span>
-              </div>
-              <div style={{ height: 8, background: 'var(--surface-hover)', borderRadius: 100, overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%',
-                  width: '100%',
-                  transform: `scaleX(${pct / 100})`,
-                  transformOrigin: 'left center',
-                  background: pct >= 70
-                    ? 'linear-gradient(90deg, var(--accent2), var(--success))'
-                    : 'linear-gradient(90deg, var(--warning), var(--danger))',
-                  transition: 'transform var(--dur-lenta) var(--curva-salida)',
-                }} />
-              </div>
-            </div>
-          )}
-
-          {/* Lista de jugadores */}
-          {!selectedId ? (
-            <div className="card">
-              <EstadoVacio
-                icono="fa-clipboard-check"
-                titulo="Aún no hay entrenamientos para tomar asistencia"
-                descripcion="La asistencia se toma sobre una sesión de entrenamiento. Crea la primera en Entrenamientos y vuelve aquí."
-                accion={puedeEditar ? { texto: 'Ir a Entrenamientos', icono: 'fa-dumbbell', a: '/entrenamientos' } : null}
-              />
-            </div>
-          ) : loadingAsist ? <div className="card" style={{ padding: 0 }}><Esqueleto tipo="tabla" columnas={5} filas={6} /></div> : errorAsist ? (
+          {loadingAsist ? <div className="card"><Esqueleto tipo="tarjetas" filas={6} /></div> : errorAsist ? (
             <div className="card"><EstadoError mensaje={errorAsist} onReintentar={() => loadAsistencia(selectedId)} /></div>
           ) : jugadores.length === 0 ? (
             <div className="card">
-              <EstadoVacio
-                icono="fa-people-group"
-                titulo="Aún no hay deportistas en el plantel"
+              <EstadoVacio icono="fa-people-group" titulo="Aún no hay deportistas en el plantel"
                 descripcion="Registra deportistas en el módulo Deportistas para poder marcar su asistencia."
-                accion={{ texto: 'Ir a Deportistas', icono: 'fa-people-group', a: '/jugadores' }}
-              />
+                accion={puedeEditar ? { texto: 'Ir a Deportistas', icono: 'fa-people-group', a: '/jugadores' } : null} />
             </div>
-          ) : jugadoresFiltrados.length === 0 ? (
+          ) : plantel.length === 0 ? (
             <div className="card">
-              <EstadoSinResultados
-                descripcion={`No hay deportistas de ${selectedSport?.nombre || 'este deporte'}.`}
-                onLimpiar={() => setSelectedSportId('todos')}
-                textoLimpiar="Ver todos los deportes"
-              />
+              <EstadoSinResultados descripcion={entrenamiento?.equipo_id ? `No hay deportistas en ${entrenamiento.equipo_nombre}.` : `No hay deportistas de ${filtro.nombre}.`}
+                onLimpiar={filtro.limpiar} textoLimpiar="Ver todos los deportes" />
             </div>
           ) : (
-            <div className="card" style={{ padding: 0 }}>
-              <div className="table-wrapper">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Jugador</th>
-                      <th>Posición</th>
-                      <th style={{ textAlign: 'center' }}>Estado</th>
-                      <th style={{ textAlign: 'center' }}>Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jugadoresFiltrados.map((j, i) => {
-                      const reg     = getRegistro(j.id)
-                      const presente = reg?.asistencia === 1
-                      const isSaving = saving === j.id || saving === 'all'
-
-                      return (
-                        <tr key={j.id} style={{ opacity: isSaving ? 0.6 : 1, transition: 'opacity var(--dur-media) ease' }}>
-                          <td style={{ color: 'var(--text-muted)', width: 40 }}>{i + 1}</td>
-                          <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              {j.foto_url ? (
-                                <img
-                                  src={formatImageUrl(j.foto_url)}
-                                  alt={j.nombre}
-                                  referrerPolicy="no-referrer"
-                                  style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }}
-                                />
-                              ) : (
-                                <div style={{
-                                  width: 32, height: 32, borderRadius: '50%',
-                                  background: 'var(--surface-hover)',
-                                  display: 'flex', alignItems: 'center',
-                                  justifyContent: 'center', fontSize: 14
-                                }}><i className="fa-solid fa-user" aria-hidden="true" /></div>
-                              )}
-                              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{etiquetaJugador(j)}</span>
-                            </div>
-                          </td>
-                          <td>
-                            {j.posicion
-                              ? <span className="badge badge-purple">{j.posicion}</span>
-                              : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            {presente ? (
-                              <span className="badge badge-green" style={{ gap: 5 }}>
-                                <CheckCircle2 size={12} /> Presente
-                              </span>
-                            ) : (
-                              <span className="badge badge-red" style={{ gap: 5 }}>
-                                <XCircle size={12} /> Ausente
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <button
-                              id={`toggle-asist-${j.id}`}
-                              onClick={() => handleToggle(j)}
-                              disabled={isSaving}
-                              style={{
-                                background: presente ? 'var(--danger-glow)' : 'var(--accent2-glow)',
-                                color: presente ? 'var(--danger)' : 'var(--accent2)',
-                                border: `1px solid ${presente ? 'var(--danger)' : 'var(--accent2)'}`,
-                                borderRadius: 'var(--radius-sm)',
-                                padding: '5px 14px',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: isSaving ? 'not-allowed' : 'pointer',
-                                transition: 'var(--transition)',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 6,
-                              }}
-                            >
-                              {isSaving
-                                ? '...'
-                                : presente
-                                  ? <><XCircle size={13} /> Marcar ausente</>
-                                  : <><CheckCircle2 size={13} /> Marcar presente</>
-                              }
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+            <section className="card" aria-labelledby="t-plantel">
+              <div className="card-title" id="t-plantel">
+                <i className="fa-solid fa-people-group" aria-hidden="true"></i> Plantel convocado a la sesión
+                {plantel.length > 8 && (
+                  <input className="buscador-mini" type="search" placeholder="Buscar nombre o dorsal" value={busqueda}
+                    onChange={e => setBusqueda(e.target.value)} aria-label="Buscar deportista" />
+                )}
               </div>
-            </div>
+              <ul className="plantel-asistencia">
+                {plantelVisible.map(j => {
+                  const reg = getRegistro(j.id)
+                  const esta = presente(reg)
+                  const estado = !reg ? 'sin-marcar' : esta ? 'presente' : 'ausente'
+                  return (
+                    <li key={j.id}>
+                      <button type="button" id={`toggle-asist-${j.id}`} className={`ficha-asistencia ${estado}`}
+                        onClick={() => handleToggle(j)} disabled={!puedeEditar || saving === 'all'} aria-pressed={esta}
+                        aria-label={`${j.nombre}: ${esta ? 'presente' : reg ? 'ausente' : 'sin marcar'}${puedeEditar ? `. Tocar para marcar ${esta ? 'ausente' : 'presente'}` : ''}`}>
+                        <span className="ficha-foto">
+                          {j.foto_url
+                            ? <img src={formatImageUrl(j.foto_url)} alt="" referrerPolicy="no-referrer" />
+                            : <span className="ficha-dorsal">{tieneDorsal(j.dorsal) ? j.dorsal : '–'}</span>}
+                          <i className={`fa-solid ${esta ? 'fa-check' : reg ? 'fa-xmark' : 'fa-minus'} ficha-check`} aria-hidden="true"></i>
+                        </span>
+                        <span className="ficha-nombre">{tieneDorsal(j.dorsal) && j.foto_url ? `#${j.dorsal} ` : ''}{j.nombre}</span>
+                        <span className="ficha-pos">{j.posicion || 'Sin posición'}</span>
+                        <span className="ficha-estado">{saving === j.id ? 'Guardando…' : esta ? 'Presente' : reg ? 'Ausente' : 'Sin marcar'}</span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
           )}
         </>
       )}

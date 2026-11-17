@@ -1,7 +1,8 @@
 // Pruebas unitarias de cálculos (exactitud, métrica M-F3) y utilidades de formato.
 // Los valores esperados se calcularon a mano con las fórmulas publicadas:
-//   % grasa: Yuhasz modificada por Carter (6 pliegues)   masa ósea: Rocha
-//   masa residual: Würch                                  somatotipo: Heath-Carter
+//   % grasa: Yuhasz modificada por Carter (6 pliegues), Faulkner y Durnin-Womersley + Siri
+//   masa ósea: Rocha (diámetros biestiloideo y del fémur)   masa residual: Würch (24,1 % / 20,9 %)
+//   somatotipo: Heath-Carter
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
@@ -19,7 +20,7 @@ const REFERENCIA = {
   pliegue_biceps: 4.5, pliegue_triceps: 8, pliegue_subescapular: 9.5, pliegue_suprailiaco: 11,
   pliegue_supraespinal: 7.5, pliegue_abdominal: 12, pliegue_muslo_anterior: 10.5, pliegue_pierna_medial: 7,
   perimetro_brazo_contraido: 35, perimetro_pierna: 37.5,
-  diametro_humero: 6.8, diametro_femur: 9.6,
+  diametro_humero: 6.8, diametro_muneca: 5.8, diametro_femur: 9.6,
 };
 
 test('CP-UNI-001 [RF-17] IMC = peso / estatura²', async () => {
@@ -39,13 +40,15 @@ test('CP-UNI-003 [RF-17] % de grasa en mujer (Yuhasz, 6 pliegues)', async () => 
   cerca(calculateAnthropometry(REFERENCIA, 'femenino').porcentaje_grasa, 12.0, '% grasa');
 });
 
-test('CP-UNI-004 [RF-17] Fraccionamiento en 4 componentes (Rocha, Würch, Matiegka)', async () => {
+test('CP-UNI-004 [RF-17] Fraccionamiento en 4 componentes (Rocha, Würch, por diferencia)', async () => {
   const { calculateAnthropometry } = await importar('frontend/src/utils/anthropometry.js');
   const r = calculateAnthropometry(REFERENCIA, 'masculino');
   cerca(r.masa_grasa_kg, 6.64, 'masa grasa');
-  cerca(r.masa_mineral_osea, 13.81, 'masa ósea (Rocha)');
-  cerca(r.masa_residual_kg, 19.2, 'masa residual (Würch)');
-  cerca(r.masa_muscular_esqueletica, 40.35, 'masa muscular (por diferencia)');
+  // 3,02 × (1,80² × 0,058 × 0,096 × 400)^0,712 = 12,33
+  cerca(r.masa_mineral_osea, 12.33, 'masa ósea (Rocha)');
+  cerca(r.masa_residual_kg, 19.28, 'masa residual (Würch, 24,1 %)');
+  // 80 − (6,64 + 12,33 + 19,28) = 41,75
+  cerca(r.masa_muscular_esqueletica, 41.75, 'masa muscular (por diferencia)');
 });
 
 test('CP-UNI-005 [RF-17] Somatotipo Heath-Carter y coordenadas de la somatocarta', async () => {
@@ -72,6 +75,53 @@ test('CP-UNI-007 [RF-17] Sin datos no falla y devuelve valores vacíos', async (
   assert.equal(r.imc, null);
   assert.equal(r.porcentaje_grasa, null);
   assert.equal(r.masa_muscular_esqueletica, null);
+});
+
+test('CP-UNI-017 [RF-17] DEF-049: la masa ósea de Rocha usa el diámetro de la muñeca, no el del húmero', async () => {
+  const { calculateAnthropometry } = await importar('frontend/src/utils/anthropometry.js');
+  const otroHumero = calculateAnthropometry({ ...REFERENCIA, diametro_humero: 7.5 }, 'masculino');
+  cerca(otroHumero.masa_mineral_osea, 12.33, 'el húmero no cambia la masa ósea');
+  const sinMuneca = calculateAnthropometry({ ...REFERENCIA, diametro_muneca: '' }, 'masculino');
+  assert.equal(sinMuneca.masa_mineral_osea, null, 'sin muñeca no se estima (antes: 14,5 % del peso)');
+  assert.equal(sinMuneca.masa_muscular_esqueletica, null, 'sin masa ósea no hay masa muscular por diferencia');
+});
+
+test('CP-UNI-018 [RF-17] DEF-050: sin diámetros o sin brazo contraído no se inventa la mesomorfia', async () => {
+  const { calculateAnthropometry } = await importar('frontend/src/utils/anthropometry.js');
+  const sinDiametros = calculateAnthropometry({ ...REFERENCIA, diametro_humero: '', diametro_femur: '' }, 'masculino');
+  assert.equal(sinDiametros.mesomorfia, null, 'antes usaba 6,8 y 9,5 cm por defecto');
+  assert.equal(sinDiametros.x_somatocarta, null, 'sin somatotipo completo no hay punto en la somatocarta');
+  cerca(sinDiametros.endomorfia, 2.35, 'la endomorfia sí se calcula');
+  const relajado = { ...REFERENCIA, perimetro_brazo_contraido: '', perimetro_brazo_relajado: 33 };
+  assert.equal(calculateAnthropometry(relajado, 'masculino').mesomorfia, null, 'el brazo relajado no reemplaza al contraído');
+  assert.equal(calculateAnthropometry({ peso: 80, estatura: 1.8 }).endomorfia, null, 'sin pliegues no hay endomorfia (antes: 0,1)');
+});
+
+test('CP-UNI-019 [RF-17] DEF-051: % de grasa con pliegues incompletos usa la ecuación que corresponde', async () => {
+  const { calculateAnthropometry } = await importar('frontend/src/utils/anthropometry.js');
+  // Faltan muslo y pierna: no se suma un Σ6 incompleto; Faulkner = 5,783 + 0,153 × 37 = 11,44
+  const faulkner = calculateAnthropometry({ peso: 80, estatura: 1.8, pliegue_triceps: 8, pliegue_subescapular: 9.5, pliegue_supraespinal: 7.5, pliegue_abdominal: 12 });
+  cerca(faulkner.porcentaje_grasa, 11.4, 'Faulkner');
+  // Solo tríceps, subescapular y supraespinal: la estimación "3 pliegues" sin respaldo ya no existe
+  assert.equal(calculateAnthropometry({ pliegue_triceps: 8, pliegue_subescapular: 9.5, pliegue_supraespinal: 7.5 }).porcentaje_grasa, null);
+  // Durnin-Womersley (bíceps, tríceps, subescapular, cresta ilíaca = 33 mm) con coeficientes por edad + Siri
+  const dw = { pliegue_biceps: 4.5, pliegue_triceps: 8, pliegue_subescapular: 9.5, pliegue_suprailiaco: 11 };
+  cerca(calculateAnthropometry(dw, 'masculino', 25).porcentaje_grasa, 13.9, 'hombre de 25 años');
+  cerca(calculateAnthropometry(dw, 'masculino', 45).porcentaje_grasa, 18.9, 'hombre de 45 años');
+  cerca(calculateAnthropometry(dw, 'masculino').porcentaje_grasa, 15.4, 'hombre, edad desconocida (ecuación general)');
+  cerca(calculateAnthropometry(dw, 'femenino', 25).porcentaje_grasa, 21.0, 'mujer de 25 años');
+});
+
+test('CP-UNI-020 [RF-17] El backend y la pantalla calculan con la misma fórmula', async () => {
+  const { calculateAnthropometry } = await importar('frontend/src/utils/anthropometry.js');
+  const { calcularAntropometria } = require(path.join(RAIZ, 'backend/controllers/antropometria.controller.js'));
+  const pantalla = calculateAnthropometry(REFERENCIA, 'masculino');
+  const servidor = await calcularAntropometria(REFERENCIA, 'masculino');
+  for (const campo of ['imc', 'porcentaje_grasa', 'masa_mineral_osea', 'masa_muscular_esqueletica', 'endomorfia', 'mesomorfia', 'ectomorfia', 'x_somatocarta', 'y_somatocarta']) {
+    assert.equal(servidor[campo], pantalla[campo], campo);
+  }
+  // Un valor medido directamente por el profesional tiene prioridad sobre el calculado
+  cerca((await calcularAntropometria({ ...REFERENCIA, porcentaje_grasa: 10 }, 'masculino')).porcentaje_grasa, 10, '% grasa manual');
 });
 
 test('CP-UNI-008 [RF-09] Formato "#dorsal nombre" y orden por dorsal', async () => {

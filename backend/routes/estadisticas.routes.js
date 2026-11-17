@@ -6,6 +6,7 @@ router.use(verificarToken);
 
 // Las estadísticas deportivas no son del campo del personal de salud (v1.9)
 const LECTORES = ['administrador', 'head_coach', 'entrenador', 'jugador'];
+router.get('/metricas',            autorizar(...LECTORES), ctrl.metricas);
 router.get('/',                    autorizar(...LECTORES), ctrl.getAll);
 router.get('/jugador/:jugador_id', autorizar(...LECTORES), ctrl.getByJugador);
 router.post('/',                   autorizar('administrador', 'entrenador'), ctrl.create);

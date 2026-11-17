@@ -42,16 +42,24 @@ test('CP-MIG-001 [RNF-09] database.sql crea el esquema completo en una base vac�
   const { rows: [t] } = await c.query(`SELECT COUNT(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public'`);
   const { rows: [j] } = await c.query('SELECT COUNT(*)::int AS n FROM jugadores');
   await c.end();
-  assert.equal(t.n, 21, 'tablas creadas');
+  assert.equal(t.n, 22, 'tablas creadas (v2.0: categorias)');
   assert.equal(j.n, 5, 'las semillas no se duplican al repetir');
 });
 
-test('CP-MIG-002 [RNF-09] Una base de la versión original se migra sin perder datos', async () => {
+test('CP-MIG-002 [RNF-09] Una base de la versión original se migra sin perder datos', async (ctx) => {
+  // Esquema de la versión original tal como está en el repositorio (etiqueta v1-original).
+  // v2.2: si la copia no tiene esa etiqueta (por ejemplo, un repositorio nuevo creado desde el zip), el caso se
+  // omite con un aviso en lugar de quedarse colgado con la conexión abierta.
+  let esquemaV1;
+  try {
+    esquemaV1 = execSync('git show v1-original:backend/config/database.sql', { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch {
+    ctx.skip('falta la etiqueta git v1-original (está en el repositorio del equipo, cgdev0/USB_AdministracionDeportiva)');
+    return;
+  }
   await recrear(BD_V1);
   const c = await conectar(BD_V1);
-  // Esquema de la versión original tal como está en el repositorio (etiqueta v1-original).
   // Tenía un error de orden (equipos referencia a disciplinas antes de crearla): se crea disciplinas primero.
-  const esquemaV1 = execSync('git show v1-original:backend/config/database.sql', { cwd: RAIZ, encoding: 'utf8' });
   await c.query('CREATE TABLE disciplinas (id SERIAL PRIMARY KEY, nombre VARCHAR(100) NOT NULL UNIQUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)');
   await c.query(esquemaV1);
   const { rows: [antes] } = await c.query('SELECT (SELECT COUNT(*) FROM jugadores)::int AS jugadores, (SELECT COUNT(*) FROM partidos)::int AS partidos');

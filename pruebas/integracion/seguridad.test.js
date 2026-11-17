@@ -17,7 +17,7 @@ test.after(async () => {
 });
 
 test('CP-SEG-014 [RNF-01] Las contraseñas nuevas se guardan con scrypt y sal propia', async () => {
-  const datos = { nombre: 'ZZ Seg', password: 'Segura.2026', rol: 'jugador' };
+  const datos = { nombre: 'ZZ Seg', password: 'Segura.2026', rol: 'personal_salud' };
   const a = await llamar('POST', '/api/usuarios', A, { ...datos, email: 'zz.seg.a@test.com' });
   const b = await llamar('POST', '/api/usuarios', A, { ...datos, email: 'zz.seg.b@test.com' });
   assert.equal(a.status, 201);
@@ -90,7 +90,7 @@ test('CP-SEG-019 [RNF-01] El código no contiene contraseñas ni secretos por de
 });
 
 test('CP-SEG-020 [RNF-01] Un token firmado con el secreto por defecto antiguo es rechazado', async () => {
-  const falso = jwt.sign({ id: 1, email: 'robinson_meza@dtdeportivo.com', rol: 'administrador' }, 'dtdeportivo_jwt_default_secret_key');
+  const falso = jwt.sign({ id: 1, email: 'admin1@dtdeportivo.com', rol: 'administrador' }, 'dtdeportivo_jwt_default_secret_key');
   assert.equal((await llamar('GET', '/api/usuarios', falso)).status, 401);
   const refresco = jwt.sign({ id: 1 }, 'dtdeportivo_refresh_default_secret_key');
   assert.equal((await llamar('POST', '/api/auth/refresh', null, { refresh_token: refresco })).status, 401);
