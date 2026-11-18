@@ -4,6 +4,9 @@
 export const MODULOS = [
   { ruta: '/',               etiqueta: 'Inicio',            corto: 'Inicio',       icono: 'fa-solid fa-house',
     roles: ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador'] },
+  // v2.8 (T1.3): lista de pacientes del personal de salud (información clínica)
+  { ruta: '/pacientes',      etiqueta: 'Pacientes',         corto: 'Pacientes',    icono: 'fa-solid fa-hospital-user',
+    roles: ['personal_salud'], clinico: true },
   { ruta: '/head-coach',     etiqueta: 'Supervisión',       corto: 'Supervisión',  icono: 'fa-solid fa-binoculars',
     roles: ['head_coach'] },
   { ruta: '/equipos',        etiqueta: 'Equipos',           corto: 'Equipos',      icono: 'fa-solid fa-shield-halved',
@@ -38,7 +41,7 @@ export const MENU_INFERIOR = {
   administrador:  ['/', '/jugadores', '/asistencia', '/lesiones'],
   head_coach:     ['/', '/head-coach', '/jugadores', '/partidos'],
   entrenador:     ['/', '/jugadores', '/entrenamientos', '/asistencia'],
-  personal_salud: ['/', '/lesiones', '/salud', '/antropometria'],
+  personal_salud: ['/', '/pacientes', '/lesiones', '/salud'],
   jugador:        ['/', '/entrenamientos', '/salud', '/estadisticas'],
 }
 

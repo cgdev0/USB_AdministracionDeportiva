@@ -1,4 +1,4 @@
-// Recorrido completo por rol: 13 módulos × 4 anchos (RF-04, RF-05, RNF-04; métricas M-P1 y M-F4)
+// Recorrido completo por rol: todos los módulos (14 desde la v2.8) × 4 anchos (RF-04, RF-05, RNF-04; métricas M-P1 y M-F4)
 // Para cada combinación verifica: acceso o redirección según el rol, sin errores y sin desborde horizontal.
 const { test, expect } = require('@playwright/test');
 const { ANCHOS, modulos, entrar, vigilar, desborde, guardarMetrica, paginaEn } = require('./ayuda');
@@ -12,7 +12,7 @@ const ROLES = [
 ];
 
 ROLES.forEach(([cuenta, rol], i) => {
-  test(`CP-UI-REC-00${i + 1} [RF-04] [RF-05] Recorrido de ${rol}: 13 módulos en 4 anchos`, async ({ browser }) => {
+  test(`CP-UI-REC-00${i + 1} [RF-04] [RF-05] Recorrido de ${rol}: todos los módulos en 4 anchos`, async ({ browser }) => {
     const MODULOS = await modulos();
     const filas = [];
 

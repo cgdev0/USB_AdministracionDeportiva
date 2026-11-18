@@ -15,7 +15,7 @@ Comprobar que el software cumple los requisitos del catálogo y las característ
 ## 2. Alcance
 
 **Dentro del alcance:**
-- Los 13 módulos de la aplicación (inicio, supervisión, equipos, deportistas, entrenamientos, asistencia, partidos, estadísticas, lesiones, salud, evaluaciones, antropometría y usuarios) y el inicio de sesión.
+- Los 14 módulos de la aplicación (inicio, supervisión, equipos, deportistas, entrenamientos, asistencia, partidos, estadísticas, lesiones, salud, pacientes —desde la v2.8—, evaluaciones, antropometría y usuarios) y el inicio de sesión.
 - La API del backend (73 rutas) y la base de datos PostgreSQL.
 - Los cálculos: antropometría y somatotipo, puntajes de evaluaciones, disponibilidad del plantel y asistencia.
 - Los 5 roles y sus permisos.

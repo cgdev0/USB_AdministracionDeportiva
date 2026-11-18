@@ -171,3 +171,33 @@ test('CP-HC-010 [RF-26] Las historias anteriores se migran como valoración cerr
   assert.equal((await llamar('POST', '/api/valoraciones', T.jugador, { jugador_id: propio })).status, 403);
   assert.equal((await llamar('GET', `/api/valoraciones/${cerrada.id}/integridad`, T.jugador)).status, 403);
 });
+
+test('CP-HC-018 [RF-26] Dos dispositivos con la misma cuenta: el segundo recibe el aviso y elige qué versión conservar', async () => {
+  // La misma persona con la sesión abierta en el celular y en la tableta
+  const [celular, tableta] = [await token('salud'), await token('salud')];
+  const v = (await crear(mateo, 'dos dispositivos')).datos;
+  const guardar = (t, version, motivo) => llamar('PUT', `/api/valoraciones/${v.id}`, t, { version, contenido: contenido(motivo) });
+
+  const enCelular = await guardar(celular, v.version, 'desde el celular');
+  assert.equal(enCelular.status, 200);
+  const enTableta = await guardar(tableta, v.version, 'desde la tableta');
+  assert.equal(enTableta.status, 409, 'con la versión vieja no pisa lo del celular');
+  assert.match(enTableta.datos.error, /otro dispositivo/);
+
+  // "Usar la versión guardada": la tableta lee la última versión y ve lo del celular
+  const ultima = await llamar('GET', `/api/valoraciones/${v.id}`, tableta);
+  assert.equal(ultima.datos.contenido.motivo_consulta, `${MARCA} desde el celular`);
+  // "Guardar la mía encima": con la versión nueva sí guarda
+  const encima = await guardar(tableta, ultima.datos.version, 'la tableta encima');
+  assert.equal(encima.status, 200);
+  // Y ahora es el celular el que queda desactualizado
+  assert.equal((await guardar(celular, enCelular.datos.version, 'otra vez celular')).status, 409);
+  assert.equal((await llamar('POST', `/api/valoraciones/${v.id}/cerrar`, celular, { version: enCelular.datos.version })).status, 409,
+    'tampoco se cierra con una versión vieja');
+
+  // Si se cierra en un dispositivo, el otro ya no puede guardar el borrador
+  assert.equal((await llamar('POST', `/api/valoraciones/${v.id}/cerrar`, tableta, { version: encima.datos.version })).status, 200);
+  const tarde = await guardar(celular, encima.datos.version, 'muy tarde');
+  assert.equal(tarde.status, 409);
+  assert.match(tarde.datos.error, /cerrada/);
+});

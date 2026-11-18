@@ -53,6 +53,7 @@ const RUTAS = {
   valoraciones: 'valoraciones', // v2.7 (T0.3): historia clínica secuencial
   'archivos-clinicos': 'archivosClinicos', // v2.7 (T0.5): archivos clínicos protegidos
   bitacora: 'bitacora', // v2.7 (T0.6): bitácora de accesos a la historia clínica
+  pacientes: 'pacientes', // v2.8 (T1.3): lista de pacientes del personal de salud
 };
 for (const [prefijo, archivo] of Object.entries(RUTAS)) {
   const router = require(`../backend/routes/${archivo}.routes`);

@@ -797,3 +797,17 @@ END $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_bitacora ON bitacora_clinica;
 CREATE TRIGGER trg_bitacora BEFORE UPDATE OR DELETE ON bitacora_clinica
   FOR EACH ROW EXECUTE FUNCTION fn_proteger_bitacora();
+
+-- -------------------------------------------------------
+-- v2.8 (igual que migrations/017_bitacora_paciente.sql)
+-- -------------------------------------------------------
+-- La bitácora registra también la consulta de la lista de pacientes (T1.3).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_bitacora_recurso'
+                 AND pg_get_constraintdef(oid) LIKE '%paciente%') THEN
+    ALTER TABLE bitacora_clinica DROP CONSTRAINT IF EXISTS chk_bitacora_recurso;
+    ALTER TABLE bitacora_clinica ADD CONSTRAINT chk_bitacora_recurso CHECK (recurso IN
+      ('valoracion','nota','archivo','control','seguimiento','lesion','historia','antropometria','identificacion','paciente'));
+  END IF;
+END $$;

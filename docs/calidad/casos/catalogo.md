@@ -1,6 +1,6 @@
 # Catálogo de casos de prueba
 
-Generado automáticamente por `npm run test:reporte` el 2026-11-18 (versión v2.7). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
+Generado automáticamente por `npm run test:reporte` el 2026-11-18 (versión v2.8). No editar a mano: los casos se definen en `pruebas/` y su detalle (precondiciones, datos, pasos y resultado esperado) está en el código de cada prueba, bajo el identificador indicado.
 
 Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 
@@ -78,6 +78,9 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-HC-015 | Los archivos clínicos no se modifican ni se borran, y cuentan como historia clínica | RNF-13 | Integración | Funcionalidad · Seguridad de acceso / Adecuación | `pruebas/integracion/archivos_clinicos.test.js` | — | ✔ Aprobado |
 | CP-HC-016 | Cada acceso a la historia clínica queda en la bitácora: quién, qué y cuándo | RF-31 | Integración | Funcionalidad · Seguridad de acceso / Adecuación | `pruebas/integracion/bitacora.test.js` | — | ✔ Aprobado |
 | CP-HC-017 | La bitácora no se modifica ni se borra, y consultarla no deja registro | RF-31 | Integración | Funcionalidad · Seguridad de acceso / Adecuación | `pruebas/integracion/bitacora.test.js` | — | ✔ Aprobado |
+| CP-HC-018 | Dos dispositivos con la misma cuenta: el segundo recibe el aviso y elige qué versión conservar | RF-26 | Integración | Funcionalidad · Seguridad de acceso / Adecuación | `pruebas/integracion/valoraciones.test.js` | — | ✔ Aprobado |
+| CP-HC-019 | La lista de pacientes muestra disponibilidad y avisos, solo al personal de salud, y queda en la bitácora | RF-26, RNF-02 | Integración | Funcionalidad · Seguridad de acceso / Adecuación | `pruebas/integracion/pacientes.test.js` | — | ✔ Aprobado |
+| CP-HC-020 | La ficha clínica trae en una sola consulta la identificación, el estado y todos los registros del deportista | RF-26, RF-31, RNF-02 | Integración | Funcionalidad · Seguridad de acceso / Adecuación | `pruebas/integracion/pacientes.test.js` | — | ✔ Aprobado |
 | CP-INI-001 | Disponibilidad del entrenador: 18 disponibles, 2 con restricciones y 3 no disponibles | RF-18 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
 | CP-INI-002 | Cada jugador tiene un estado coherente con su motivo | RF-18 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
 | CP-INI-003 | Próximo partido y agenda de los próximos 7 días | RF-18 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
@@ -89,6 +92,7 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-INI-009 | Máximos anotadores ordenados por anotaciones | RF-18 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
 | CP-INI-010 | El personal ve el inicio de un deportista de su alcance, como lo ve ese deportista | RF-18 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
 | CP-INI-011 | Nadie ve la vista de un deportista fuera de su alcance | RF-05 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
+| CP-INI-012 | El inicio del personal de salud trae sus pendientes, cada uno con lo necesario para abrir su registro (v2.8, T1.5) | RF-26, RNF-02 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/inicio.test.js` | — | ✔ Aprobado |
 | CP-MIG-001 | database.sql crea el esquema completo en una base vacía y se puede repetir | RNF-09 | Migración | Portabilidad · Instalabilidad y reemplazo | `pruebas/integracion/migraciones.test.js` | — | ✔ Aprobado |
 | CP-MIG-002 | Una base de la versión original se migra sin perder datos | RNF-09 | Migración | Portabilidad · Instalabilidad y reemplazo | `pruebas/integracion/migraciones.test.js` | — | — Omitido |
 | CP-MOD-001 | Todos los módulos responden a la lectura (administrador) | RF-18 | Integración | Funcionalidad · Adecuación | `pruebas/integracion/modulos.test.js` | — | ✔ Aprobado |
@@ -175,6 +179,7 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-UI-HC-005 | En el celular, un deportista con historia no se elimina: se retira y se reactiva | RNF-14, RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/conservacion.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-HC-006 | Salud (tableta) ve los accesos a una historia y el administrador (computador) la bitácora general | RF-31, RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/bitacora.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-HC-007 | El entrenador (celular) ve la disponibilidad sin el tipo de lesión; salud (tableta) ve el detalle | RF-14, RNF-02 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/roles_clinicos.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-HC-008 | El borrador de otra persona se ve como borrador: sin firma, sin notas y sin poder editarlo | RF-26 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/ficha_clinica.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-INI-001 | El inicio del entrenador muestra el plantel con sus 23 dorsales y el resumen | RF-18 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-INI-002 | Tocar un número del plantel muestra el inicio de ese deportista | RF-18 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-LOG-001 | Inicio de sesión por formulario lleva al inicio con el nombre del usuario | RF-01 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
@@ -194,18 +199,33 @@ Casos manuales (usabilidad e instalación): ver `casos/manuales.md`.
 | CP-UI-OBS-003 | En celular se ve el rol arriba y Mi sesión va debajo del próximo partido | RF-18 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/observaciones.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-OBS-004 | El entrenador ve su deporte fijo y no puede crear deportes | RF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/observaciones.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-OBS-005 | El personal de salud no tiene Estadísticas | RF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/observaciones.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-PC-001 | Al girar la tableta, la ficha y los formularios pasan de pestañas a dos columnas y vuelven | RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/teclado_pc.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-PC-002 | En computador, la identificación se completa con el teclado: Tab con foco visible, Enter guarda y Escape cierra | RF-25, RNF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/teclado_pc.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-PC-003 | En computador, una valoración se guarda con Ctrl+S, se cierra con Escape, se firma y se corrige con una nota | RF-26, RNF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/teclado_pc.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-PC-004 | En computador, un deportista con historia se retira con Enter y se reactiva desde la tabla | RNF-14, RNF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/teclado_pc.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-RCN-001 | El entrenador ve los reconocimientos del plantel | RF-23 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/comunicacion.spec.js` | chromium | ✔ Aprobado |
-| CP-UI-REC-001 | Recorrido de administrador: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
-| CP-UI-REC-002 | Recorrido de head_coach: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
-| CP-UI-REC-003 | Recorrido de entrenador: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
-| CP-UI-REC-004 | Recorrido de personal_salud: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
-| CP-UI-REC-005 | Recorrido de jugador: 13 módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-REC-001 | Recorrido de administrador: todos los módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-REC-002 | Recorrido de head_coach: todos los módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-REC-003 | Recorrido de entrenador: todos los módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-REC-004 | Recorrido de personal_salud: todos los módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-REC-005 | Recorrido de jugador: todos los módulos en 4 anchos | RF-04, RF-05 | Sistema | Funcionalidad · Seguridad de acceso / Portabilidad · Adaptabilidad | `pruebas/ui/recorrido.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-RES-001 | Deportistas y Estadísticas caben sin deslizar de lado (celular360) | RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/responsive.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-RES-002 | Deportistas y Estadísticas caben sin deslizar de lado (celular) | RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/responsive.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-RES-003 | Deportistas y Estadísticas caben sin deslizar de lado (tableta) | RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/responsive.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-RES-004 | En celular, editar y eliminar un deportista están en su ficha | RF-08 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/responsive.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-RES-005 | Lista de pacientes y ficha clínica sin desplazamiento lateral en 360, 390, 768, 1024 y 1440 px | RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/responsive.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-SAL-001 | En la tableta, a los 15 minutos sin uso se bloquea y tapa todo, recargar no lo quita, y el aviso permite seguir | RNF-02 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/bloqueo.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-SAL-002 | Sin recargar, al desbloquear sigue lo que estaba escrito; el entrenador no tiene bloqueo | RNF-02 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/bloqueo.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-SAL-003 | Los componentes caben en los 5 anchos, con objetivos táctiles de 44 px y sin problemas graves de accesibilidad | RNF-04, RNF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/componentes_clinicos.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-SAL-004 | El formulario por secciones se adapta: pasos en celular, índice desplegable en tableta e índice lateral en pantallas amplias | RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/componentes_clinicos.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-SAL-005 | Las medidas usan teclado numérico, muestran su unidad, aceptan coma y avisan sin bloquear | RNF-03, RNF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/componentes_clinicos.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-SAL-006 | Opciones como botones grandes, lado del cuerpo, "No evaluado" y estado del guardado | RNF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/componentes_clinicos.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-SAL-007 | La foto se reduce a 1600 px antes de subirla; también acepta PDF y rechaza otros archivos | RNF-08 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/componentes_clinicos.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-SAL-008 | El borrador se guarda solo, espera sin señal, avisa si cambió en otro dispositivo y no se pierde al salir | RF-26, RNF-03 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/guardado.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-SAL-009 | En el celular, salud encuentra a un deportista por su documento en menos de 3 toques; en computador ve la tabla | RNF-04, RNF-06 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/pacientes.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-SAL-010 | En el celular, la ficha muestra los avisos, abre cualquier registro y empieza una valoración con 1 toque | RF-26, RF-31, RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/ficha_clinica.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-SAL-011 | En computador la ficha muestra resumen e historia lado a lado y se usa con el teclado; en tableta, con pestañas | RF-26, RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/ficha_clinica.spec.js` | chromium | ✔ Aprobado |
+| CP-UI-SAL-012 | Salud entra directo a sus pendientes y cada aviso del inicio lleva a su registro | RF-26, RNF-04 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/inicio_salud.spec.js` | chromium | ✔ Aprobado |
 | CP-UI-SES-001 | Cambiar contraseña valida la confirmación y la contraseña actual | RF-02 | Sistema | Funcionalidad · Adecuación | `pruebas/ui/funcionalidad.spec.js` | chromium | ✔ Aprobado |
 | CP-UNI-001 | IMC = peso / estatura² | RF-17 | Unitaria | Funcionalidad · Exactitud | `pruebas/unitarias/calculos.test.js` | — | ✔ Aprobado |
 | CP-UNI-002 | % de grasa en hombre (Yuhasz, 6 pliegues) | RF-17 | Unitaria | Funcionalidad · Exactitud | `pruebas/unitarias/calculos.test.js` | — | ✔ Aprobado |

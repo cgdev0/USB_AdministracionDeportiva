@@ -5,12 +5,22 @@ const AxeBuilder = require('@axe-core/playwright').default;
 const { ANCHOS, entrar, guardarMetrica } = require('./ayuda');
 
 // Pantallas principales por rol que se miden
+const FICHA = '/pacientes/:id';
 const PANTALLAS = [
   ['administrador', ['/', '/jugadores', '/equipos', '/lesiones', '/usuarios']],
   ['entrenador', ['/', '/asistencia', '/entrenamientos', '/partidos']],
-  ['salud', ['/', '/salud', '/evaluaciones', '/antropometria']],
+  ['salud', ['/', '/pacientes', FICHA, '/salud', '/evaluaciones', '/antropometria']],
   ['jugador', ['/', '/estadisticas']],
 ];
+
+// La ficha clínica (v2.8, T1.4) se abre como lo hace el personal de salud: tocando el primer paciente de la lista
+async function abrir(page, ruta) {
+  if (ruta !== FICHA) return page.goto(ruta);
+  await page.goto('/pacientes');
+  await page.locator('.pacientes-tarjetas a').first().click();
+  await page.waitForURL(/\/pacientes\/\d+$/);
+  await page.locator('.ficha-cabecera').waitFor();
+}
 
 test('CP-UI-MED-001 [RNF-06] Medición de accesibilidad con axe-core en celular', async ({ browser }) => {
   const filas = [];
@@ -28,7 +38,7 @@ test('CP-UI-MED-001 [RNF-06] Medición de accesibilidad con axe-core en celular'
     const page = await contexto.newPage();
     await entrar(page, rol);
     for (const ruta of rutas) {
-      await page.goto(ruta);
+      await abrir(page, ruta);
       await page.waitForLoadState('networkidle');
       const r = await new AxeBuilder({ page }).analyze();
       filas.push(resumenAxe(rol, ruta, r));
@@ -55,7 +65,7 @@ test('CP-UI-MED-002 [RNF-06] Medición de objetivos táctiles de 44 px en celula
     const page = await browser.newPage({ viewport: ANCHOS.celular, hasTouch: true });
     await entrar(page, rol);
     for (const ruta of rutas) {
-      await page.goto(ruta);
+      await abrir(page, ruta);
       await page.waitForLoadState('networkidle');
       const m = await page.evaluate(() => {
         const visibles = [...document.querySelectorAll('a, button, input:not([type=hidden]), select, textarea, [role=button]')]

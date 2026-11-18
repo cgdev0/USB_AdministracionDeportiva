@@ -258,3 +258,7 @@ exports.integridad = async (req, res) => {
 };
 
 module.exports.huella = huella;
+
+// v2.8 (T1.4): la ficha clínica (pacientes.controller.js) presenta las valoraciones igual que esta API
+exports.SELECT_VALORACIONES = SELECT;
+exports.presentarValoraciones = presentar;

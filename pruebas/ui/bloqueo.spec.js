@@ -1,7 +1,19 @@
 // Bloqueo por inactividad en el navegador (v2.7, T0.8 del plan de historia clínica; RNF-02, RNF-04).
 // Con el reloj simulado de Playwright: no hay que esperar 15 minutos de verdad.
+const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { paginaEn, entrar, CUENTAS } = require('./ayuda');
+const { credenciales, BD_PRUEBAS, RAIZ } = require('../utilidades/bd');
+const { Client } = require(path.join(RAIZ, 'node_modules', 'pg'));
+
+// v2.8 (T1.2): el borrador se guarda solo, así que estas pruebas dejan borradores: se limpian al final
+test.afterAll(async () => {
+  const c = new Client(credenciales(BD_PRUEBAS));
+  await c.connect();
+  await c.query(`DO $$ BEGIN PERFORM set_config('dt.mantenimiento', 'on', true);
+    DELETE FROM valoraciones WHERE contenido->>'motivo_consulta' LIKE 'ZZ bloqueo%'; END $$`);
+  await c.end();
+});
 
 test('CP-UI-SAL-001 [RNF-02] En la tableta, a los 15 minutos sin uso se bloquea y tapa todo, recargar no lo quita, y el aviso permite seguir', async ({ browser }) => {
   const page = await paginaEn(browser, 'tableta');

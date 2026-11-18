@@ -11,6 +11,7 @@ const ANCHOS = {
   celular360: { width: 360, height: 800 },
   celular: { width: 390, height: 844 },
   tableta: { width: 768, height: 1024 },
+  tabletaH: { width: 1024, height: 768 }, // v2.8 (T1.6): tableta horizontal, el corte del menú lateral y las dos columnas
   pc: { width: 1440, height: 900 },
 };
 

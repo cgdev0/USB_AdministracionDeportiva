@@ -6,6 +6,7 @@ import { lazy } from 'react'
 import Dashboard from '../pages/Dashboard'
 
 const CARGADORES = {
+  '/pacientes': () => import('../pages/Pacientes'),
   '/head-coach': () => import('../pages/HeadCoach'),
   '/equipos': () => import('../pages/Equipos'),
   '/jugadores': () => import('../pages/Jugadores'),
@@ -44,3 +45,9 @@ export const PAGINAS = {
   '/': Dashboard,
   ...Object.fromEntries(Object.keys(CARGADORES).map(ruta => [ruta, lazy(() => cargar(ruta))])),
 }
+
+// Páginas dentro de un módulo (v2.8, T1.4): heredan los roles y la marca clínica del módulo (config/navegacion.js)
+const cargarFicha = () => import('../pages/FichaClinica')
+export const SUBPAGINAS = [
+  { ruta: '/pacientes/:id', modulo: '/pacientes', Pagina: lazy(cargarFicha), precargar: () => cargarFicha().catch(() => {}) },
+]

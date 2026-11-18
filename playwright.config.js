@@ -30,7 +30,8 @@ module.exports = defineConfig({
     url: `http://127.0.0.1:${PUERTO}/api/health`,
     reuseExistingServer: false,
     timeout: 180_000,
-    env: { ...ENV_PRUEBAS, HOST: '127.0.0.1', PORT: String(PUERTO), NODE_ENV: 'production' },
+    // VITE_CATALOGO=1: la compilación de pruebas incluye /catalogo-clinico (v2.8, T1.1); la de Railway no
+    env: { ...ENV_PRUEBAS, HOST: '127.0.0.1', PORT: String(PUERTO), NODE_ENV: 'production', VITE_CATALOGO: '1' },
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },

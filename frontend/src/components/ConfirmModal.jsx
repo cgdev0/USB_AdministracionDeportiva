@@ -1,8 +1,16 @@
+import { useId } from 'react'
 import { createPortal } from 'react-dom'
 import { AlertTriangle, Trash2, X } from 'lucide-react'
+import usarVentana from './usarVentana'
 
-export default function ConfirmModal({
-  isOpen,
+export default function ConfirmModal({ isOpen, ...props }) {
+  if (!isOpen) return null
+  return <Confirmacion {...props} />
+}
+
+// v2.8 (T1.6): ventana de confirmación accesible con teclado. Escape cancela (salvo mientras se confirma), Tab no se
+// sale de la ventana y el foco vuelve a donde estaba. Si se abre sobre otra ventana, Escape cierra solo esta.
+function Confirmacion({
   title = '¿Estás seguro?',
   message = 'Esta acción no se puede deshacer.',
   confirmText = 'Eliminar',
@@ -12,17 +20,20 @@ export default function ConfirmModal({
   onCancel,
   loading = false
 }) {
-  if (!isOpen) return null
+  const idTitulo = useId()
+  const idMensaje = useId()
+  const caja = usarVentana({ onCerrar: onCancel, puedeCerrar: !loading })
 
   return createPortal(
-    <div 
-      className="modal-overlay" 
+    <div
+      className="modal-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget && !loading) onCancel()
       }}
       style={{ zIndex: 9999 }}
     >
-      <div className="modal-box" style={{ maxWidth: 440, padding: 24 }}>
+      <div className="modal-box" ref={caja} role="alertdialog" aria-modal="true" aria-labelledby={idTitulo} aria-describedby={idMensaje}
+        tabIndex={-1} style={{ maxWidth: 440, padding: 24 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
           <div
             style={{
@@ -43,17 +54,20 @@ export default function ConfirmModal({
             )}
           </div>
           <div style={{ flex: 1 }}>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
+            <h3 id={idTitulo} style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
               {title}
             </h3>
-            <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            <p id={idMensaje} style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
               {message}
             </p>
           </div>
           <button
+            type="button"
             className="modal-close"
             onClick={onCancel}
             disabled={loading}
+            aria-label="Cerrar"
+            title="Cerrar"
             style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4, color: 'var(--text-muted)' }}
           >
             <X size={18} />
