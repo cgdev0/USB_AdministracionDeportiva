@@ -71,7 +71,7 @@ test('CP-OBS-005 [RF-06] Entrenamientos, partidos y controles traen el deporte p
   assert.ok(ent.some(e => e.equipo_id && e.disciplina_id === rugby), 'los entrenamientos del equipo demo son de rugby');
   const par = (await llamar('GET', '/api/partidos', T.administrador)).datos;
   assert.ok(par.some(p => p.equipo_id && p.disciplina_id === rugby));
-  const ctl = (await llamar('GET', '/api/salud/controles', T.administrador)).datos;
+  const ctl = (await llamar('GET', '/api/salud/controles', T.salud)).datos; // v2.7 (T0.7): solo salud
   assert.ok(ctl.length && ctl.every(c => 'disciplina_id' in c));
 });
 

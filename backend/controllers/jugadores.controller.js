@@ -2,10 +2,42 @@ const db   = require('../config/db');
 const { hoyLocal } = require('../utils/hoy');
 const path = require('path');
 const fs   = require('fs');
+const { pathToFileURL } = require('url');
 const multer = require('multer');
 
 const { responderError } = require('../utils/errores');
 const { UPLOADS_DIR } = require('../config/archivos');
+const { registrar } = require('../utils/bitacora'); // v2.7 (T0.6)
+
+// v2.7 (T0.1): las reglas de identificación viven en un solo archivo, el mismo que usan los formularios
+// (frontend/src/utils/identificacion.js), igual que las fórmulas de antropometría.
+const identificacion = import(pathToFileURL(path.join(__dirname, '..', '..', 'frontend', 'src', 'utils', 'identificacion.js')).href);
+
+// Pertenencia étnica y discapacidad son datos sensibles (Ley 1581 de 2012): solo los ven el personal de salud
+// y el propio deportista. Para el resto de roles se quitan de la respuesta de la API, no solo de la pantalla.
+function ocultarSensibles(fila, usuario) {
+  const propio = usuario?.rol === 'jugador' && Number(usuario.jugador_id) === Number(fila.id);
+  if (usuario?.rol === 'personal_salud' || propio) return fila;
+  const { pertenencia_etnica, discapacidad, ...resto } = fila;
+  return resto;
+}
+
+// Toma de `datos` solo los campos de identificación presentes (y los sensibles, que se validan aparte).
+async function camposIdentificacion(datos = {}) {
+  const { CAMPOS_IDENTIFICACION, CAMPOS_SENSIBLES } = await identificacion;
+  return Object.fromEntries([...CAMPOS_IDENTIFICACION, ...CAMPOS_SENSIBLES]
+    .filter(c => Object.prototype.hasOwnProperty.call(datos, c)).map(c => [c, datos[c]]));
+}
+
+// Valida la identificación y la regla del acudiente. `registro` es cómo queda el deportista (edad o fecha de
+// nacimiento y acudiente) para saber si es menor sin acudiente. Devuelve { cambios } o { status, error }.
+async function validarIdentificacion(datos, usuario, registro, revisarAcudiente = true) {
+  const { normalizarIdentificacion, faltaAcudiente, MENSAJE_ACUDIENTE } = await identificacion;
+  const r = normalizarIdentificacion(await camposIdentificacion(datos), { sensibles: usuario?.rol === 'personal_salud' });
+  if (!r.ok) return { status: r.status, error: r.error };
+  if (revisarAcudiente && faltaAcudiente({ ...registro, ...r.cambios }, hoyLocal())) return { status: 400, error: MENSAJE_ACUDIENTE };
+  return { cambios: r.cambios };
+}
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -47,7 +79,7 @@ exports.uploadPhoto = async (req, res) => {
 // GET /api/jugadores
 exports.getAll = async (req, res) => {
   try {
-    const { disciplina_id, equipo_id, entrenador_id, posicion, edad_min, edad_max } = req.query;
+    const { disciplina_id, equipo_id, entrenador_id, posicion, edad_min, edad_max, retirados } = req.query;
 
     // Si es jugador, solo devuelve su propio registro
     if (req.usuario?.rol === 'jugador') {
@@ -59,7 +91,7 @@ exports.getAll = async (req, res) => {
          WHERE j.id = $1`,
         [req.usuario.jugador_id]
       );
-      return res.json(rows);
+      return res.json(rows.map(f => ocultarSensibles(f, req.usuario)));
     }
 
     let query = `
@@ -71,6 +103,11 @@ exports.getAll = async (req, res) => {
     `;
     const params = [];
     const conditions = [];
+
+    // v2.7 (T0.4): por defecto, el plantel actual. ?retirados=incluir trae también a los retirados y ?retirados=solo,
+    // solo a ellos (para consultarlos o reactivarlos; su historia se conserva).
+    if (retirados === 'solo') conditions.push('NOT j.activo');
+    else if (retirados !== 'incluir') conditions.push('j.activo');
 
     // Los entrenadores solo consultan deportistas asignados a ellos.
     if (req.usuario?.rol === 'entrenador') {
@@ -93,7 +130,7 @@ exports.getAll = async (req, res) => {
     query += ` ORDER BY j.nombre ASC`;
 
     const { rows } = await db.query(query, params);
-    res.json(rows);
+    res.json(rows.map(f => ocultarSensibles(f, req.usuario)));
   } catch (err) {
     responderError(res, err);
   }
@@ -124,11 +161,16 @@ exports.getOne = async (req, res) => {
       if (!linked.length) return res.status(403).json({ error: 'Este deportista no pertenece a tus entrenadores asociados' });
     }
 
-    const { rows: antroRows } = await db.query(
-      'SELECT * FROM antropometria WHERE jugador_id = $1 ORDER BY fecha DESC LIMIT 1',
-      [req.params.id]
-    );
-    player.ultima_antropometria = antroRows[0] || null;
+    // v2.7 (T0.7): la antropometría es parte de la historia clínica: solo salud y el propio deportista
+    const veAntropometria = req.usuario?.rol === 'personal_salud'
+      || (req.usuario?.rol === 'jugador' && Number(req.usuario.jugador_id) === Number(player.id));
+    if (veAntropometria) {
+      const { rows: antroRows } = await db.query(
+        'SELECT * FROM antropometria WHERE jugador_id = $1 ORDER BY fecha DESC LIMIT 1',
+        [req.params.id]
+      );
+      player.ultima_antropometria = antroRows[0] || null;
+    }
 
     const { rows: evalRows } = await db.query(
       'SELECT * FROM evaluaciones_rugby WHERE jugador_id = $1 ORDER BY fecha DESC LIMIT 1',
@@ -136,7 +178,7 @@ exports.getOne = async (req, res) => {
     );
     player.ultima_evaluacion = evalRows[0] || null;
 
-    res.json(player);
+    res.json(ocultarSensibles(player, req.usuario));
   } catch (err) {
     responderError(res, err);
   }
@@ -198,13 +240,20 @@ exports.create = async (req, res) => {
   if (!nombre || !String(nombre).trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
   const dorsal = normalizarDorsal(req.body.dorsal);
   if (!dorsal.ok) return res.status(400).json({ error: dorsal.error });
+  // v2.7: documento, contacto, emergencia y acudiente (obligatorio si es menor de edad)
+  const ident = await validarIdentificacion(req.body, req.usuario, { fecha_nacimiento, edad });
+  if (ident.error) return res.status(ident.status).json({ error: ident.error });
 
   try {
+    const valores = {
+      nombre: String(nombre).trim(), edad: edad || null, posicion: posicion || null, peso: peso || null, altura: altura || null,
+      equipo_id: equipo_id || null, disciplina_id: disciplina_id || null, entrenador_id, dorsal: dorsal.valor, fecha_nacimiento, genero,
+      ...ident.cambios,
+    };
+    const columnas = Object.keys(valores);
     const { rows } = await db.query(
-      `INSERT INTO jugadores (nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, entrenador_id, dorsal, fecha_nacimiento, genero)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-      [String(nombre).trim(), edad || null, posicion || null, peso || null, altura || null,
-       equipo_id || null, disciplina_id || null, entrenador_id, dorsal.valor, fecha_nacimiento, genero]
+      `INSERT INTO jugadores (${columnas.join(', ')}) VALUES (${columnas.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING id`,
+      Object.values(valores)
     );
     res.status(201).json({ id: rows[0].id, nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, dorsal: dorsal.valor });
   } catch (err) {
@@ -222,10 +271,12 @@ exports.bulkCreate = async (req, res) => {
   }
 
   try {
+    const { CAMPOS_IDENTIFICACION, normalizarIdentificacion, faltaAcudiente, MENSAJE_ACUDIENTE } = await identificacion;
     const client = await db.connect();
     const inserted = [];
     const errors = [];
     const avisos = [];
+    const documentosDelArchivo = new Set();
 
     try {
       await client.query('BEGIN');
@@ -263,7 +314,30 @@ exports.bulkCreate = async (req, res) => {
           }
         }
 
-        const edad = item.edad ? parseInt(item.edad, 10) : null;
+        let edad = item.edad ? parseInt(item.edad, 10) : null;
+        // v2.7: fecha de nacimiento (AAAA-MM-DD), documento, contacto y acudiente. Una fila inválida no se importa.
+        const fecha_nacimiento = item.fecha_nacimiento ? String(item.fecha_nacimiento).trim().slice(0, 10) : null;
+        if (fecha_nacimiento && (!/^\d{4}-\d{2}-\d{2}$/.test(fecha_nacimiento) || fecha_nacimiento > hoyLocal())) {
+          errors.push({ fila: i + 1, error: `${nombre}: la fecha de nacimiento no es válida (usa AAAA-MM-DD)` });
+          continue;
+        }
+        if (fecha_nacimiento) edad = null;
+        const ident = normalizarIdentificacion(
+          Object.fromEntries(CAMPOS_IDENTIFICACION.filter(c => item[c] !== undefined).map(c => [c, item[c]])));
+        if (!ident.ok) { errors.push({ fila: i + 1, error: `${nombre}: ${ident.error}` }); continue; }
+        if (faltaAcudiente({ fecha_nacimiento, edad, ...ident.cambios }, hoyLocal())) {
+          errors.push({ fila: i + 1, error: `${nombre}: ${MENSAJE_ACUDIENTE}` });
+          continue;
+        }
+        const documento = ident.cambios.numero_documento;
+        if (documento) {
+          const { rows: repetido } = await client.query('SELECT 1 FROM jugadores WHERE numero_documento = $1', [documento]);
+          if (repetido.length || documentosDelArchivo.has(documento)) {
+            errors.push({ fila: i + 1, error: `${nombre}: ya hay un deportista registrado con el documento ${documento}` });
+            continue;
+          }
+          documentosDelArchivo.add(documento);
+        }
         const peso = item.peso ? parseFloat(item.peso) : null;
         const altura = item.altura ? parseFloat(item.altura) : null;
         const posicion = item.posicion ? item.posicion.trim() : null;
@@ -283,10 +357,14 @@ exports.bulkCreate = async (req, res) => {
           }
         }
 
+        const valores = {
+          nombre, edad: isNaN(edad) ? null : edad, fecha_nacimiento, posicion, peso: isNaN(peso) ? null : peso,
+          altura: isNaN(altura) ? null : altura, equipo_id, disciplina_id, dorsal, ...ident.cambios,
+        };
+        const columnas = Object.keys(valores);
         const { rows } = await client.query(
-          `INSERT INTO jugadores (nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, dorsal)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-          [nombre, isNaN(edad) ? null : edad, posicion, isNaN(peso) ? null : peso, isNaN(altura) ? null : altura, equipo_id, disciplina_id, dorsal]
+          `INSERT INTO jugadores (${columnas.join(', ')}) VALUES (${columnas.map((_, n) => `$${n + 1}`).join(', ')}) RETURNING id`,
+          Object.values(valores)
         );
 
         inserted.push({ id: rows[0].id, nombre, posicion, disciplina_id, equipo_id, dorsal });
@@ -348,6 +426,11 @@ exports.update = async (req, res) => {
       if (!dorsal.ok) return res.status(400).json({ error: dorsal.error });
       cambios.dorsal = dorsal.valor;
     }
+    // v2.7: identificación. La regla del acudiente se revisa solo si el cambio toca la edad o el acudiente,
+    // para que asignar un equipo o un dorsal a un menor registrado antes no quede bloqueado.
+    const ident = await validarIdentificacion(req.body, req.usuario, await registroActual(req.params.id, cambios), tocaMenor(req.body));
+    if (ident.error) return res.status(ident.status).json({ error: ident.error });
+    Object.assign(cambios, ident.cambios);
 
     const campos = Object.keys(cambios);
     if (!campos.length) return res.status(400).json({ error: 'No hay cambios para guardar' });
@@ -363,6 +446,39 @@ exports.update = async (req, res) => {
       throw err;
     }
     res.json({ message: 'Jugador actualizado correctamente' });
+  } catch (err) {
+    responderError(res, err);
+  }
+};
+
+// Cómo queda el deportista después del cambio: edad, fecha de nacimiento y acudiente (para la regla del menor)
+async function registroActual(id, cambios = {}) {
+  const { rows: [actual] } = await db.query(
+    'SELECT edad, fecha_nacimiento, acudiente_nombre, acudiente_telefono FROM jugadores WHERE id = $1', [id]);
+  const registro = { ...(actual || {}) };
+  if ('fecha_nacimiento' in cambios) { registro.fecha_nacimiento = cambios.fecha_nacimiento; if (cambios.fecha_nacimiento) registro.edad = null; }
+  if ('edad' in cambios) registro.edad = cambios.edad;
+  return registro;
+}
+const tocaMenor = (body) => ['fecha_nacimiento', 'edad', 'acudiente_nombre', 'acudiente_telefono']
+  .some(c => Object.prototype.hasOwnProperty.call(body, c));
+
+// PATCH /api/jugadores/:id/identificacion (v2.7)
+// Documento, contacto, emergencia y acudiente. El personal de salud también registra los datos sensibles
+// (pertenencia étnica y discapacidad), sin poder cambiar el equipo, el dorsal ni el entrenador.
+exports.updateIdentificacion = async (req, res) => {
+  try {
+    const permiso = await verificarPermisoEscritura(req, req.params.id);
+    if (permiso.error) return res.status(permiso.status).json({ error: permiso.error });
+    const datos = await camposIdentificacion(req.body);
+    if (!Object.keys(datos).length) return res.status(400).json({ error: 'No hay cambios para guardar' });
+    const ident = await validarIdentificacion(datos, req.usuario, await registroActual(req.params.id), tocaMenor(datos));
+    if (ident.error) return res.status(ident.status).json({ error: ident.error });
+    const campos = Object.keys(ident.cambios);
+    await db.query(`UPDATE jugadores SET ${campos.map((c, i) => `${c} = $${i + 1}`).join(', ')} WHERE id = $${campos.length + 1}`,
+      [...campos.map(c => ident.cambios[c]), req.params.id]);
+    await registrar(req, { accion: 'editar', recurso: 'identificacion', jugador_id: req.params.id });
+    res.json({ message: 'Datos de identificación actualizados' });
   } catch (err) {
     responderError(res, err);
   }
@@ -388,7 +504,42 @@ exports.updateDorsal = async (req, res) => {
   }
 };
 
+// PATCH /api/jugadores/:id/retirar (v2.7, T0.4)
+// Sale del plantel actual (listados, asistencia, convocatorias) y libera su dorsal. Conserva toda su historia:
+// la Resolución 839 de 2017 exige guardar la historia clínica 15 años. Se puede reactivar.
+exports.retirar = async (req, res) => {
+  try {
+    const permiso = await verificarPermisoEscritura(req, req.params.id, 'retirar');
+    if (permiso.error) return res.status(permiso.status).json({ error: permiso.error });
+    const motivo = typeof req.body?.motivo === 'string' ? req.body.motivo.trim() : '';
+    if (motivo.length > 200) return res.status(400).json({ error: 'El motivo admite máximo 200 caracteres.' });
+    const { rowCount } = await db.query(
+      `UPDATE jugadores SET activo = FALSE, retirado_en = now(), motivo_retiro = $1, dorsal = NULL WHERE id = $2 AND activo`,
+      [motivo || null, req.params.id]);
+    if (!rowCount) return res.status(409).json({ error: 'El deportista ya está retirado.' });
+    res.json({ message: 'Deportista retirado del plantel. Su historia se conserva.' });
+  } catch (err) {
+    responderError(res, err);
+  }
+};
+
+// PATCH /api/jugadores/:id/reactivar (v2.7, T0.4): vuelve al plantel actual (sin dorsal: se asigna de nuevo)
+exports.reactivar = async (req, res) => {
+  try {
+    const permiso = await verificarPermisoEscritura(req, req.params.id, 'reactivar');
+    if (permiso.error) return res.status(permiso.status).json({ error: permiso.error });
+    const { rowCount } = await db.query(
+      'UPDATE jugadores SET activo = TRUE, retirado_en = NULL, motivo_retiro = NULL WHERE id = $1 AND NOT activo', [req.params.id]);
+    if (!rowCount) return res.status(409).json({ error: 'El deportista ya está en el plantel.' });
+    res.json({ message: 'Deportista de nuevo en el plantel.' });
+  } catch (err) {
+    responderError(res, err);
+  }
+};
+
 // DELETE /api/jugadores/:id
+// v2.7 (T0.4, DEF-053): solo para registros creados por error. Si tiene historia clínica, un trigger de la base
+// lo impide (409) y hay que retirarlo; antes se borraban en cascada sus lesiones, controles y antropometría.
 exports.remove = async (req, res) => {
   try {
     const permiso = await verificarPermisoEscritura(req, req.params.id, 'eliminar');

@@ -1,7 +1,7 @@
 // Dorsal: asignación, unicidad por equipo, cambio rápido y conservación (RF-09)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
 
 const PRE = 'ZZ dorsal ';
 let A, equipo, entrenador;
@@ -13,7 +13,7 @@ test.before(async () => {
   entrenador = (await llamar('POST', '/api/usuarios', A, { nombre: 'ZZ Ent Dorsal', email: 'zz.dorsal@test.com', password: 'Prueba123!', rol: 'entrenador' })).datos.id;
 });
 test.after(async () => {
-  await sql(`DELETE FROM jugadores WHERE nombre LIKE $1`, [PRE + '%']);
+  await sqlMantenimiento(`DELETE FROM jugadores WHERE nombre LIKE $1`, [PRE + '%']);
   await sql(`DELETE FROM equipos WHERE nombre LIKE $1`, [PRE + '%']);
   await sql(`DELETE FROM usuarios WHERE email = 'zz.dorsal@test.com'`);
   await cerrar(__filename);
@@ -71,7 +71,8 @@ test('CP-DOR-007 [RF-09] Volver a un equipo donde el número ya está ocupado de
 
 test('CP-DOR-008 [RF-09] El dorsal viaja con el nombre en otros módulos', async () => {
   const { rows: [uno] } = await sql(`SELECT id FROM jugadores WHERE nombre = $1`, [PRE + 'Uno']);
-  await llamar('POST', '/api/lesiones', A, { jugador_id: uno.id, tipo: 'Prueba dorsal', fecha_inicio: '2026-10-01' });
+  // v2.7 (T0.7): la lesión la registra el personal de salud; el administrador la ve como disponibilidad
+  await llamar('POST', '/api/lesiones', await token('salud'), { jugador_id: uno.id, tipo: 'Prueba dorsal', fecha_inicio: '2026-10-01' });
   const lesion = (await llamar('GET', '/api/lesiones', A)).datos.find(l => l.jugador_id === uno.id);
   assert.equal(lesion.jugador_dorsal, 10);
 });

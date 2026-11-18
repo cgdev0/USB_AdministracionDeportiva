@@ -68,7 +68,7 @@ exports.getAll = async (req, res) => {
       FROM equipos e
       LEFT JOIN disciplinas d ON e.disciplina_id = d.id
       LEFT JOIN categorias c ON c.id = e.categoria_id
-      LEFT JOIN jugadores j ON j.equipo_id = e.id
+      LEFT JOIN jugadores j ON j.equipo_id = e.id AND j.activo
       ${condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : ''}
       GROUP BY e.id, d.nombre, c.nombre ORDER BY d.nombre NULLS LAST, e.nombre ASC`, params);
     res.json(rows);
@@ -116,7 +116,7 @@ exports.getOne = async (req, res) => {
               d.nombre AS disciplina_nombre
        FROM jugadores j
        LEFT JOIN disciplinas d ON j.disciplina_id = d.id
-       WHERE j.equipo_id = $1
+       WHERE j.equipo_id = $1 AND j.activo
        ORDER BY j.nombre ASC`,
       [req.params.id]
     );

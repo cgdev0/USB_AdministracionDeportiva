@@ -6,6 +6,7 @@ import { GRUPOS, MENU_INFERIOR, ROLES, iniciales, modulosDelRol } from '../confi
 import { intencion } from '../config/paginas'
 import { perfilDeporte } from '../config/deportes'
 import Avisos from './Avisos'
+import BloqueoInactividad from './BloqueoInactividad'
 
 // Estructura v2.0 "Cancha": menú lateral verde noche con las líneas de una cancha (computador),
 // barra superior con el deporte activo, y menú inferior + hoja "Más" en el celular.
@@ -208,6 +209,8 @@ export default function AppLayout({ children }) {
         <Pie />
       </div>
       <MenuInferior />
+      {/* v2.7 (T0.8): bloqueo por inactividad del personal de salud */}
+      <BloqueoInactividad />
     </div>
   )
 }

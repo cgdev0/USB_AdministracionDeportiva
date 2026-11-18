@@ -114,7 +114,7 @@ test.describe('Dorsal', () => {
       await page.reload();
       await expect(boton()).toHaveText('10');
 
-      await page.getByPlaceholder('Buscar por nombre, dorsal, posición o equipo').fill('#10');
+      await page.getByPlaceholder('Buscar por nombre, documento, dorsal, posición o equipo').fill('#10');
       await expect(page.locator('table tbody tr')).toHaveCount(1);
     });
   }

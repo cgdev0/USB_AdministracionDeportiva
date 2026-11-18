@@ -6,3 +6,6 @@ dist/
 pruebas/resultados/
 test-results/
 playwright-report/
+
+# v2.7: archivos clínicos (nunca al repositorio)
+backend/clinico/

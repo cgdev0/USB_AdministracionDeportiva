@@ -23,7 +23,7 @@ Diseño alineado con las plataformas oficiales de Unisimón y pensado para celul
 | Entrenamientos | `frontend/src/pages/Entrenamientos.jsx` |
 | Asistencia | `frontend/src/pages/Asistencia.jsx` |
 | Lesiones | `frontend/src/pages/Lesiones.jsx` |
-| Salud y controles | `frontend/src/pages/Salud.jsx` |
+| Salud y controles (historia clínica por valoraciones, v2.7) | `frontend/src/pages/Salud.jsx` y `frontend/src/components/Valoraciones.jsx` |
 | Evaluaciones | `frontend/src/pages/Evaluaciones.jsx` |
 | Partidos | `frontend/src/pages/Partidos.jsx` |
 | Estadísticas | `frontend/src/pages/EstadisticasJugador.jsx` |
@@ -35,13 +35,13 @@ Diseño alineado con las plataformas oficiales de Unisimón y pensado para celul
 
 El frontend reconoce los roles `administrador`, `head_coach`, `entrenador`, `personal_salud` y `jugador`.
 
-- **Administrador:** acceso administrativo y a la pantalla de Usuarios.
-- **Head Coach:** panel de supervisión y vistas deportivas que aparecen habilitadas en el menú.
-- **Entrenador:** vistas relacionadas con equipos y gestión deportiva.
-- **Personal de salud:** vistas de salud, lesiones y evaluaciones que aparecen habilitadas.
-- **Jugador:** vistas de consulta deportiva y personal habilitadas por el menú.
+- **Administrador:** gestiona usuarios, deportes y equipos. Desde la v2.7 **no entra a la información clínica** (no es parte del equipo de salud); ve la disponibilidad del plantel y la bitácora de accesos.
+- **Head Coach:** panel de supervisión y vistas deportivas; de las lesiones ve la disponibilidad, no el diagnóstico.
+- **Entrenador:** equipos, deportistas, entrenamientos, asistencia, partidos y pruebas de condición física; de las lesiones ve la disponibilidad, no el diagnóstico.
+- **Personal de salud:** historia clínica (valoraciones), controles, lesiones, antropometría y datos sensibles. Puede ser profesional, practicante o estudiante (el registro RETHUS es opcional). Su pantalla se bloquea a los 15 minutos sin uso.
+- **Jugador:** consulta lo suyo, incluidas sus valoraciones cerradas y quién consultó su historia.
 
-**Advertencia de seguridad:** el menú y las rutas protegidas del frontend no bastan para garantizar privacidad. Deben validarse también los permisos y filtros en el backend para cada endpoint, especialmente para datos médicos, antropometría, estadísticas y asistencia. La matriz definitiva de permisos debe actualizarse después de probar cada rol.
+La matriz de acceso a la información clínica está en `docs/calidad/00_requisitos.md` y la aplica la API, no solo la pantalla (pruebas `CP-ROL`). Las rutas clínicas usan `autorizarEstricto`, porque `autorizar` deja pasar siempre al administrador.
 
 ## Base de datos (PostgreSQL)
 
@@ -65,7 +65,9 @@ npm run dev       # API + frontend en http://localhost:3000
 
 Las contraseñas no están en el código. `npm run seed` asigna a cada usuario nuevo una clave aleatoria y la muestra en la consola, o usa `SEED_CLAVE_INICIAL` si está definida en `.env`. Los usuarios que ya existen no se modifican.
 
-**Base existente de una versión anterior:** después de hacer un respaldo, ejecutar en orden los scripts de `backend/migrations/` que falten (`001_roles_y_salud.sql` a `010_metricas_y_admin.sql`; en Railway, `database.sql` ya los aplica al desplegar). Los usuarios existentes siguen entrando con su clave de siempre; su contraseña se protege con el hash nuevo la primera vez que inician sesión.
+**Base existente de una versión anterior:** después de hacer un respaldo, ejecutar en orden los scripts de `backend/migrations/` que falten (`001_roles_y_salud.sql` a `016_bitacora.sql`; en Railway, `database.sql` ya los aplica al desplegar). La v2.7 (011 a 016) convierte las historias clínicas anteriores en la primera valoración de cada deportista, sin perder datos.
+
+**Historia clínica (v2.7):** no se borra ni se modifica lo cerrado. Los *triggers* de la base lo impiden, salvo el modo de mantenimiento (`SET dt.mantenimiento = 'on'` dentro de una transacción), que solo debe usarse para limpiar una base de pruebas. Los usuarios existentes siguen entrando con su clave de siempre; su contraseña se protege con el hash nuevo la primera vez que inician sesión.
 
 ## Ejecutar el frontend en desarrollo
 
@@ -88,7 +90,7 @@ Este comando inicia el **frontend**. No garantiza por sí solo que el backend ni
 El repositorio trae `railway.json`: Railway compila el frontend (`npm run build`) y arranca con `node backend/config/iniciar_railway.js`, que primero prepara la base (`npm run railway:preparar`) y luego inicia el servidor en el mismo proceso (sin npm, para que el apagado de cada versión anterior no se reporte como crash); Railway verifica `/api/health` antes de dirigir el tráfico a la versión nueva.
 
 1. En Railway, crear un proyecto con dos servicios: **PostgreSQL** y la aplicación desde este repositorio de GitHub (rama `main`).
-2. En la aplicación, agregar un **volumen** montado en `/data` (fotos de deportistas y logos).
+2. En la aplicación, agregar un **volumen** montado en `/data`. Guarda las fotos de deportistas y los logos en `/data/uploads`, y desde la v2.7 también los archivos clínicos (consentimientos escaneados, fotos de postura) en `/data/clinico`, que nunca se sirven sin sesión. **Sin volumen, todos esos archivos se pierden en cada despliegue.**
 3. Variables de la aplicación:
 
 | Variable | Valor |
@@ -96,7 +98,7 @@ El repositorio trae `railway.json`: Railway compila el frontend (`npm run build`
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (referencia al servicio de PostgreSQL) |
 | `JWT_SECRET` y `JWT_REFRESH_SECRET` | dos valores distintos de al menos 32 caracteres (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) |
 | `SEED_CLAVE_INICIAL` | clave inicial de las cuentas base; cada usuario la cambia en Inicio → Mi sesión |
-| `UPLOADS_DIR` | `/data/uploads` |
+| `UPLOADS_DIR` | `/data/uploads` (los archivos clínicos van solos a `/data/clinico`; `CLINICO_DIR` permite cambiar esa ruta) |
 | `DATOS_DEMO` | `1` solo en la versión de pruebas (carga el plantel de demostración una vez) |
 | `DB_SSL` | `false` (la conexión a PostgreSQL va por la red privada de Railway, sin SSL) |
 | `ZONA_HORARIA` | opcional; por defecto `America/Bogota`. La app y PostgreSQL calculan "hoy" y "mañana" en esa zona aunque el servidor esté en UTC |
@@ -130,10 +132,10 @@ El proyecto se evalúa con la norma ISO/IEC 9126. El marco completo está en `do
 ```bash
 npx playwright install   # solo la primera vez
 npm test                 # API (unitarias e integración) y navegador; usa una base aparte, dt_deportivo_pruebas
-npm run test:reporte -- v2.2   # regenera el catálogo y escribe el informe de esa versión
+npm run test:reporte -- v2.7   # regenera el catálogo y escribe el informe de esa versión
 ```
 
-Detalle de los comandos y de cómo agregar casos: `pruebas/README.md`. Último informe: `docs/calidad/informes/v2.2.md`.
+Las pruebas de la API necesitan PostgreSQL local (usuario `postgres`, clave `postgres`, puerto 5432). Detalle de los comandos y de cómo agregar casos: `pruebas/README.md`. Último informe: `docs/calidad/informes/v2.7.md`. Plan de la historia clínica y su avance: `docs/plan/plan_historia_clinica.md`.
 
 ## Alcance de esta versión
 

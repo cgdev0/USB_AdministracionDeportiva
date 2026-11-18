@@ -21,6 +21,42 @@ const RESTRICCIONES = {
   chk_partidos_hora: 'La hora debe tener el formato HH:MM.',
   chk_convocados_rol: 'Cada convocado debe ser titular o suplente.',
   chk_convocados_confirmacion: 'La respuesta debe ser confirmado o no puede.',
+  // v2.7: identificación del deportista (migración 011)
+  chk_jugadores_tipo_documento: 'El tipo de documento no es válido.',
+  chk_jugadores_documento_completo: 'El documento necesita el tipo y el número.',
+  chk_jugadores_acudiente_tipo_documento: 'El tipo de documento del acudiente no es válido.',
+  chk_jugadores_zona: 'La zona de residencia debe ser urbana o rural.',
+  chk_jugadores_nacionalidad: 'La nacionalidad no es válida.',
+  chk_jugadores_pertenencia_etnica: 'La pertenencia étnica no es válida.',
+  chk_jugadores_discapacidad: 'El tipo de discapacidad no es válido.',
+  // v2.7: datos de quien atiende (migración 012)
+  chk_usuarios_profesion: 'La profesión no es válida.',
+  chk_usuarios_vinculo: 'El vínculo debe ser profesional, practicante o estudiante.',
+  chk_usuarios_supervisor_distinto: 'Una persona no puede supervisarse a sí misma.',
+  // v2.7: historia clínica secuencial (migración 013). Los triggers responden con estos nombres.
+  valoracion_cerrada: 'La valoración está cerrada: no se puede modificar ni borrar. Agrega una nota aclaratoria.',
+  nota_aclaratoria_inalterable: 'Las notas aclaratorias no se modifican ni se borran.',
+  chk_valoraciones_tipo: 'El tipo de valoración no es válido.',
+  chk_notas_texto: 'Escribe la nota aclaratoria.',
+  // v2.7 (T0.4): conservación de la historia clínica (migración 014)
+  jugador_con_historia_clinica: 'Este deportista tiene historia clínica y no se puede eliminar: retíralo del plantel. Sus registros se conservan (Resolución 839 de 2017).',
+  lesion_con_seguimiento: 'Esta lesión tiene seguimientos clínicos y no se puede eliminar.',
+  // v2.7 (T0.5): archivos clínicos (migración 015)
+  archivo_clinico_inalterable: 'Los archivos clínicos no se modifican ni se borran.',
+  chk_archivos_tipo: 'El tipo de archivo no es válido.',
+  chk_archivos_mime: 'Solo se aceptan fotos JPG o PNG y documentos PDF.',
+  chk_archivos_tamano: 'El archivo supera los 5 MB.',
+  // v2.7 (T0.6): bitácora (migración 016)
+  bitacora_inalterable: 'La bitácora de accesos no se modifica ni se borra.',
+};
+
+// Restricciones que protegen la historia clínica: responden 409 (conflicto con el estado del registro), no 400
+const CONFLICTOS = new Set(['valoracion_cerrada', 'nota_aclaratoria_inalterable', 'jugador_con_historia_clinica', 'lesion_con_seguimiento', 'archivo_clinico_inalterable', 'bitacora_inalterable']);
+
+// Mensajes de los índices únicos con nombre (23505). No dicen quién tiene el dato, para no revelar
+// deportistas que están fuera del alcance de quien guarda.
+const UNICOS = {
+  uq_jugadores_documento: 'Ya hay un deportista registrado con ese número de documento.',
 };
 
 const POR_CODIGO = {
@@ -42,6 +78,8 @@ function responderError(res, err) {
   if (conocido) {
     let [status, mensaje] = conocido;
     if (err.code === '23514' && RESTRICCIONES[err.constraint]) mensaje = RESTRICCIONES[err.constraint];
+    if (err.code === '23514' && CONFLICTOS.has(err.constraint)) status = 409;
+    if (err.code === '23505' && UNICOS[err.constraint]) mensaje = UNICOS[err.constraint];
     if (err.code === '23502' && err.column) mensaje = `Falta un dato obligatorio: ${err.column}.`;
     // Al eliminar, la llave foránea se viola porque otros registros dependen del que se borra
     if (err.code === '23503' && res.req && res.req.method === 'DELETE') {

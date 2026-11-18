@@ -21,12 +21,14 @@ export const MODULOS = [
     etiquetaPorRol: { jugador: 'Mis estadísticas' } },
   { ruta: '/lesiones',       etiqueta: 'Lesiones',          corto: 'Lesiones',     icono: 'fa-solid fa-kit-medical',
     roles: ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador'] },
+  // v2.7 (T0.7): Salud y Antropometría son información clínica: el administrador ya no entra (Res. 1995, art. 14)
+  // `clinico`: módulo de la historia clínica; el administrador no entra ni escribiendo la dirección
   { ruta: '/salud',          etiqueta: 'Salud y controles', corto: 'Salud',        icono: 'fa-solid fa-stethoscope',
-    roles: ['administrador', 'personal_salud', 'jugador'] },
+    roles: ['personal_salud', 'jugador'], clinico: true },
   { ruta: '/evaluaciones',   etiqueta: 'Evaluaciones',      corto: 'Evaluaciones', icono: 'fa-solid fa-clipboard-list',
     roles: ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador'] },
   { ruta: '/antropometria',  etiqueta: 'Antropometría',     corto: 'Medidas',      icono: 'fa-solid fa-ruler-combined',
-    roles: ['administrador', 'personal_salud', 'jugador'] },
+    roles: ['personal_salud', 'jugador'], clinico: true },
   { ruta: '/usuarios',       etiqueta: 'Usuarios',          corto: 'Usuarios',     icono: 'fa-solid fa-user-gear',
     roles: ['administrador'] },
 ]

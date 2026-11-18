@@ -43,18 +43,18 @@ test('CP-UI-EST-003 [RF-08] Un filtro sin resultados ofrece limpiarlo y vuelve a
   await page.setViewportSize(ANCHOS.pc);
   await entrar(page, 'administrador');
   await page.goto('/jugadores');
-  await page.getByPlaceholder('Buscar por nombre, dorsal, posición o equipo').fill('zzzz-no-existe');
+  await page.getByPlaceholder('Buscar por nombre, documento, dorsal, posición o equipo').fill('zzzz-no-existe');
   await expect(page.getByText('Ningún resultado con estos filtros')).toBeVisible();
   await page.getByRole('button', { name: 'Ver todos los deportistas' }).click();
   await expect(page.locator('table tbody tr').first()).toBeVisible();
-  await expect(page.getByPlaceholder('Buscar por nombre, dorsal, posición o equipo')).toHaveValue('');
+  await expect(page.getByPlaceholder('Buscar por nombre, documento, dorsal, posición o equipo')).toHaveValue('');
 });
 
 test('CP-UI-EST-004 [RNF-07] La interfaz no usa emojis', async ({ page }) => {
   await page.setViewportSize(ANCHOS.pc);
   await entrar(page, 'administrador');
   const emoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{2B55}\u{FE0F}]/u;
-  for (const ruta of ['/', '/jugadores', '/equipos', '/asistencia', '/estadisticas', '/lesiones', '/usuarios', '/antropometria']) {
+  for (const ruta of ['/', '/jugadores', '/equipos', '/asistencia', '/estadisticas', '/lesiones', '/usuarios']) {
     await page.goto(ruta);
     await page.waitForLoadState('networkidle');
     const texto = await page.evaluate(() => document.body.innerText + [...document.querySelectorAll('option')].map(o => o.textContent).join(' '));

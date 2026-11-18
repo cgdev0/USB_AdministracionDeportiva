@@ -11,6 +11,10 @@ import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../com
 import { iniciales } from '../config/navegacion'
 import { perfilDeporte } from '../config/deportes'
 import { edadDesde, hoyISO } from '../utils/fechas'
+import CamposIdentificacion from '../components/CamposIdentificacion'
+import BitacoraAccesos from '../components/BitacoraAccesos'
+import { CAMPOS_IDENTIFICACION, normalizarIdentificacion, faltaAcudiente, esMenorDeEdad, MENSAJE_ACUDIENTE } from '../utils/identificacion'
+import { PROFESIONES, VINCULOS, CAMPOS_PROFESIONALES, normalizarDatosProfesionales, descripcionQuienAtiende } from '../utils/profesionales'
 
 const ROLES = ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador']
 const ROLE_LABELS = {
@@ -19,8 +23,12 @@ const ROLE_LABELS = {
 const ROLE_ICON = {
   administrador: 'fa-user-shield', head_coach: 'fa-binoculars', entrenador: 'fa-clipboard-user', personal_salud: 'fa-user-doctor', jugador: 'fa-person-running',
 }
-const FICHA_VACIA = { disciplina_id: '', equipo_id: '', posicion: '', fecha_nacimiento: '', genero: '', entrenador_id: '' }
-const FORM_VACIO = { nombre: '', email: '', password: '', rol: 'jugador', head_coach_id: '', disciplina_id: '', ficha: FICHA_VACIA }
+// v2.7 (T0.1): la ficha nueva lleva también el documento y, si es menor de edad, el acudiente
+const FICHA_VACIA = { disciplina_id: '', equipo_id: '', posicion: '', fecha_nacimiento: '', genero: '', entrenador_id: '',
+  ...Object.fromEntries(CAMPOS_IDENTIFICACION.map(c => [c, ''])) }
+// v2.7 (T0.2): datos de quien atiende (solo personal de salud). El registro profesional es opcional (D1).
+const PROF_VACIO = { profesion: '', vinculo: '', registro_profesional: '', supervisor_id: '' }
+const FORM_VACIO = { nombre: '', email: '', password: '', rol: 'jugador', head_coach_id: '', disciplina_id: '', ...PROF_VACIO, ficha: FICHA_VACIA }
 
 export default function Usuarios() {
   const { usuario: yo } = useAuth()
@@ -30,6 +38,8 @@ export default function Usuarios() {
   const [error, setError] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [csvOpen, setCsvOpen] = useState(false)
+  // v2.7 (T0.6): auditoría de accesos a la historia clínica (sin contenido clínico)
+  const [bitacoraOpen, setBitacoraOpen] = useState(false)
   const [editando, setEditando] = useState(null)
   const [guardando, setGuardando] = useState(false)
   const [filtroRol, setFiltroRol] = useState('todos')
@@ -69,7 +79,8 @@ export default function Usuarios() {
 
   const abrirEditar = (u) => {
     setEditando(u)
-    setForm({ ...FORM_VACIO, nombre: u.nombre, email: u.email, rol: u.rol, head_coach_id: u.head_coach_id || '', disciplina_id: u.disciplina_id || '' })
+    setForm({ ...FORM_VACIO, nombre: u.nombre, email: u.email, rol: u.rol, head_coach_id: u.head_coach_id || '', disciplina_id: u.disciplina_id || '',
+      ...Object.fromEntries(CAMPOS_PROFESIONALES.map(c => [c, u[c] ?? ''])) })
     setModalOpen(true)
   }
 
@@ -85,10 +96,18 @@ export default function Usuarios() {
     e.preventDefault()
     const creaDeportista = !editando && form.rol === 'jugador'
     if (creaDeportista && !form.ficha.disciplina_id) return toast.error('Elige el deporte del deportista')
+    if (creaDeportista) {
+      const r = normalizarIdentificacion(Object.fromEntries(CAMPOS_IDENTIFICACION.map(c => [c, form.ficha[c]])))
+      if (!r.ok) return toast.error(r.error)
+      if (faltaAcudiente({ fecha_nacimiento: form.ficha.fecha_nacimiento, ...r.cambios }, hoyISO())) return toast.error(MENSAJE_ACUDIENTE)
+    }
+    const datosProf = form.rol === 'personal_salud' ? Object.fromEntries(CAMPOS_PROFESIONALES.map(c => [c, form[c]])) : {}
+    const prof = normalizarDatosProfesionales(datosProf)
+    if (!prof.ok) return toast.error(prof.error)
     setGuardando(true)
     try {
       if (editando) {
-        await api.put(`/usuarios/${editando.id}`, { nombre: form.nombre, email: form.email, rol: form.rol, head_coach_id: form.head_coach_id || null, disciplina_id: form.disciplina_id || null, activo: editando.activo })
+        await api.put(`/usuarios/${editando.id}`, { nombre: form.nombre, email: form.email, rol: form.rol, head_coach_id: form.head_coach_id || null, disciplina_id: form.disciplina_id || null, activo: editando.activo, ...datosProf })
         toast.success('Usuario actualizado')
       } else {
         const { ficha, ...resto } = form
@@ -184,6 +203,9 @@ export default function Usuarios() {
         descripcion="Cuentas de acceso por rol. Al crear un deportista se crea también su ficha en el plantel."
         acciones={
           <>
+            <button className="btn btn-secondary" onClick={() => setBitacoraOpen(true)}>
+              <i className="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> Bitácora clínica
+            </button>
             <button className="btn btn-secondary" onClick={() => setCsvOpen(true)}>
               <i className="fa-solid fa-file-arrow-up" aria-hidden="true"></i> Cargar CSV
             </button>
@@ -253,6 +275,7 @@ export default function Usuarios() {
                         <span>
                           <b>{u.nombre}</b>
                           <small>{u.email}</small>
+                          {u.rol === 'personal_salud' && <small className="quien-atiende-linea">{descripcionQuienAtiende(u)}</small>}
                           <span className="sub-movil">{ROLE_LABELS[u.rol]}{u.activo ? '' : ' · Inactivo'}</span>
                         </span>
                       </div>
@@ -300,6 +323,8 @@ export default function Usuarios() {
           </div>
         )}
       </div>
+
+      {bitacoraOpen && <BitacoraAccesos general titulo="Bitácora de accesos a la historia clínica" onClose={() => setBitacoraOpen(false)} />}
 
       {modalOpen && (
         <Modal
@@ -361,6 +386,49 @@ export default function Usuarios() {
               </div>
             )}
 
+            {/* v2.7 (T0.2): datos de quien atiende. El registro profesional es opcional: los practicantes y estudiantes aún no lo tienen */}
+            {form.rol === 'personal_salud' && (
+              <fieldset className="ficha-nueva" style={{ gridColumn: '1 / -1' }}>
+                <legend><i className="fa-solid fa-user-doctor" aria-hidden="true"></i> Datos profesionales <small>Así queda identificado en cada registro clínico</small></legend>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label htmlFor="u-profesion">Profesión o programa</label>
+                    <select id="u-profesion" value={form.profesion} onChange={cambiar('profesion')}>
+                      <option value="">Sin especificar</option>
+                      {PROFESIONES.map(([valor, nombre]) => <option key={valor} value={valor}>{nombre}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <span className="etiqueta-campo" id="u-vinculo">Vínculo</span>
+                    <div className="segmentado" role="group" aria-labelledby="u-vinculo" style={{ marginBottom: 0 }}>
+                      {VINCULOS.map(([valor, etiqueta]) => (
+                        <button key={valor} type="button" aria-pressed={form.vinculo === valor}
+                          onClick={() => setForm(f => ({ ...f, vinculo: f.vinculo === valor ? '' : valor }))}>{etiqueta}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="u-registro">Registro profesional (RETHUS)</label>
+                    <input id="u-registro" value={form.registro_profesional} onChange={cambiar('registro_profesional')} maxLength={30} autoComplete="off" />
+                    <small className="ayuda-campo">Opcional. Los practicantes y estudiantes aún no lo tienen.</small>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="u-supervisor">Supervisor</label>
+                    <select id="u-supervisor" value={form.supervisor_id} onChange={cambiar('supervisor_id')}>
+                      <option value="">Sin supervisor</option>
+                      {usuarios.filter(u => u.rol === 'personal_salud' && u.activo && !['practicante', 'estudiante'].includes(u.vinculo)
+                        && (!editando || u.id !== editando.id)).map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+                    </select>
+                    <small className="ayuda-campo">Opcional. Docente o profesional que supervisa la práctica.</small>
+                  </div>
+                </div>
+                <p className="ayuda-campo" style={{ marginTop: 10 }}>
+                  Quedará registrado como: <strong>{descripcionQuienAtiende({ ...form,
+                    supervisor_nombre: usuarios.find(u => String(u.id) === String(form.supervisor_id))?.nombre })}</strong>
+                </p>
+              </fieldset>
+            )}
+
             {/* v2.0: ficha deportiva del deportista nuevo (deporte, equipo, posición y fecha de nacimiento) */}
             {!editando && form.rol === 'jugador' && (
               <fieldset className="ficha-nueva" style={{ gridColumn: '1 / -1' }}>
@@ -407,6 +475,9 @@ export default function Usuarios() {
                       {entrenadoresFicha.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
                     </select>
                   </div>
+                  <CamposIdentificacion esencial id="usr-ident" valores={form.ficha}
+                    onCambio={(campo, valor) => setForm(f => ({ ...f, ficha: { ...f.ficha, [campo]: valor } }))}
+                    menor={esMenorDeEdad({ fecha_nacimiento: form.ficha.fecha_nacimiento }, hoyISO())} />
                 </div>
               </fieldset>
             )}

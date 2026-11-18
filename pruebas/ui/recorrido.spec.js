@@ -25,7 +25,8 @@ ROLES.forEach(([cuenta, rol], i) => {
         problemas.length = 0;
         await page.goto(m.ruta);
         await page.waitForLoadState('networkidle');
-        const permitido = rol === 'administrador' || m.roles.includes(rol);
+        // v2.7 (T0.7): el administrador entra a todo menos a los módulos clínicos (Salud, Antropometría)
+        const permitido = (rol === 'administrador' && !m.clinico) || m.roles.includes(rol);
         const esperado = permitido ? m.ruta : '/';
         const destino = new URL(page.url()).pathname;
         const d = await desborde(page);

@@ -1300,3 +1300,107 @@ button.ini-dorsal:active { transform: scale(0.97); }
 .selector-hora.sin-hora { font-weight: 500; }
 .selector-nota { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; }
 .selector-nota.error { color: var(--error-texto); }
+
+/* ── v2.7 (T0.1): identificación del deportista. Secciones plegables para que el formulario quepa bien en el celular ── */
+.campos-identificacion { grid-column: 1 / -1; display: grid; gap: 12px; min-width: 0; }
+.ident-grupo { min-width: 0; margin: 0; padding: 12px 16px 16px; border: 1.5px solid var(--borde-claro); border-radius: 14px; background: var(--superficie-2); }
+.ident-grupo.obligatorio { border-color: var(--aviso-borde); background: var(--aviso-fondo); }
+.ident-grupo.obligatorio legend small { color: var(--aviso-texto); font-weight: 700; }
+details.ident-grupo { padding-top: 2px; padding-bottom: 2px; }
+details.ident-grupo[open] { padding-bottom: 16px; }
+.ident-grupo > summary {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 44px; cursor: pointer; list-style: none;
+  font: 700 16px/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--verde-texto);
+}
+.ident-grupo > summary::-webkit-details-marker { display: none; }
+.ident-grupo > summary small { font: 400 13px var(--font); letter-spacing: 0; text-transform: none; color: var(--texto-suave); }
+.ident-grupo > summary::after {
+  content: ''; width: 9px; height: 9px; margin: 0 4px 4px auto; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(45deg); transition: transform var(--dur-media) ease;
+}
+.ident-grupo[open] > summary::after { transform: rotate(-135deg); margin-bottom: -4px; }
+.ident-grupo[open] > summary { margin-bottom: 10px; }
+.ident-grupo > summary:focus-visible { outline: 3px solid var(--verde); outline-offset: 4px; border-radius: 6px; }
+.ident-grupo.sensibles { border-style: dashed; }
+.ident-grupo .ayuda-campo { margin: 0 0 10px; }
+.etiqueta-campo { font-size: 13.5px; font-weight: 700; color: var(--texto); }
+.campos-identificacion .segmentado { margin-bottom: 0; align-self: flex-start; }
+@media (max-width: 719px) { .ident-grupo { padding-left: 12px; padding-right: 12px; } }
+@media (prefers-reduced-motion: reduce) { .ident-grupo > summary::after { transition: none; } }
+
+/* Ficha del deportista: datos de contacto y emergencia */
+.ficha-datos { display: grid; gap: 8px; margin: 0; }
+.ficha-datos div { display: grid; grid-template-columns: minmax(110px, 38%) 1fr; gap: 8px; font-size: 14px; }
+.ficha-datos dt { color: var(--texto-suave); font-weight: 600; }
+.ficha-datos dd { margin: 0; overflow-wrap: anywhere; }
+.ficha-datos a { color: var(--verde-texto); font-weight: 700; }
+
+/* ── v2.7 (T0.2): datos de quien atiende ── */
+.celda-persona small.quien-atiende-linea { color: var(--verde-texto); font-weight: 600; white-space: normal; }
+.quien-atiende {
+  display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; padding: 10px 14px;
+  border: 1px solid var(--borde-claro); border-radius: 12px; background: var(--superficie-2); font-size: 14px; color: var(--texto);
+}
+.quien-atiende i { color: var(--verde-texto); margin-top: 3px; }
+
+/* ── v2.7 (T0.3): historia clínica por valoraciones ── */
+.valoraciones { padding: 18px; margin-bottom: 22px; }
+.valoraciones-cabecera { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.valoraciones-cabecera h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; }
+.valoraciones-cabecera .ayuda-campo { max-width: 60ch; }
+.valoraciones-deportista { max-width: 520px; margin-bottom: 14px; }
+.aviso-texto { color: var(--aviso-texto); font-weight: 600; }
+.linea-tiempo { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.valoracion-item {
+  width: 100%; min-height: 56px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px;
+  padding: 12px 14px; text-align: left; font: inherit; color: var(--texto); cursor: pointer;
+  background: var(--blanco); border: 1px solid var(--borde-claro); border-left: 4px solid var(--verde); border-radius: 12px;
+}
+.valoracion-item:has(.badge-orange) { border-left-color: var(--naranja); }
+.valoracion-item:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+.valoracion-item-titulo { min-width: 0; overflow-wrap: anywhere; }
+.valoracion-item-meta { grid-column: 1 / -1; font-size: 13px; color: var(--texto-suave); overflow-wrap: anywhere; }
+@media (hover: hover) and (pointer: fine) { .valoracion-item:hover { border-color: var(--borde-fuerte); box-shadow: var(--shadow-sm); } }
+.valoracion-firma { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--superficie-2); font-size: 14px; }
+.valoracion-firma i { color: var(--verde-texto); margin-top: 3px; }
+.valoracion-secciones { display: grid; gap: 12px; margin: 0 0 16px; }
+.valoracion-secciones dt { font-size: 13px; font-weight: 700; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .04em; }
+.valoracion-secciones dd { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.valoracion-integridad { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 16px; padding-top: 12px; border-top: 1px solid var(--borde-claro); }
+.valoracion-integridad p { flex-basis: 100%; margin: 0; }
+.valoracion-integridad code { font-size: 13px; }
+.valoracion-notas-titulo { margin: 4px 0 8px; font-size: 15px; }
+.valoracion-notas { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+.valoracion-notas li { padding: 10px 12px; border-left: 3px solid var(--info-borde, var(--borde-fuerte)); background: var(--superficie-2); border-radius: 8px; }
+.valoracion-notas p { margin: 0 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ── v2.7 (T0.6): bitácora de accesos ── */
+.valoraciones-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.bitacora-filtros { margin: 4px 0 14px; }
+.bitacora-lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.bitacora-lista li { padding: 10px 12px; border: 1px solid var(--borde-claro); border-radius: 10px; background: var(--blanco); }
+.bitacora-lista p { margin: 0 0 2px; overflow-wrap: anywhere; }
+
+/* ── v2.7 (T0.8): bloqueo por inactividad. Tapa todo: ningún dato clínico queda a la vista ── */
+.bloqueo-inactividad {
+  position: fixed; inset: 0; z-index: 5000; display: grid; place-items: center; padding: 16px; overflow-y: auto;
+  background: var(--cancha-950); background-image: var(--lineas-cancha, none);
+}
+.bloqueo-tarjeta {
+  width: min(420px, 100%); display: grid; gap: 12px; padding: 28px 24px; text-align: center;
+  background: var(--blanco); border-radius: 20px; box-shadow: var(--shadow-lg);
+}
+.bloqueo-tarjeta h2 { margin: 0; font: 800 26px/1.1 var(--display); text-transform: uppercase; letter-spacing: .04em; color: var(--tinta); }
+.bloqueo-tarjeta p { margin: 0; color: var(--texto-suave); }
+.bloqueo-tarjeta .form-group { text-align: left; }
+.bloqueo-tarjeta .btn { width: 100%; justify-content: center; min-height: 48px; }
+.bloqueo-icono { justify-self: center; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--lima-suave); color: var(--verde-texto); font-size: 24px; }
+.bloqueo-usuario { color: var(--tinta) !important; }
+.aviso-inactividad {
+  position: fixed; left: 16px; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 4000;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; max-width: 560px; margin: 0 auto;
+  padding: 12px 14px; border-radius: 14px; background: var(--cancha-900); color: #fff; box-shadow: var(--shadow-lg);
+}
+.aviso-inactividad p { margin: 0; flex: 1 1 220px; }
+.aviso-inactividad i { color: var(--lima); margin-right: 6px; }
+@media (min-width: 1024px) { .aviso-inactividad { bottom: 24px; } }

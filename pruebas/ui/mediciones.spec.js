@@ -6,9 +6,9 @@ const { ANCHOS, entrar, guardarMetrica } = require('./ayuda');
 
 // Pantallas principales por rol que se miden
 const PANTALLAS = [
-  ['administrador', ['/', '/jugadores', '/equipos', '/lesiones', '/usuarios', '/antropometria']],
+  ['administrador', ['/', '/jugadores', '/equipos', '/lesiones', '/usuarios']],
   ['entrenador', ['/', '/asistencia', '/entrenamientos', '/partidos']],
-  ['salud', ['/', '/salud', '/evaluaciones']],
+  ['salud', ['/', '/salud', '/evaluaciones', '/antropometria']],
   ['jugador', ['/', '/estadisticas']],
 ];
 

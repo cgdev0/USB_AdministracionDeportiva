@@ -28,8 +28,9 @@ const EMPTY = {
 }
 
 export default function Evaluaciones() {
-  const { tienePermiso } = useAuth()
-  const puedeEditar = tienePermiso(['administrador', 'entrenador', 'personal_salud'])
+  const { usuario } = useAuth()
+  // v2.7 (T0.7): las pruebas de condición física las registra el entrenador; el personal de salud las consulta
+  const puedeEditar = ['administrador', 'entrenador'].includes(usuario?.rol)
   const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
 
   const [evals, setEvals] = useState([])

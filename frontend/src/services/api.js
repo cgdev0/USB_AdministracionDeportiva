@@ -23,7 +23,7 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config
     // Un 401 del propio login significa credenciales incorrectas: no se intenta refrescar
-    const esLogin = original?.url?.includes('/auth/login')
+    const esLogin = original?.url?.includes('/auth/login') || original?.url?.includes('/auth/desbloquear')
     if (error.response?.status === 401 && !original._retry && !esLogin) {
       original._retry = true
       const refresh = localStorage.getItem('refresh_token')

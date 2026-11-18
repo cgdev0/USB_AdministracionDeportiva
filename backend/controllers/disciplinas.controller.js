@@ -11,7 +11,7 @@ exports.getAll = async (req, res) => {
     const { rows } = await db.query(`
       SELECT d.*, COUNT(j.id)::int AS total_jugadores
       FROM disciplinas d
-      LEFT JOIN jugadores j ON j.disciplina_id = d.id
+      LEFT JOIN jugadores j ON j.disciplina_id = d.id AND j.activo
       ${cond ? `WHERE ${cond}` : ''}
       GROUP BY d.id
       ORDER BY d.nombre ASC

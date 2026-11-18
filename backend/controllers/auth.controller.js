@@ -4,6 +4,7 @@ const { JWT_SECRET, JWT_REFRESH_SECRET } = require('../config/secretos');
 const { hashClave, verificarClave, simularVerificacion } = require('../utils/claves');
 const { responderError } = require('../utils/errores');
 const { registrarFallo, limpiarFallos } = require('../middleware/limite');
+const { datosDeQuienAtiende } = require('../utils/quienAtiende');
 
 function generarTokens(usuario) {
   const payload = { id: usuario.id, email: usuario.email, rol: usuario.rol, nombre: usuario.nombre, jugador_id: usuario.jugador_id || null };
@@ -55,6 +56,8 @@ exports.login = async (req, res) => {
     }
 
     const { access, refresh } = generarTokens(usuario);
+    // v2.7 (T0.2): el personal de salud ve con qué datos queda registrado ("Practicante de fisioterapia · Supervisa: …")
+    const quien_atiende = usuario.rol === 'personal_salud' ? await datosDeQuienAtiende(db, usuario.id) : null;
 
     res.json({
       access_token:  access,
@@ -66,6 +69,7 @@ exports.login = async (req, res) => {
         rol:         usuario.rol,
         jugador_id:  usuario.jugador_id,
         primer_login: usuario.primer_login,
+        quien_atiende,
       },
     });
   } catch (err) {
@@ -96,7 +100,28 @@ exports.me = async (req, res) => {
       [req.usuario.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Usuario no encontrado' });
-    res.json(rows[0]);
+    const quien_atiende = rows[0].rol === 'personal_salud' ? await datosDeQuienAtiende(db, rows[0].id) : null;
+    res.json({ ...rows[0], quien_atiende });
+  } catch (err) {
+    responderError(res, err);
+  }
+};
+
+// POST /api/auth/desbloquear (v2.7, T0.8)
+// Quita el bloqueo por inactividad: comprueba la contraseña de quien ya tiene sesión. Comparte el límite de intentos
+// del inicio de sesión (5 fallos → 15 minutos), para que nadie adivine la clave desde una tableta bloqueada.
+exports.desbloquear = async (req, res) => {
+  const { password } = req.body || {};
+  if (!password) return res.status(400).json({ error: 'Escribe tu contraseña para continuar.' });
+  try {
+    const { rows } = await db.query('SELECT * FROM usuarios WHERE id = $1 AND activo', [req.usuario.id]);
+    if (!rows.length) return res.status(401).json({ error: 'Tu cuenta ya no está activa.' });
+    if (!(await verificarClave(password, rows[0])).valida) {
+      registrarFallo(req);
+      return res.status(401).json({ error: 'La contraseña no es correcta.' });
+    }
+    limpiarFallos(req);
+    res.json({ ok: true });
   } catch (err) {
     responderError(res, err);
   }

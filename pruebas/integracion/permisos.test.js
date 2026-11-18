@@ -1,7 +1,7 @@
 // Seguridad de acceso: qué puede ver y hacer cada rol (RF-04, RF-05, RNF-02)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
 
 const T = {};
 let lesionAjena;      // lesión de un jugador que no es el del usuario jugador
@@ -18,7 +18,7 @@ test.before(async () => {
   lesionAjena = ajena.id;
 });
 test.after(async () => {
-  await sql(`DELETE FROM lesiones WHERE tipo = 'Prueba permisos'`);
+  await sqlMantenimiento(`DELETE FROM lesiones WHERE tipo = 'Prueba permisos'`);
   await cerrar(__filename);
 });
 
@@ -58,9 +58,9 @@ test('CP-PER-005 [RF-05] El entrenador no puede modificar deportistas de otro en
   assert.equal(r.status, 403);
 });
 
-test('CP-PER-006 [RNF-02] Historias clínicas: solo salud y administrador', async () => {
+test('CP-PER-006 [RNF-02] Historias clínicas: solo el personal de salud (v2.7: ya no el administrador)', async () => {
   assert.equal((await llamar('GET', '/api/salud/historias', T.salud)).status, 200);
-  for (const rol of ['entrenador', 'head_coach', 'jugador']) {
+  for (const rol of ['administrador', 'entrenador', 'head_coach', 'jugador']) {
     assert.equal((await llamar('GET', '/api/salud/historias', T[rol])).status, 403, rol);
   }
 });
@@ -118,11 +118,13 @@ test('CP-PER-011 [RNF-02] Las evaluaciones físicas solo las ve quien tiene al d
   await sql('DELETE FROM evaluaciones_rugby WHERE jugador_id = $1 AND fecha = $2', [deCesar, '2026-10-01']);
 });
 
-test('CP-PER-012 [RNF-02] Las medidas antropométricas de un deportista no se ven fuera de su alcance', async () => {
+test('CP-PER-012 [RNF-02] Las medidas antropométricas las ven el personal de salud y el propio deportista', async () => {
   const { deCesar, propio } = await datosDe();
-  assert.equal((await llamar('GET', `/api/antropometria/jugador/${deCesar}`, T.entrenador)).status, 200, 'su entrenador');
+  // v2.7 (T0.7): la antropometría es parte de la historia clínica; ni su entrenador ni el administrador la ven
+  assert.equal((await llamar('GET', `/api/antropometria/jugador/${deCesar}`, T.entrenador)).status, 403, 'su entrenador');
+  assert.equal((await llamar('GET', `/api/antropometria/jugador/${deCesar}`, T.administrador)).status, 403, 'el administrador');
   assert.equal((await llamar('GET', `/api/antropometria/jugador/${deCesar}`, T.salud)).status, 200, 'salud');
   assert.equal((await llamar('GET', `/api/antropometria/jugador/${deCesar}`, T.jugador)).status, 404, 'otro deportista');
-  assert.equal((await llamar('GET', `/api/antropometria/jugador/${deCesar}`, await token('entrenador2'))).status, 404, 'otro entrenador');
+  assert.equal((await llamar('GET', `/api/antropometria/jugador/${deCesar}`, await token('entrenador2'))).status, 403, 'otro entrenador');
   if (propio) assert.equal((await llamar('GET', `/api/antropometria/jugador/${propio}`, T.jugador)).status, 200, 'el deportista ve las suyas');
 });

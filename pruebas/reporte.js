@@ -27,11 +27,12 @@ const leerJSON = (f, def = null) => { try { return JSON.parse(fs.readFileSync(f,
 const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : null);
 
 // ── Requisitos y módulos ──────────────────────────────────────
-const RF = Array.from({ length: 24 }, (_, i) => `RF-${String(i + 1).padStart(2, '0')}`);
+// v2.7: RF-27 a RF-30 se agregan con las fases 2 a 4 del plan de historia clínica; RF-31 (bitácora) ya existe
+const RF = [...Array.from({ length: 26 }, (_, i) => `RF-${String(i + 1).padStart(2, '0')}`), 'RF-31'];
 const MODULOS = {
-  Inicio: ['RF-18', 'RF-21', 'RF-22', 'RF-23'], Supervisión: ['RF-19'], Equipos: ['RF-07', 'RF-24'], Partidos: ['RF-12', 'RF-20'], Deportistas: ['RF-08', 'RF-09'],
+  Inicio: ['RF-18', 'RF-21', 'RF-22', 'RF-23'], Supervisión: ['RF-19'], Equipos: ['RF-07', 'RF-24'], Partidos: ['RF-12', 'RF-20'], Deportistas: ['RF-08', 'RF-09', 'RF-25'],
   Entrenamientos: ['RF-10'], Asistencia: ['RF-11'], Estadísticas: ['RF-13'],
-  Lesiones: ['RF-14'], Salud: ['RF-15'], Evaluaciones: ['RF-16'], Antropometría: ['RF-17'], Usuarios: ['RF-03'],
+  Lesiones: ['RF-14'], Salud: ['RF-15', 'RF-26', 'RF-31'], Evaluaciones: ['RF-16'], Antropometría: ['RF-17'], Usuarios: ['RF-03'],
 };
 
 // ── Clasificación de los casos por su identificador ──────────
@@ -44,6 +45,8 @@ function clasificar(id) {
     [/^CP-MOD-01[23]/, 'Integración', 'Funcionalidad · Exactitud'],
     [/^CP-(MOD|DOR|INI)/, 'Integración', 'Funcionalidad · Adecuación'],
     [/^CP-CSV/, 'Integración', 'Funcionalidad · Interoperabilidad'],
+    [/^CP-HC/, 'Integración', 'Funcionalidad · Seguridad de acceso / Adecuación'],
+    [/^CP-ROL/, 'Integración', 'Funcionalidad · Seguridad de acceso'],
     [/^CP-SEG-(00[1-3]|01[3-689]|020)/, 'Seguridad', 'Funcionalidad · Seguridad de acceso'],
     [/^CP-SEG/, 'Robustez', 'Fiabilidad · Tolerancia a fallos'],
     [/^CP-(ADM|ZON)/, 'Integración', 'Funcionalidad · Seguridad de acceso / Exactitud'],

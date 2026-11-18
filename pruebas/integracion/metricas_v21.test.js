@@ -1,7 +1,7 @@
 // v2.1: estadísticas propias de cada deporte y usuario administrador admin1
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
 const { perfilDeporte, claveDeporte, limpiarMetricas } = require('../../backend/config/metricas_deportes');
 
 const T = {};
@@ -13,7 +13,7 @@ test.before(async () => {
 });
 test.after(async () => {
   if (creados.length) await sql('DELETE FROM estadisticas_jugador WHERE id = ANY($1::int[])', [creados]);
-  await sql(`DELETE FROM jugadores WHERE nombre LIKE 'ZZ v21%'`);
+  await sqlMantenimiento(`DELETE FROM jugadores WHERE nombre LIKE 'ZZ v21%'`);
   await cerrar(__filename);
 });
 

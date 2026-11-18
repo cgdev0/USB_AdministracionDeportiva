@@ -13,8 +13,11 @@ import { fechaTabla } from '../utils/fechas'
 const EMPTY = { jugador_id: '', tipo: '', descripcion: '', fecha_inicio: '', fecha_fin: '' }
 
 export default function Lesiones() {
-  const { tienePermiso } = useAuth()
-  const puedeEditar = tienePermiso(['administrador', 'personal_salud'])
+  const { usuario } = useAuth()
+  // v2.7 (T0.7): solo el personal de salud registra lesiones (tienePermiso deja pasar siempre al administrador).
+  // El entrenador, el head coach y el administrador ven la disponibilidad, sin el tipo ni la descripción.
+  const puedeEditar = usuario?.rol === 'personal_salud'
+  const veDetalle = ['personal_salud', 'jugador'].includes(usuario?.rol)
   const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
 
   const [lesiones, setLesiones]   = useState([])
@@ -131,6 +134,10 @@ export default function Lesiones() {
           </button>
         )}
       </div>
+      {!veDetalle && (
+        <p className="quien-atiende"><i className="fa-solid fa-user-shield" aria-hidden="true"></i>
+          Aquí ves la disponibilidad del plantel. El tipo de lesión y su tratamiento los maneja el personal de salud.</p>
+      )}
 
       <div className="card" style={{ padding: 0 }}>
         {loading ? <Esqueleto tipo="tabla" columnas={puedeEditar ? 6 : 5} /> : error ? (
@@ -155,7 +162,7 @@ export default function Lesiones() {
             <table>
               <thead>
                 <tr>
-                  <th>Jugador</th><th>Tipo</th><th>Inicio</th><th>Fin</th><th>Estado</th>
+                  <th>Jugador</th>{veDetalle ? <th>Tipo</th> : <th>Retorno estimado</th>}<th>Inicio</th><th>Fin</th><th>Estado</th>
                   {puedeEditar && <th>Acciones</th>}
                 </tr>
               </thead>
@@ -163,7 +170,9 @@ export default function Lesiones() {
                 {lesionesFiltradas.map(l => (
                   <tr key={l.id}>
                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{nombreConDorsal(l.jugador_nombre, l.jugador_dorsal)}</td>
-                    <td>{l.tipo || '—'}</td>
+                    {veDetalle
+                      ? <td>{l.tipo || '—'}</td>
+                      : <td>{l.fecha_retorno_estimada ? fechaTabla(l.fecha_retorno_estimada) : '—'}</td>}
                     <td>{l.fecha_inicio ? fechaTabla(l.fecha_inicio) : '—'}</td>
                     <td>{l.fecha_fin    ? fechaTabla(l.fecha_fin)    : '—'}</td>
                     <td>

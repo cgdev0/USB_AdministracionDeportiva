@@ -35,6 +35,8 @@ app.use(express.json({ limit: '1mb' }));
 
 // Servir estáticos de uploads
 app.use('/uploads', (req, res, next) => {
+  // v2.7 (T0.5): los archivos clínicos nunca se sirven por aquí (viven en CLINICO_DIR y salen por la API con permiso)
+  if (/^\/clinico(\/|$)/i.test(req.path)) return res.status(404).end();
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
@@ -48,6 +50,9 @@ const RUTAS = {
   estadisticas: 'estadisticas', dashboard: 'dashboard', settings: 'settings',
   antropometria: 'antropometria', 'head-coach': 'headcoach', salud: 'salud',
   convocatorias: 'convocatorias', notificaciones: 'notificaciones', comunicados: 'comunicados',
+  valoraciones: 'valoraciones', // v2.7 (T0.3): historia clínica secuencial
+  'archivos-clinicos': 'archivosClinicos', // v2.7 (T0.5): archivos clínicos protegidos
+  bitacora: 'bitacora', // v2.7 (T0.6): bitácora de accesos a la historia clínica
 };
 for (const [prefijo, archivo] of Object.entries(RUTAS)) {
   const router = require(`../backend/routes/${archivo}.routes`);

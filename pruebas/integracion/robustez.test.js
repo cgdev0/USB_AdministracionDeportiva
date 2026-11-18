@@ -2,13 +2,13 @@
 // Una entrada inválida debe rechazarse con 4xx y un mensaje, nunca con un error 500.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
 const { fechaEnDias, horaActual } = require('../utilidades/fechas');
 
 let A;
 test.before(async () => { await iniciar(); A = await token('administrador'); });
 test.after(async () => {
-  await sql(`DELETE FROM jugadores WHERE nombre LIKE 'ZZ robustez%'`);
+  await sqlMantenimiento(`DELETE FROM jugadores WHERE nombre LIKE 'ZZ robustez%'`);
   await sql(`DELETE FROM antropometria WHERE categoria = 'ZZ robustez'`);
   await cerrar(__filename);
 });
@@ -34,7 +34,8 @@ test('CP-SEG-002 [RNF-01] Inyección en filtros de búsqueda no altera la consul
 
 test('CP-SEG-003 [RNF-01] Nombres de columna en el cuerpo no se inyectan (lista blanca)', async () => {
   const { rows: [j] } = await sql('SELECT id FROM jugadores LIMIT 1');
-  const r = await llamar('POST', '/api/antropometria', A, {
+  // v2.7 (T0.7): la antropometría la registra el personal de salud
+  const r = await llamar('POST', '/api/antropometria', await token('salud'), {
     jugador_id: j.id, fecha: '2026-10-10', peso: 70, categoria: 'ZZ robustez',
     'id) VALUES (1); DROP TABLE jugadores; --': 'x', campo_inexistente: 'x',
   });

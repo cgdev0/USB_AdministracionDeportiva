@@ -20,6 +20,8 @@ function alcanceJugadores(usuario, disciplinaId, params) {
     params.push(disciplinaId);
     cond.push(`j.disciplina_id = $${params.length}`);
   }
+  // v2.7 (T0.4): el plantel del inicio es el actual; el deportista retirado sigue viendo su propio inicio
+  if (usuario.rol !== 'jugador') cond.push('j.activo');
   return cond.length ? cond.join(' AND ') : 'TRUE';
 }
 
@@ -39,7 +41,9 @@ exports.getInicio = async (req, res) => {
   let disciplinaId = req.query.disciplina_id && req.query.disciplina_id !== 'todos'
     ? parseInt(req.query.disciplina_id, 10) || null
     : null;
-  const veSalud = ['administrador', 'personal_salud', 'jugador'].includes(usuario.rol);
+  // v2.7 (T0.7): los avisos clínicos (controles vencidos) son del personal de salud y del propio deportista; el
+  // administrador ve la disponibilidad del plantel, no los pendientes clínicos
+  const veSalud = ['personal_salud', 'jugador'].includes(usuario.rol);
 
   try {
     // Alcance de los datos: el propio usuario o, en la vista de un deportista, solo ese deportista
@@ -83,10 +87,13 @@ exports.getInicio = async (req, res) => {
       WHERE ${alcanceJugadores(vista, disciplinaId, p1)}
       ORDER BY j.dorsal NULLS LAST, j.nombre`, p1);
 
+    // v2.7 (T0.7): el entrenador, el head coach y el administrador ven la disponibilidad, no el tipo de lesión
+    // (aunque estén viendo el inicio "como lo ve el deportista").
+    const veDetalleClinico = ['personal_salud', 'jugador'].includes(usuario.rol);
     const plantel = plantelFilas.map(f => ({
       id: f.id, nombre: f.nombre, dorsal: f.dorsal, posicion: f.posicion, foto_url: f.foto_url,
       estado: estadoDe(f),
-      motivo: f.lesion_id ? `Lesión: ${f.lesion_tipo || 'sin tipo registrado'}`
+      motivo: f.lesion_id ? (veDetalleClinico ? `Lesión: ${f.lesion_tipo || 'sin tipo registrado'}` : 'Lesionado')
         : f.aptitud === 'no_apto_temporal' ? 'No apto temporalmente'
         : f.aptitud === 'apto_restricciones' ? (f.restricciones || 'Apto con restricciones') : null,
     }));
@@ -103,7 +110,7 @@ exports.getInicio = async (req, res) => {
       if (f.lesion_id) {
         revisar.push({
           tipo: 'lesion', jugador_id: f.id, nombre: f.nombre, dorsal: f.dorsal,
-          dias: Number(f.dias_lesion), lesion: f.lesion_tipo, retorno_estimado: f.retorno_estimado,
+          dias: Number(f.dias_lesion), lesion: veDetalleClinico ? f.lesion_tipo : null, retorno_estimado: f.retorno_estimado,
         });
       } else if (f.aptitud === 'apto_restricciones') {
         revisar.push({ tipo: 'restriccion', jugador_id: f.id, nombre: f.nombre, dorsal: f.dorsal, restricciones: f.restricciones });
@@ -114,7 +121,8 @@ exports.getInicio = async (req, res) => {
         revisar.push({ tipo: 'control_vencido', jugador_id: f.id, nombre: f.nombre, dorsal: f.dorsal, fecha: f.proximo_control });
       }
     }
-    if (vista === usuario && ['administrador', 'personal_salud'].includes(usuario.rol) && plantel.length) {
+    // v2.7 (T0.7): el aviso de antropometría pendiente es para el personal de salud
+    if (vista === usuario && usuario.rol === 'personal_salud' && plantel.length) {
       const p2 = [];
       const { rows: [sinAntro] } = await db.query(`
         SELECT COUNT(*)::int AS total FROM jugadores j

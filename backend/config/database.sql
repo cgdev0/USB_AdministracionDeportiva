@@ -508,3 +508,292 @@ UPDATE usuarios
        nombre = CASE WHEN nombre = 'Robinson Meza' THEN 'Administrador' ELSE nombre END
  WHERE email = 'robinson_meza@dtdeportivo.com'
    AND NOT EXISTS (SELECT 1 FROM usuarios WHERE email = 'admin1@dtdeportivo.com');
+
+-- -------------------------------------------------------
+-- v2.7 (igual que migrations/011_identificacion.sql)
+-- -------------------------------------------------------
+-- Identificación y contacto del deportista (T0.1). Res. 1995 de 1999: la historia clínica se identifica con el
+-- documento de identidad; códigos de la guía FHIR RDA. Pertenencia étnica y discapacidad: datos sensibles (Ley 1581).
+ALTER TABLE jugadores
+  ADD COLUMN IF NOT EXISTS tipo_documento                 VARCHAR(3),
+  ADD COLUMN IF NOT EXISTS numero_documento               VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS telefono                       VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS eps                            VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS municipio_residencia           VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS zona_residencia                VARCHAR(10),
+  ADD COLUMN IF NOT EXISTS nacionalidad                   VARCHAR(2),
+  ADD COLUMN IF NOT EXISTS pertenencia_etnica             VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS discapacidad                   VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS contacto_emergencia_nombre     VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS contacto_emergencia_parentesco VARCHAR(40),
+  ADD COLUMN IF NOT EXISTS contacto_emergencia_telefono   VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS acudiente_nombre               VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS acudiente_tipo_documento       VARCHAR(3),
+  ADD COLUMN IF NOT EXISTS acudiente_numero_documento     VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS acudiente_parentesco           VARCHAR(40),
+  ADD COLUMN IF NOT EXISTS acudiente_telefono             VARCHAR(20);
+
+-- Un número de documento identifica a una sola persona, sin importar el tipo: al cumplir 18 años la tarjeta
+-- de identidad pasa a cédula con el mismo número (NUIP). Así la misma persona no queda registrada dos veces.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_jugadores_documento ON jugadores(numero_documento) WHERE numero_documento IS NOT NULL;
+
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT * FROM (VALUES
+    ('chk_jugadores_tipo_documento', 'tipo_documento IN (''CC'',''TI'',''RC'',''CE'',''PA'',''PPT'',''PE'')'),
+    ('chk_jugadores_documento_completo', '(tipo_documento IS NULL) = (numero_documento IS NULL)'),
+    ('chk_jugadores_acudiente_tipo_documento', 'acudiente_tipo_documento IN (''CC'',''TI'',''RC'',''CE'',''PA'',''PPT'',''PE'')'),
+    ('chk_jugadores_zona', 'zona_residencia IN (''urbana'',''rural'')'),
+    ('chk_jugadores_nacionalidad', 'nacionalidad ~ ''^[A-Z]{2}$'''),
+    ('chk_jugadores_pertenencia_etnica', 'pertenencia_etnica IN (''ninguna'',''indigena'',''rom'',''raizal'',''palenquero'',''afrocolombiano'')'),
+    ('chk_jugadores_discapacidad', 'discapacidad IN (''ninguna'',''fisica'',''auditiva'',''visual'',''sordoceguera'',''intelectual'',''psicosocial'',''multiple'')')
+  ) AS t(nombre, regla)
+  LOOP
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = r.nombre) THEN
+      EXECUTE format('ALTER TABLE jugadores ADD CONSTRAINT %I CHECK (%s)', r.nombre, r.regla);
+    END IF;
+  END LOOP;
+END $$;
+
+-- -------------------------------------------------------
+-- v2.7 (igual que migrations/012_quien_atiende.sql)
+-- -------------------------------------------------------
+-- Datos de quien atiende (T0.2): profesión, vínculo (profesional, practicante o estudiante), registro profesional
+-- opcional (decisión D1) y docente supervisor opcional.
+ALTER TABLE usuarios
+  ADD COLUMN IF NOT EXISTS profesion            VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS vinculo              VARCHAR(15),
+  ADD COLUMN IF NOT EXISTS registro_profesional VARCHAR(30),
+  ADD COLUMN IF NOT EXISTS supervisor_id        INT REFERENCES usuarios(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_usuarios_supervisor ON usuarios(supervisor_id);
+
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN SELECT * FROM (VALUES
+    ('chk_usuarios_profesion', 'profesion IN (''fisioterapia'',''medicina'',''enfermeria'',''nutricion'',''psicologia'',''otra'')'),
+    ('chk_usuarios_vinculo', 'vinculo IN (''profesional'',''practicante'',''estudiante'')'),
+    ('chk_usuarios_supervisor_distinto', 'supervisor_id <> id')
+  ) AS t(nombre, regla)
+  LOOP
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = r.nombre) THEN
+      EXECUTE format('ALTER TABLE usuarios ADD CONSTRAINT %I CHECK (%s)', r.nombre, r.regla);
+    END IF;
+  END LOOP;
+END $$;
+
+-- -------------------------------------------------------
+-- v2.7 (igual que migrations/013_valoraciones.sql)
+-- -------------------------------------------------------
+-- Historia clínica secuencial e inalterable (T0.3, Res. 1995 de 1999): valoraciones separadas, cerradas no se
+-- modifican (lo impiden triggers) y se corrigen con notas aclaratorias. Las historias anteriores se migran.
+CREATE TABLE IF NOT EXISTS valoraciones (
+  id              SERIAL PRIMARY KEY,
+  jugador_id      INT NOT NULL REFERENCES jugadores(id) ON DELETE RESTRICT,
+  profesional_id  INT REFERENCES usuarios(id) ON DELETE RESTRICT,
+  tipo            VARCHAR(20) NOT NULL DEFAULT 'control',
+  fecha_hora      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  estado          VARCHAR(10) NOT NULL DEFAULT 'borrador',
+  contenido       JSONB NOT NULL DEFAULT '{}'::jsonb,
+  quien_atiende   JSONB,
+  cerrada_en      TIMESTAMPTZ,
+  hash_cierre     CHAR(64),
+  version         INT NOT NULL DEFAULT 1,
+  origen          VARCHAR(10) NOT NULL DEFAULT 'app',
+  actualizado_en  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT chk_valoraciones_tipo CHECK (tipo IN ('inicial','control','pretemporada','post_lesion','registro_previo')),
+  CONSTRAINT chk_valoraciones_estado CHECK (estado IN ('borrador','cerrada')),
+  CONSTRAINT chk_valoraciones_cierre CHECK (estado = 'borrador' OR cerrada_en IS NOT NULL),
+  CONSTRAINT chk_valoraciones_origen CHECK (origen IN ('app','migrada'))
+);
+CREATE INDEX IF NOT EXISTS idx_valoraciones_jugador ON valoraciones(jugador_id, fecha_hora DESC);
+
+-- Única forma de corregir una valoración cerrada. Las notas tampoco se modifican ni se borran.
+CREATE TABLE IF NOT EXISTS notas_aclaratorias (
+  id             SERIAL PRIMARY KEY,
+  valoracion_id  INT NOT NULL REFERENCES valoraciones(id) ON DELETE RESTRICT,
+  texto          TEXT NOT NULL CONSTRAINT chk_notas_texto CHECK (length(btrim(texto)) > 0),
+  profesional_id INT REFERENCES usuarios(id) ON DELETE RESTRICT,
+  quien_atiende  JSONB,
+  creada_en      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_notas_valoracion ON notas_aclaratorias(valoracion_id, creada_en);
+
+-- La base de datos misma impide cambiar o borrar lo cerrado, aunque alguien lo intente sin pasar por la API.
+-- Solo el mantenimiento explícito (SET dt.mantenimiento = 'on', por ejemplo para limpiar la base de pruebas) lo permite.
+CREATE OR REPLACE FUNCTION fn_proteger_valoracion_cerrada() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
+  IF OLD.estado = 'cerrada' THEN
+    RAISE EXCEPTION 'La valoración % está cerrada: no se puede modificar ni borrar. Agrega una nota aclaratoria.', OLD.id
+      USING ERRCODE = 'check_violation', CONSTRAINT = 'valoracion_cerrada';
+  END IF;
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_valoracion_cerrada ON valoraciones;
+CREATE TRIGGER trg_valoracion_cerrada BEFORE UPDATE OR DELETE ON valoraciones
+  FOR EACH ROW EXECUTE FUNCTION fn_proteger_valoracion_cerrada();
+
+CREATE OR REPLACE FUNCTION fn_proteger_nota_aclaratoria() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'Las notas aclaratorias no se modifican ni se borran.'
+    USING ERRCODE = 'check_violation', CONSTRAINT = 'nota_aclaratoria_inalterable';
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_nota_aclaratoria ON notas_aclaratorias;
+CREATE TRIGGER trg_nota_aclaratoria BEFORE UPDATE OR DELETE ON notas_aclaratorias
+  FOR EACH ROW EXECUTE FUNCTION fn_proteger_nota_aclaratoria();
+
+-- Las historias de antes pasan a ser la primera valoración de cada deportista: cerrada, con su fecha y su autor.
+-- No tienen código de integridad (se registraron antes de que existiera). La tabla vieja queda solo de lectura.
+INSERT INTO valoraciones (jugador_id, profesional_id, tipo, fecha_hora, estado, contenido, quien_atiende, cerrada_en, origen)
+SELECT h.jugador_id, u.id, 'registro_previo', h.updated_at, 'cerrada',
+       jsonb_strip_nulls(jsonb_build_object(
+         'antecedentes', jsonb_strip_nulls(jsonb_build_object(
+           'personales', NULLIF(btrim(h.antecedentes), ''), 'alergias', NULLIF(btrim(h.alergias), ''),
+           'medicamentos', NULLIF(btrim(h.medicamentos), ''), 'cirugias', NULLIF(btrim(h.cirugias), ''),
+           'enfermedades', NULLIF(btrim(h.enfermedades), ''), 'historial_deportivo', NULLIF(btrim(h.historial_deportivo), ''))),
+         'observaciones', NULLIF(btrim(h.observaciones), ''))),
+       CASE WHEN u.id IS NULL THEN NULL
+            ELSE jsonb_build_object('usuario_id', u.id, 'nombre', u.nombre, 'descripcion', 'Registro anterior a la v2.7') END,
+       h.updated_at, 'migrada'
+  FROM historias_clinicas h LEFT JOIN usuarios u ON u.id = h.actualizado_por
+ WHERE NOT EXISTS (SELECT 1 FROM valoraciones v WHERE v.origen = 'migrada' AND v.jugador_id = h.jugador_id);
+
+-- -------------------------------------------------------
+-- v2.7 (igual que migrations/014_conservacion.sql)
+-- -------------------------------------------------------
+-- Conservación (T0.4, Res. 839 de 2017): el deportista se retira en lugar de borrarse, y un trigger impide borrar
+-- a quien tiene historia clínica o una lesión con seguimientos (salvo en modo de mantenimiento).
+ALTER TABLE jugadores
+  ADD COLUMN IF NOT EXISTS activo        BOOLEAN NOT NULL DEFAULT TRUE,
+  ADD COLUMN IF NOT EXISTS retirado_en   TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS motivo_retiro VARCHAR(200);
+CREATE INDEX IF NOT EXISTS idx_jugadores_activo ON jugadores(activo);
+
+CREATE OR REPLACE FUNCTION fn_proteger_jugador_con_historia() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN RETURN OLD; END IF;
+  IF EXISTS (SELECT 1 FROM valoraciones WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM historias_clinicas WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM controles_medicos WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM lesiones WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM antropometria WHERE jugador_id = OLD.id) THEN
+    RAISE EXCEPTION 'El deportista % tiene historia clínica: no se puede eliminar. Retíralo; sus registros se conservan.', OLD.id
+      USING ERRCODE = 'check_violation', CONSTRAINT = 'jugador_con_historia_clinica';
+  END IF;
+  RETURN OLD;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_jugador_con_historia ON jugadores;
+CREATE TRIGGER trg_jugador_con_historia BEFORE DELETE ON jugadores
+  FOR EACH ROW EXECUTE FUNCTION fn_proteger_jugador_con_historia();
+
+-- Una lesión con seguimientos clínicos tampoco se borra (antes se llevaba sus seguimientos en cascada)
+CREATE OR REPLACE FUNCTION fn_proteger_lesion_con_seguimiento() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN RETURN OLD; END IF;
+  IF EXISTS (SELECT 1 FROM seguimiento_lesiones WHERE lesion_id = OLD.id) THEN
+    RAISE EXCEPTION 'La lesión % tiene seguimientos clínicos: no se puede eliminar.', OLD.id
+      USING ERRCODE = 'check_violation', CONSTRAINT = 'lesion_con_seguimiento';
+  END IF;
+  RETURN OLD;
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_lesion_con_seguimiento ON lesiones;
+CREATE TRIGGER trg_lesion_con_seguimiento BEFORE DELETE ON lesiones
+  FOR EACH ROW EXECUTE FUNCTION fn_proteger_lesion_con_seguimiento();
+
+-- -------------------------------------------------------
+-- v2.7 (igual que migrations/015_archivos_clinicos.sql)
+-- -------------------------------------------------------
+-- Archivos clínicos protegidos (T0.5): fuera de /uploads, solo por la API con sesión y permiso; no se modifican
+-- ni se borran. La regla de la T0.4 (no borrar a quien tiene historia) incluye ahora estos archivos.
+CREATE TABLE IF NOT EXISTS archivos_clinicos (
+  id              SERIAL PRIMARY KEY,
+  jugador_id      INT NOT NULL REFERENCES jugadores(id) ON DELETE CASCADE,  -- protegido por trigger (T0.4)
+  valoracion_id   INT REFERENCES valoraciones(id) ON DELETE RESTRICT,
+  tipo            VARCHAR(20) NOT NULL DEFAULT 'otro',
+  nombre_archivo  VARCHAR(80) NOT NULL UNIQUE,      -- aleatorio, en disco; nunca se envía al navegador
+  nombre_original VARCHAR(200),
+  mime            VARCHAR(40) NOT NULL,
+  tamano          INT NOT NULL,
+  sha256          CHAR(64) NOT NULL,
+  descripcion     VARCHAR(200),
+  subido_por      INT REFERENCES usuarios(id) ON DELETE RESTRICT,
+  creado_en       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT chk_archivos_tipo CHECK (tipo IN ('consentimiento','postura','examen','otro')),
+  CONSTRAINT chk_archivos_mime CHECK (mime IN ('image/jpeg','image/png','application/pdf')),
+  CONSTRAINT chk_archivos_tamano CHECK (tamano > 0 AND tamano <= 5242880)
+);
+CREATE INDEX IF NOT EXISTS idx_archivos_jugador ON archivos_clinicos(jugador_id, creado_en DESC);
+
+CREATE OR REPLACE FUNCTION fn_proteger_archivo_clinico() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'Los archivos clínicos no se modifican ni se borran.'
+    USING ERRCODE = 'check_violation', CONSTRAINT = 'archivo_clinico_inalterable';
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_archivo_clinico ON archivos_clinicos;
+CREATE TRIGGER trg_archivo_clinico BEFORE UPDATE OR DELETE ON archivos_clinicos
+  FOR EACH ROW EXECUTE FUNCTION fn_proteger_archivo_clinico();
+
+-- La regla de la T0.4 incluye ahora los archivos clínicos: quien los tiene tampoco se puede eliminar
+CREATE OR REPLACE FUNCTION fn_proteger_jugador_con_historia() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN RETURN OLD; END IF;
+  IF EXISTS (SELECT 1 FROM valoraciones WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM historias_clinicas WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM controles_medicos WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM lesiones WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM antropometria WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM archivos_clinicos WHERE jugador_id = OLD.id) THEN
+    RAISE EXCEPTION 'El deportista % tiene historia clínica: no se puede eliminar. Retíralo; sus registros se conservan.', OLD.id
+      USING ERRCODE = 'check_violation', CONSTRAINT = 'jugador_con_historia_clinica';
+  END IF;
+  RETURN OLD;
+END $$ LANGUAGE plpgsql;
+
+-- -------------------------------------------------------
+-- v2.7 (igual que migrations/016_bitacora.sql)
+-- -------------------------------------------------------
+-- Bitácora de accesos a la historia clínica (T0.6): quién, qué y cuándo; solo se agregan filas.
+CREATE TABLE IF NOT EXISTS bitacora_clinica (
+  id              BIGSERIAL PRIMARY KEY,
+  creado_en       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  usuario_id      INT,
+  usuario_nombre  VARCHAR(100),
+  usuario_rol     VARCHAR(20),
+  jugador_id      INT,
+  accion          VARCHAR(12) NOT NULL,
+  recurso         VARCHAR(20) NOT NULL,
+  recurso_id      INT,
+  ip              VARCHAR(64),
+  CONSTRAINT chk_bitacora_accion CHECK (accion IN ('listar','ver','crear','editar','cerrar','descartar','descargar','verificar','exportar','eliminar')),
+  CONSTRAINT chk_bitacora_recurso CHECK (recurso IN ('valoracion','nota','archivo','control','seguimiento','lesion','historia','antropometria','identificacion'))
+);
+CREATE INDEX IF NOT EXISTS idx_bitacora_jugador ON bitacora_clinica(jugador_id, creado_en DESC);
+CREATE INDEX IF NOT EXISTS idx_bitacora_usuario ON bitacora_clinica(usuario_id, creado_en DESC);
+CREATE INDEX IF NOT EXISTS idx_bitacora_fecha ON bitacora_clinica(creado_en DESC);
+
+CREATE OR REPLACE FUNCTION fn_proteger_bitacora() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'La bitácora de accesos no se modifica ni se borra.'
+    USING ERRCODE = 'check_violation', CONSTRAINT = 'bitacora_inalterable';
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_bitacora ON bitacora_clinica;
+CREATE TRIGGER trg_bitacora BEFORE UPDATE OR DELETE ON bitacora_clinica
+  FOR EACH ROW EXECUTE FUNCTION fn_proteger_bitacora();
