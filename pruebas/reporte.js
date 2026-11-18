@@ -33,7 +33,9 @@ const MODULOS = {
   Inicio: ['RF-18', 'RF-21', 'RF-22', 'RF-23'], Supervisión: ['RF-19'], Equipos: ['RF-07', 'RF-24'], Partidos: ['RF-12', 'RF-20'], Deportistas: ['RF-08', 'RF-09', 'RF-25'],
   Entrenamientos: ['RF-10'], Asistencia: ['RF-11'], Estadísticas: ['RF-13'],
   Lesiones: ['RF-14'], Salud: ['RF-15', 'RF-26', 'RF-31'], Evaluaciones: ['RF-16'], Antropometría: ['RF-17'], Usuarios: ['RF-03'],
+  Pacientes: ['RF-26'], // v2.8 (T1.3)
 };
+const TOTAL_MODULOS = Object.keys(MODULOS).length;
 
 // ── Clasificación de los casos por su identificador ──────────
 function clasificar(id) {
@@ -126,12 +128,21 @@ function defectos() {
 const MET = path.join(RES, 'ui-metricas');
 const medida = (n) => leerJSON(path.join(MET, `${n}.json`), null);
 
+// M-E3 (definición de la v2.8): lo que se descarga AL ABRIR la aplicación, es decir, lo que index.html pide
+// (script principal, módulos precargados y estilos), comprimido con gzip. Las pantallas se cargan por partes
+// cuando se abren, así que sumar todo el build castigaba cada pantalla nueva aunque el inicio siguiera igual de
+// liviano. El total del build se informa aparte, como dato.
 function tamanoBuild() {
   const dir = path.join(RAIZ, 'dist', 'assets');
-  if (!fs.existsSync(dir)) return null;
-  let bytes = 0;
-  for (const f of fs.readdirSync(dir)) if (/\.(js|css)$/.test(f)) bytes += zlib.gzipSync(fs.readFileSync(path.join(dir, f))).length;
-  return Math.round(bytes / 1024);
+  const html = path.join(RAIZ, 'dist', 'index.html');
+  if (!fs.existsSync(dir) || !fs.existsSync(html)) return null;
+  const gz = (f) => zlib.gzipSync(fs.readFileSync(path.join(dir, f))).length;
+  let total = 0;
+  for (const f of fs.readdirSync(dir)) if (/\.(js|css)$/.test(f)) total += gz(f);
+  const iniciales = [...new Set([...fs.readFileSync(html, 'utf8').matchAll(/\/assets\/([^"']+\.(?:js|css))/g)].map(m => m[1]))]
+    .filter(f => fs.existsSync(path.join(dir, f)));
+  const inicial = iniciales.reduce((s, f) => s + gz(f), 0);
+  return { inicial: Math.round(inicial / 1024), total: Math.round(total / 1024) };
 }
 
 function p95ApiLectura() {
@@ -196,7 +207,7 @@ function calcular(casos, defs) {
     M('M-F4', 'Funcionalidad', 'Control de acceso por rol', pct(aprobados(acceso) + negados.filter(r => r.destino === '/').length, acceso.length + negados.length), `${aprobados(acceso) + negados.filter(r => r.destino === '/').length} de ${acceso.length + negados.length} intentos rechazados`, '100 %', semaforo(pct(aprobados(acceso) + negados.filter(r => r.destino === '/').length, acceso.length + negados.length), 100, null)),
     M('M-F5', 'Funcionalidad', 'Resistencia a inyección', pct(aprobados(inyeccion), inyeccion.length), `${aprobados(inyeccion)} de ${inyeccion.length}`, '100 %', semaforo(pct(aprobados(inyeccion), inyeccion.length), 100, null)),
     M('M-F6', 'Funcionalidad', 'Importación CSV correcta', pct(aprobados(con(/^CP-CSV/)), con(/^CP-CSV/).length), `${aprobados(con(/^CP-CSV/))} de ${con(/^CP-CSV/).length} casos`, '100 %', semaforo(pct(aprobados(con(/^CP-CSV/)), con(/^CP-CSV/).length), 100, 95)),
-    M('M-R1', 'Fiabilidad', 'Densidad de defectos abiertos', Math.round((abiertos.length / 13) * 100) / 100, `${abiertos.length} abiertos ÷ 13 módulos`, '≤ 1', semaforo(Math.round((abiertos.length / 13) * 100) / 100, 1, 2, true)),
+    M('M-R1', 'Fiabilidad', 'Densidad de defectos abiertos', Math.round((abiertos.length / TOTAL_MODULOS) * 100) / 100, `${abiertos.length} abiertos ÷ ${TOTAL_MODULOS} módulos`, '≤ 1', semaforo(Math.round((abiertos.length / TOTAL_MODULOS) * 100) / 100, 1, 2, true)),
     M('M-R2', 'Fiabilidad', 'Pruebas automáticas en verde', pct(aprobados(noTodo), noTodo.length), `${aprobados(noTodo)} de ${noTodo.length} (sin contar defectos conocidos)`, '100 %', semaforo(pct(aprobados(noTodo), noTodo.length), 100, null)),
     M('M-R3', 'Fiabilidad', 'Manejo de entradas inválidas', pct(aprobados(robustez), robustez.length), `${aprobados(robustez)} de ${robustez.length} casos`, '100 %', semaforo(pct(aprobados(robustez), robustez.length), 100, 90)),
     M('M-R4', 'Fiabilidad', 'Aviso y reintento sin servidor', pct(caida.filter(x => x.ok).length, caida.length), `${caida.filter(x => x.ok).length} de ${caida.length} pantallas`, '≥ 90 %', semaforo(pct(caida.filter(x => x.ok).length, caida.length), 90, 70)),
@@ -207,10 +218,11 @@ function calcular(casos, defs) {
     M('M-U5', 'Usabilidad', 'Pantallas sin problemas graves de accesibilidad', pct(acc.filter(a => a.graves === 0).length, acc.length), `${acc.filter(a => a.graves === 0).length} de ${acc.length} pantallas`, '100 %', semaforo(pct(acc.filter(a => a.graves === 0).length, acc.length), 100, 80)),
     M('M-E1', 'Eficiencia', 'Tiempo de respuesta de la API (p95)', api?.p95 ?? null, api ? `${api.p95} ms (${api.muestras} lecturas)` : 'sin datos', '≤ 500 ms', semaforo(api?.p95 ?? null, 500, 1000, true)),
     M('M-E2', 'Eficiencia', 'Carga del inicio en 4G lento', mediana(carga.map(c => c.segundos)), carga.length ? `${mediana(carga.map(c => c.segundos))} s (mediana de ${carga.length})` : 'sin datos', '≤ 3 s', semaforo(mediana(carga.map(c => c.segundos)), 3, 5, true)),
-    M('M-E3', 'Eficiencia', 'Tamaño de descarga (gzip)', build, build !== null ? `${build} KB` : 'sin build', '≤ 300 KB', semaforo(build, 300, 450, true)),
+    M('M-E3', 'Eficiencia', 'Descarga al abrir la app (gzip)', build?.inicial ?? null,
+      build ? `${build.inicial} KB (la app completa: ${build.total} KB, se carga por partes)` : 'sin build', '≤ 300 KB', semaforo(build?.inicial ?? null, 300, 450, true)),
     M('M-M1', 'Mantenibilidad', 'Tiempo medio de corrección', mttr !== null ? Math.round(mttr * 10) / 10 : null, mttr !== null ? `${Math.round(mttr * 10) / 10} días (${cerrados.length} defectos cerrados)` : 'sin datos', '≤ 3 días', semaforo(mttr !== null ? Math.round(mttr * 10) / 10 : null, 3, 7, true)),
     M('M-M2', 'Mantenibilidad', 'Regresiones', ejecutados.filter(c => c.estado === 'fallido').length, `${ejecutados.filter(c => c.estado === 'fallido').length} casos que fallan sin defecto registrado`, '0', semaforo(ejecutados.filter(c => c.estado === 'fallido').length, 0, null, true)),
-    M('M-M3', 'Mantenibilidad', 'Módulos con pruebas automáticas', pct(modulosCubiertos.length, 13), `${modulosCubiertos.length} de 13 módulos`, '≥ 80 %', semaforo(pct(modulosCubiertos.length, 13), 80, 60)),
+    M('M-M3', 'Mantenibilidad', 'Módulos con pruebas automáticas', pct(modulosCubiertos.length, TOTAL_MODULOS), `${modulosCubiertos.length} de ${TOTAL_MODULOS} módulos`, '≥ 80 %', semaforo(pct(modulosCubiertos.length, TOTAL_MODULOS), 80, 60)),
     M('M-M4', 'Mantenibilidad', 'Trazabilidad de cambios', traza.valor, traza.texto, '100 %', semaforo(traza.valor, 100, 90)),
     M('M-P1', 'Portabilidad', 'Pantallas sin desborde', pct(recorrido.filter(r => r.desborde <= 0).length, recorrido.length), `${recorrido.filter(r => r.desborde <= 0).length} de ${recorrido.length} combinaciones`, '100 %', semaforo(pct(recorrido.filter(r => r.desborde <= 0).length, recorrido.length), 100, 95)),
     M('M-P2', 'Portabilidad', 'Navegadores compatibles', navegadores.length, `${navegadores.length} de 3 (${navegadores.join(', ') || 'ninguno'})`, '3 de 3', semaforo(navegadores.length, 3, 2)),

@@ -49,7 +49,9 @@ export default function BloqueoInactividad() {
   // Actividad y reloj
   useEffect(() => {
     if (!aplica || bloqueado) return undefined
-    const alActuar = () => { marcarActividad(); setAviso(false) }
+    // Solo marca la actividad: el aviso se quita con el reloj (en menos de 1 s) o con su botón. Si se quitara aquí,
+    // el primer contacto del dedo con "Sigo aquí" lo haría desaparecer antes de que el botón recibiera el toque.
+    const alActuar = () => marcarActividad()
     EVENTOS.forEach(e => window.addEventListener(e, alActuar, { capture: true, passive: true }))
     const reloj = setInterval(() => {
       const ultimaVez = Math.max(ultima.current, Number(leer(CLAVE_ACTIVIDAD)) || 0)

@@ -57,8 +57,8 @@ test('CP-UI-HC-004 [RF-26][RNF-04] En el celular, salud registra una valoración
   await expect(detalle.getByText('La valoración no ha cambiado desde que se cerró.')).toBeVisible();
   expect(await desborde(page)).toBeLessThanOrEqual(0);
 
-  await page.keyboard.press('Escape');
-  await detalle.getByRole('button', { name: 'Cerrar' }).first().click().catch(() => {});
+  await page.keyboard.press('Escape'); // v2.8 (T1.6): Escape cierra la ventana
+  await expect(page.locator('.modal-box')).toHaveCount(0);
   await expect(page.locator('.valoracion-item', { hasText: 'Inicial' }).first()).toContainText('Cerrada');
   await page.context().close();
 });

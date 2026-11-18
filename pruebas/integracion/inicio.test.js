@@ -2,7 +2,7 @@
 // Usa el plantel de demostración (23 jugadores del entrenador, 3 lesionados, 2 con restricciones).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
 
 const datos = {};
 test.before(async () => {
@@ -91,4 +91,33 @@ test('CP-INI-011 [RF-05] Nadie ve la vista de un deportista fuera de su alcance'
   const r = await llamar('GET', `/api/dashboard/inicio?jugador_id=${deCesar.id}`, await token('jugador'));
   assert.equal(r.status, 200);
   assert.deepEqual(r.datos.plantel.map(j => j.id), propio);
+});
+
+test('CP-INI-012 [RF-26][RNF-02] El inicio del personal de salud trae sus pendientes, cada uno con lo necesario para abrir su registro (v2.8, T1.5)', async () => {
+  const salud = await token('salud');
+  const { rows: [{ id: mateo }] } = await sql(`SELECT id FROM jugadores WHERE numero_documento = '1090000015'`);
+  const { rows: [{ id: tomas }] } = await sql(`SELECT id FROM jugadores WHERE numero_documento = '1090000023'`);
+  const borrador = (await llamar('POST', '/api/valoraciones', salud, { jugador_id: mateo, contenido: { motivo_consulta: 'ZZ inicio borrador' } })).datos;
+  await sql(`INSERT INTO controles_medicos (jugador_id, fecha, proxima_fecha, tipo, aptitud) VALUES ($1, CURRENT_DATE, CURRENT_DATE + 3, 'ZZ inicio control', 'apto')`, [tomas]);
+  try {
+    const p = (await llamar('GET', '/api/dashboard/inicio', salud)).datos.pendientes_salud;
+    // Sus borradores, con el id para abrirlos desde la ficha
+    assert.ok(p.borradores.some(b => b.id === borrador.id && b.jugador_id === mateo && b.tipo_nombre === 'Control'));
+    // Controles: primero los vencidos, después los de los próximos 7 días
+    assert.ok(p.controles.some(c => c.nombre === 'Daniel Rincón' && c.vencido));
+    const semana = p.controles.find(c => c.jugador_id === tomas);
+    assert.equal(semana.vencido, false);
+    assert.ok(p.controles.findIndex(c => !c.vencido) > p.controles.findLastIndex(c => c.vencido), 'vencidos primero');
+    // Aptitud y lesiones, con el control y la lesión que abre la ficha
+    const andres = p.aptitud.find(a => a.nombre === 'Andrés Contreras');
+    assert.ok(andres.control_id && andres.aptitud === 'apto_restricciones');
+    const pedro = p.lesiones.find(l => l.nombre === 'Pedro Ramírez');
+    assert.ok(pedro.lesion_id && pedro.lesion === 'Esguince de tobillo' && pedro.dias >= 0);
+    assert.ok(p.antropometria > 0);
+  } finally {
+    await sqlMantenimiento(`DELETE FROM valoraciones WHERE contenido->>'motivo_consulta' = 'ZZ inicio borrador'`);
+    await sqlMantenimiento(`DELETE FROM controles_medicos WHERE tipo = 'ZZ inicio control'`);
+  }
+  // Los demás roles no reciben los pendientes clínicos
+  for (const rol of ['administrador', 'head_coach', 'entrenador', 'jugador']) assert.equal(datos[rol].pendientes_salud, null, rol);
 });

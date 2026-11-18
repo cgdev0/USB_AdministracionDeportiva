@@ -3,6 +3,139 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v2.8 — Espacio de trabajo de salud adaptable *(en desarrollo)*
+
+**Etiqueta:** `v2.8` (al terminar la Fase 1 del plan `docs/plan/plan_historia_clinica.md`).
+
+**T1.1 · Componentes para formularios clínicos** (`frontend/src/components/clinico/`)
+- **`FormularioPorSecciones`:** en el celular, una sección por pantalla ("Paso 2 de 9" con barra de avance); en la tableta vertical, índice desplegable; en la tableta horizontal y el computador, índice lateral con el estado de cada sección (completa, no evaluada o pendiente).
+- **`BarraAcciones`:** fija abajo, encima del menú inferior. En el celular queda en una sola fila: flechas de Anterior y Siguiente, y la acción principal grande.
+- **`CampoMedida`:** número con su unidad visible, teclado numérico y coma decimal. Muestra un aviso, sin bloquear, si el valor sale del rango habitual, y un error si es imposible.
+- **`OpcionesBoton` y `SelectorLado`:** opciones como botones grandes (Normal/Alterado, Positivo/Negativo/No concluyente, Derecho/Izquierdo/Bilateral).
+- **`CampoFoto`:** tomar foto con la cámara trasera o elegir un archivo. Endereza la foto, la reduce a 1600 px en JPG antes de subirla, muestra la vista previa y acepta PDF.
+- **`EstadoGuardado`:** "Guardado hace 5 s", "Guardando…", "Sin conexión".
+- **`SeccionOpcional`:** interruptor "No evaluado", que deja constancia de lo que no se evaluó.
+- **Página `/catalogo-clinico`:** solo existe en la compilación de pruebas (`VITE_CATALOGO=1`); en Railway no se compila.
+
+Pruebas: CP-UI-SAL-003 a 007 en 5 anchos (360, 390, 768, 1024 y 1440 px), con objetivos táctiles de 44 px y accesibilidad (axe).
+
+**T1.2 · Guardado automático del borrador y ediciones simultáneas**
+- **Cuándo se guarda la valoración en borrador:**
+  - sola, cada 20 segundos si hay cambios;
+  - al ocultarse la página (cambiar de aplicación o bloquear el celular);
+  - al pulsar *Guardar borrador*;
+  - al cerrar la ventana.
+- **Estado visible arriba:** "Cambios sin guardar", "Guardando…", "Guardado hace 5 s" o "Sin conexión: se guardará cuando vuelva la señal".
+- **Sin señal:** lo escrito espera en memoria, nunca en el almacenamiento del navegador, y se guarda en cuanto vuelve la conexión (se reintenta cada 5 segundos).
+- **Dos dispositivos:**
+  - si el borrador cambió en otro, el servidor responde 409 y aparece el aviso con *Usar la versión guardada* o *Guardar la mía encima*;
+  - nunca se pisa en silencio;
+  - si se cerró en el otro dispositivo, se abre la valoración cerrada.
+- **Al salir con cambios sin guardar:** el navegador pide confirmación al salir de la página; la ventana primero intenta guardar y, si no puede, pregunta.
+- **Consecuencia para el bloqueo por inactividad (T0.8):** cuando llega el bloqueo, el borrador ya está guardado, así que recargar no pierde nada.
+- **Código:** hook reutilizable `usarGuardadoAutomatico` y editor separado en `EditorValoracion.jsx`.
+
+Pruebas: CP-HC-018 (dos dispositivos con la misma cuenta) y CP-UI-SAL-008 (celular, con reloj simulado y red cortada). Las pruebas del bloqueo limpian los borradores que ahora quedan guardados.
+
+**T1.3 · Lista de pacientes** (`/pacientes`, solo personal de salud)
+- **Para qué:** encontrar a un deportista en segundos desde el celular. *Pacientes* aparece en el menú inferior del personal de salud.
+- **Búsqueda:**
+  - por nombre, sin importar tildes ni mayúsculas ("tomas" encuentra a Tomás);
+  - por documento, con o sin puntos;
+  - por dorsal (`#10`).
+- **Filtros rápidos con conteo:** lesión activa, borrador sin cerrar, control vencido, sin documento e incluir retirados; además, equipo y el selector de deporte de la app.
+- **Cada paciente muestra:** foto, documento, deporte y equipo, disponibilidad (con la misma regla del inicio) y avisos: alergias de la última valoración cerrada, lesión con retorno estimado, restricciones, borradores, control vencido, sin documento, menor de edad y retirado.
+- **Vista:** tarjetas grandes en el celular y la tableta; tabla en el computador.
+- **Al tocar un paciente:** se abren sus valoraciones en *Salud* con el deportista ya elegido. La ficha clínica llega con la T1.4.
+- **Bitácora:** cada consulta de la lista queda registrada (migración `017_bitacora_paciente.sql`, que agrega el recurso `paciente`).
+- **Informe de calidad:** la aplicación pasa de 13 a 14 módulos. M-R1 y M-M3 ya no tienen el 13 fijo: cuentan los módulos del catálogo del informe.
+
+Pruebas: CP-HC-019 (API: datos, retirados, permisos y bitácora) y CP-UI-SAL-009 (celular: documento encontrado en 2 toques, búsqueda sin tildes y por dorsal, filtro de lesión activa; computador: tabla).
+
+**T1.4 · Ficha clínica del deportista** (`/pacientes/:id`, solo personal de salud)
+- **Para qué:** todo lo clínico del deportista en una pantalla. Se abre al tocar un paciente de la lista.
+- **Encabezado:** foto, nombre, documento, edad, deporte, equipo, disponibilidad y los avisos (alergias, lesión activa, restricciones, borradores, control vencido, sin documento, menor de edad y retirado). Se ve en todas las pestañas.
+- **Resumen:**
+  - estado (lesión activa con retorno estimado, último y próximo control);
+  - antecedentes de la última valoración cerrada;
+  - última medición antropométrica;
+  - identificación y contacto, con los teléfonos listos para llamar desde el celular.
+- **Historia:**
+  - valoraciones, controles, lesiones con sus seguimientos, mediciones y archivos clínicos, del más reciente al más antiguo, con filtros por tipo;
+  - cada registro se abre desde aquí, y los archivos clínicos se descargan (hasta ahora no tenían pantalla).
+- **Accesos:** quién consultó la historia, desde la misma ficha.
+- **Nueva valoración:** a 1 toque, fija abajo en el celular y en el encabezado en el computador. Propone los antecedentes de la valoración anterior. Si quien atiende tiene un borrador abierto, aparece *Continuar borrador*.
+- **Por dispositivo:**
+  - celular y tableta vertical: pestañas *Resumen*, *Historia* y *Accesos*, que se recorren también con las flechas del teclado;
+  - tableta horizontal y computador: resumen a la izquierda e historia a la derecha.
+- **Bitácora:** abrir la ficha trae todo en una sola consulta y deja una sola entrada: "abrió la ficha clínica".
+- **Arreglo de paso:** el borrador de otra persona ya no se muestra como "Cerrada el…". Ahora dice que es un borrador y que solo quien lo abrió puede editarlo o cerrarlo.
+- **Pendiente para la Fase 2:** el aviso y la pestaña de consentimientos, y exigir el consentimiento firmado para iniciar una valoración (D2).
+
+Pruebas:
+- **CP-HC-020 (API):** identificación, estado, cada tipo de registro, una sola entrada en la bitácora y permisos.
+- **CP-UI-SAL-010 (celular):**
+  - avisos;
+  - abrir cada tipo de registro y descargar un archivo;
+  - accesos;
+  - *Nueva valoración* en 1 toque;
+  - sin desborde en 360 px.
+- **CP-UI-SAL-011 (computador y tableta):**
+  - dos columnas;
+  - teclado (Enter y flechas);
+  - borrador que se continúa;
+  - administrador y entrenador sin acceso.
+- **Mediciones:** la ficha entra en la medición de accesibilidad (axe: 0 problemas graves) y de objetivos táctiles (15 de 15 de 44 px).
+
+**T1.5 · Inicio del personal de salud**
+- **Pendientes de salud:** primero en el celular y arriba de la columna principal en el computador. Agrupa:
+  - sus borradores sin cerrar;
+  - los controles médicos vencidos y los de los próximos 7 días;
+  - los deportistas no aptos o con restricciones;
+  - las lesiones activas;
+  - cuántos deportistas no tienen antropometría este semestre.
+- **Cada aviso lleva a su registro:**
+  - el borrador se abre listo para seguir escribiendo;
+  - la lesión, con sus seguimientos;
+  - la restricción, con el control médico que la puso;
+  - el control vencido, en el formulario con el deportista ya elegido y el cursor en el primer campo.
+- **Listas largas:** cada grupo muestra 5 avisos, con un botón *Ver los N* para el resto.
+- **Ficha clínica:** acepta `?abrir=lesion-12` (o `valoracion-`, `control-`, `medicion-`) para abrir ese registro al entrar; el parámetro se quita de la dirección.
+- **Disponibilidad del plantel:** para el personal de salud, tocar un dorsal abre la ficha clínica.
+- **Mi sesión:** el botón principal ahora es *Buscar paciente*.
+- **Menú inferior:** queda *Inicio, Pacientes, Lesiones, Salud* y *Más*. Salud se conserva porque ahí se registran los controles médicos.
+- **Otros roles:** siguen con *Para revisar* y no reciben los pendientes clínicos.
+- **Pendiente para la Fase 2:** los consentimientos pendientes.
+
+Pruebas:
+- **CP-INI-012 (API):** borradores propios, controles con los vencidos primero, aptitud y lesiones con el registro que abren; los demás roles no los reciben.
+- **CP-UI-SAL-012 (celular):** cada tipo de aviso lleva a su registro; en el computador el dorsal abre la ficha; el entrenador no ve los pendientes clínicos.
+
+**T1.6 · Computador, teclado y tableta horizontal**
+- **Ventanas con teclado** (todas, no solo las clínicas):
+  - Escape cierra la ventana de arriba; una confirmación sobre un formulario se cierra sola;
+  - Tab no se sale a la página de atrás;
+  - al cerrar, el foco vuelve al botón que la abrió;
+  - se anuncian como diálogo a los lectores de pantalla (DEF-059).
+- **Enter guarda** en las ventanas de Deportistas (registrar o editar, identificación y retirar); en un texto largo, Enter sigue siendo salto de línea.
+- **Ctrl+S (Cmd+S en Mac)** guarda el borrador de la valoración, en lugar de abrir "Guardar página como…".
+- **Tableta horizontal (1024 × 768)** en todas las pruebas de anchos, incluido el recorrido de los 5 roles por todos los módulos, y el giro de vertical a horizontal: la ficha pasa de pestañas a dos columnas y el formulario por secciones, de índice desplegable a índice lateral.
+- **Lista de pacientes:** tarjetas hasta 1279 px y tabla desde 1280 px. En la tableta horizontal la tabla desbordaba la página (DEF-060).
+- **Arreglo de paso:** las tablas ya no dejan salir los textos ocultos para lectores de pantalla.
+- **Requisitos:** RNF-12 nuevo (pantallas del personal de salud en celular, tableta y computador, también con teclado). `DESIGN.md` tiene una sección nueva con las reglas, los componentes y los patrones del espacio de salud, con capturas.
+- **Defectos registrados y cerrados:** DEF-057 (toque perdido en el aviso de bloqueo, de la T1.2), DEF-058 (borrador ajeno mostrado como cerrado, de la T1.4), DEF-059, DEF-060 y DEF-061 (enlace del panel de pendientes que solo se distinguía por el color).
+- **Ensayo de migración:** una base creada con el despliegue de la v2.7 (plantel de demostración y datos clínicos) pasó dos veces por el despliegue de la v2.8 sin perder registros.
+
+Pruebas:
+- **CP-UI-PC-001:** giro de la tableta.
+- **CP-UI-PC-002 a 004:** identificación, valoración (abrir, Ctrl+S, Escape, firmar y nota) y retirar y reactivar, en computador con teclado.
+- **CP-UI-RES-005:** lista y ficha en los 5 anchos.
+- **CP-UI-HC-008:** borrador de otra persona.
+
+**Informe de calidad:** la métrica M-E3 ahora mide lo que se descarga **al abrir** la aplicación (unos 121 KB en la v2.7), en lugar del total del build (309 KB en la v2.7), que se sigue mostrando como dato. Las pantallas se cargan por partes; con la definición anterior, cada pantalla nueva castigaba la métrica aunque el inicio siguiera igual de liviano. Detalle en `docs/calidad/02_metricas.md`.
+
+**Corrección del bloqueo por inactividad (T0.8):** el primer contacto del dedo con *Sigo aquí* hacía desaparecer el aviso antes de que el botón recibiera el toque, y según la velocidad del equipo el toque se perdía. Ahora el contacto solo marca actividad: el aviso se quita con su botón o, como mucho, un segundo después. Lo detectó la corrida completa de pruebas; se confirmó repitiendo la prueba 4 veces.
+
 ## v2.7 — Historia clínica: base legal y de seguridad
 
 **Etiqueta:** `v2.7` · Fase 0 del plan `docs/plan/plan_historia_clinica.md` · Migraciones `011_identificacion.sql` a `016_bitacora.sql`.

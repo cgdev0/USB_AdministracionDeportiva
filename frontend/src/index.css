@@ -398,7 +398,7 @@ a, button, select, summary, label, [role="button"] { -webkit-tap-highlight-color
 .stat-card-label { font: 600 13px/1.2 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--texto-suave); }
 
 /* Tablas */
-.table-wrapper, .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--blanco); border-radius: var(--radius-lg); }
+.table-wrapper, .table-container { position: relative; /* v2.8: los textos ocultos (sr-only) no se salen de la tabla */ overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--blanco); border-radius: var(--radius-lg); }
 .card > .table-wrapper, .card[style*="padding: 0"] .table-wrapper { border-radius: inherit; }
 table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 thead { background: var(--superficie-2); }
@@ -1404,3 +1404,220 @@ details.ident-grupo[open] { padding-bottom: 16px; }
 .aviso-inactividad p { margin: 0; flex: 1 1 220px; }
 .aviso-inactividad i { color: var(--lima); margin-right: 6px; }
 @media (min-width: 1024px) { .aviso-inactividad { bottom: 24px; } }
+
+/* ── v2.8 (T1.1): componentes de los formularios clínicos (celular, tableta y computador) ── */
+/* Barra de acciones fija: encima del menú inferior en celular y tableta; al pie del formulario en computador */
+.barra-acciones {
+  position: sticky; bottom: calc(var(--alto-menu-inferior) + env(safe-area-inset-bottom)); z-index: 20;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; padding: 10px 0;
+  background: rgba(255,255,255,.96); border-top: 1px solid var(--borde-claro);
+}
+.modal-box .barra-acciones { bottom: 0; }
+@media (min-width: 1024px) { .barra-acciones { bottom: 0; } }
+@media (max-width: 719px) {
+  .barra-acciones { flex-wrap: nowrap; }
+  .barra-acciones .btn { flex: 1 1 auto; justify-content: center; min-height: 48px; }
+  .barra-acciones .fps-nav { flex: 0 0 52px; padding: 0; }
+}
+
+/* Formulario por secciones: pasos (celular), índice desplegable (tableta) o índice lateral (amplio) */
+.fps { display: grid; gap: 18px; min-width: 0; }
+.fps-amplio { grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); align-items: start; }
+.fps-cuerpo { min-width: 0; }
+.fps-indice { position: sticky; top: 16px; }
+.fps-indice ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.fps-item {
+  width: 100%; min-height: 44px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer;
+  border: 1px solid transparent; border-radius: 10px; background: none; font: inherit; text-align: left; color: var(--texto);
+}
+.fps-item[aria-current="step"] { background: var(--lima-suave); border-color: var(--verde); font-weight: 700; }
+.fps-item.estado-completa i { color: var(--verde-texto); }
+.fps-item.estado-no_evaluado i, .fps-item.estado-pendiente i { color: var(--texto-suave); }
+.fps-item:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .fps-item:hover:not([aria-current="step"]) { background: var(--superficie-2); } }
+.fps-selector { margin-bottom: 14px; }
+.fps-pasos { display: grid; gap: 6px; margin-bottom: 12px; font: 700 14px var(--display); text-transform: uppercase; letter-spacing: .06em; color: var(--verde-texto); }
+.fps-barra { height: 6px; border-radius: 999px; background: var(--borde-claro); overflow: hidden; }
+.fps-barra span { display: block; height: 100%; background: var(--verde); border-radius: inherit; transition: width var(--dur-media) ease; }
+.fps-seccion { display: grid; gap: 12px; min-width: 0; }
+.fps-seccion h3 { margin: 0 0 4px; font: 800 20px/1.2 var(--display); text-transform: uppercase; letter-spacing: .04em; color: var(--tinta); outline: none; scroll-margin-top: 90px; }
+
+/* Medida con su unidad, teclado numérico y avisos de rango */
+.campo-medida-caja { position: relative; display: flex; }
+.campo-medida-caja input { padding-right: 64px !important; font-variant-numeric: tabular-nums; }
+.campo-medida-unidad { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--texto-suave); pointer-events: none; }
+.campo-medida-caja.con-aviso input { border-color: var(--aviso-borde); background: var(--aviso-fondo); }
+.campo-medida-caja.con-error input { border-color: var(--error-texto); }
+.campo-medida-error { color: var(--error-texto); font-weight: 600; font-size: 13px; }
+.campo-medida-aviso { color: var(--aviso-texto); font-weight: 600; font-size: 13px; }
+
+/* Opciones como botones grandes (48 px) */
+.opciones-boton { display: flex; flex-wrap: wrap; gap: 8px; }
+.opcion-boton {
+  min-height: 48px; min-width: 88px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  border: 1.5px solid var(--borde-fuerte); border-radius: 12px; background: var(--blanco); color: var(--texto); font: 600 15px var(--font);
+}
+.opcion-boton[aria-pressed="true"] { background: var(--cancha-900); border-color: var(--cancha-900); color: #fff; }
+.opcion-boton.tono-ok[aria-pressed="true"] { background: var(--verde); border-color: var(--verde); }
+.opcion-boton.tono-alerta[aria-pressed="true"] { background: var(--error-texto); border-color: var(--error-texto); }
+.opcion-boton.tono-aviso[aria-pressed="true"] { background: var(--aviso-texto); border-color: var(--aviso-texto); }
+.opcion-boton:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+@media (max-width: 719px) { .opcion-boton { flex: 1 1 0; } }
+@media (hover: hover) and (pointer: fine) { .opcion-boton:hover:not([aria-pressed="true"]) { border-color: var(--verde); } }
+
+/* Foto o documento: cámara, galería y vista previa */
+.campo-foto-botones { display: flex; flex-wrap: wrap; gap: 8px; }
+.campo-foto-botones .btn { min-height: 48px; }
+@media (max-width: 719px) { .campo-foto-botones .btn { flex: 1 1 auto; justify-content: center; } }
+.campo-foto-vista { display: grid; gap: 8px; }
+.campo-foto-vista img { width: 100%; max-width: 420px; max-height: 320px; object-fit: contain; border-radius: 12px; border: 1px solid var(--borde-claro); background: var(--superficie-2); }
+.campo-foto-info { margin: 0; }
+.campo-foto-pdf { display: flex; align-items: center; gap: 8px; padding: 12px; border-radius: 12px; background: var(--superficie-2); overflow-wrap: anywhere; }
+.campo-foto-pdf i { color: var(--error-texto); font-size: 22px; }
+
+/* Estado del guardado */
+.estado-guardado { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 13.5px; font-weight: 600; color: var(--texto-suave); }
+.guardado-guardado i { color: var(--verde-texto); }
+.guardado-sin_conexion, .guardado-error { color: var(--aviso-texto); }
+
+/* Sección opcional con interruptor "No evaluado" */
+.seccion-opcional { padding: 14px 16px; border: 1.5px solid var(--borde-claro); border-radius: 14px; background: var(--blanco); display: grid; gap: 10px; }
+.seccion-opcional.no-evaluada { background: var(--superficie-2); border-style: dashed; }
+.seccion-opcional-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.seccion-opcional-cabecera h4 { margin: 0; font-size: 16px; }
+.seccion-opcional-nota { display: flex; gap: 8px; align-items: center; margin: 0; }
+.interruptor { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.interruptor input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.interruptor-pista { position: relative; width: 44px; height: 26px; border-radius: 999px; background: var(--borde-fuerte); transition: background var(--dur-media) ease; flex: none; }
+.interruptor-pista::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-sm); transition: transform var(--dur-media) ease; }
+.interruptor input:checked + .interruptor-pista { background: var(--verde); }
+.interruptor input:checked + .interruptor-pista::after { transform: translateX(18px); }
+.interruptor input:focus-visible + .interruptor-pista { outline: 3px solid var(--verde); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .interruptor-pista, .interruptor-pista::after, .fps-barra span { transition: none; } }
+
+/* ── v2.8 (T1.2): guardado automático y conflicto de versiones ── */
+.modal-box > .estado-guardado { margin: 0 0 12px; }
+.conflicto-version { margin-bottom: 14px; }
+.conflicto-version p { margin: 0 0 8px; }
+.conflicto-botones { display: flex; flex-wrap: wrap; gap: 8px; }
+.conflicto-botones .btn { min-height: 44px; }
+
+/* ── v2.8 (T1.3): lista de pacientes. Tarjetas grandes en celular y tableta; tabla en pantallas amplias ── */
+.pacientes-busqueda { display: grid; gap: 12px; margin-bottom: 14px; }
+.pacientes-busqueda .buscador { max-width: 560px; }
+.pacientes-busqueda .buscador input { min-height: 48px; font-size: 16px; }
+.pacientes-filtros { display: flex; flex-wrap: wrap; gap: 8px; }
+.pacientes-filtros .chip-filtro span { margin-left: 4px; font-variant-numeric: tabular-nums; opacity: .8; }
+.pacientes-equipo { max-width: 320px; }
+.pacientes-conteo { margin: 0 0 10px; font-weight: 700; color: var(--texto-suave); }
+.pacientes-tarjetas { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+@media (min-width: 720px) { .pacientes-tarjetas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.paciente-tarjeta {
+  min-height: 88px; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 14px;
+  background: var(--blanco); border: 1px solid var(--borde-claro); border-radius: 14px; color: var(--texto); text-decoration: none;
+}
+.paciente-tarjeta:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .paciente-tarjeta:hover { border-color: var(--borde-fuerte); box-shadow: var(--shadow-sm); } }
+.paciente-datos { display: grid; gap: 6px; min-width: 0; justify-items: start; }
+.paciente-datos strong { font-size: 16px; overflow-wrap: anywhere; }
+.paciente-datos small { color: var(--texto-suave); overflow-wrap: anywhere; }
+.paciente-flecha { align-self: center; color: var(--texto-suave); }
+.paciente-foto { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex: none; }
+.celda-persona .paciente-foto { width: 40px; height: 40px; }
+.paciente-foto-vacia { display: grid; place-items: center; background: var(--superficie-2); color: var(--texto-suave); font-size: 20px; }
+.paciente-avisos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.paciente-aviso { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+.paciente-aviso.tono-alerta { background: var(--error-fondo); color: var(--error-texto); }
+.paciente-aviso.tono-aviso { background: var(--aviso-fondo); color: var(--aviso-texto); }
+.paciente-aviso.tono-info { background: var(--info-fondo, #E4F1FB); color: var(--info-texto, #1D5F8C); }
+.tabla-pacientes td { vertical-align: top; }
+.tabla-pacientes .paciente-avisos { max-width: 360px; }
+
+/* ── v2.8 (T1.4): ficha clínica. Pestañas en celular y tableta vertical; dos columnas desde 1024 px ── */
+.ficha { display: grid; gap: 14px; min-width: 0; }
+.ficha-cabecera { display: grid; gap: 12px; }
+.ficha-volver { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; width: max-content; font-weight: 700; color: var(--verde-texto); text-decoration: none; }
+.ficha-volver:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; border-radius: 6px; }
+.ficha-persona { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 14px; }
+.ficha-persona .ficha-foto { width: 64px; height: 64px; font-size: 26px; }
+.ficha-identidad { display: grid; gap: 4px; justify-items: start; min-width: 0; }
+.ficha-identidad h1 { margin: 0; font-size: 22px; line-height: 1.2; overflow-wrap: anywhere; }
+.ficha-identidad p { margin: 0; color: var(--texto-suave); overflow-wrap: anywhere; }
+.ficha-acciones { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+@media (min-width: 1024px) { .ficha-persona { grid-template-columns: 72px minmax(0, 1fr) auto; } .ficha-persona .ficha-foto { width: 72px; height: 72px; } }
+.ficha-cabecera .paciente-aviso { font-size: 13.5px; padding: 5px 11px; }
+
+.ficha-pestanas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; background: var(--superficie-2); border: 1px solid var(--borde-claro); border-radius: 12px; }
+.ficha-pestanas [role="tab"] {
+  min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 9px;
+  background: none; font: inherit; font-weight: 700; color: var(--texto-suave); cursor: pointer;
+}
+.ficha-pestanas [role="tab"][aria-selected="true"] { background: var(--blanco); color: var(--texto); box-shadow: var(--shadow-sm); }
+.ficha-pestanas [role="tab"]:focus-visible { outline: 3px solid var(--verde); outline-offset: 1px; }
+.ficha-pestana-conteo { min-width: 22px; padding: 0 6px; border-radius: 999px; background: var(--borde-claro); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ficha-panel { min-width: 0; }
+
+.ficha-columnas { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.ficha-columnas > aside { min-width: 0; }
+.ficha-resumen { display: grid; gap: 12px; min-width: 0; }
+.ficha-bloque h2, .ficha-historia h2, .ficha-subtitulo { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 16px; }
+.ficha-datos { margin: 0; display: grid; gap: 8px; }
+.ficha-datos > div { display: grid; grid-template-columns: minmax(110px, 38%) minmax(0, 1fr); gap: 10px; }
+.ficha-datos dt { color: var(--texto-suave); font-size: 13.5px; }
+.ficha-datos dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.ficha-datos .dato-alerta dd { color: var(--error-texto); font-weight: 700; }
+.ficha-datos-cifras { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.ficha-datos-cifras > div { display: grid; grid-template-columns: 1fr; gap: 2px; padding: 8px 10px; background: var(--superficie-2); border-radius: 10px; }
+.ficha-datos-cifras dd { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.ficha-historia .pacientes-filtros { margin-bottom: 12px; }
+.ficha-linea { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ficha-item {
+  width: 100%; min-height: 64px; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--borde-claro); border-radius: 12px; background: var(--blanco); font: inherit; text-align: left;
+  color: var(--texto); cursor: pointer;
+}
+.ficha-item:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .ficha-item:hover { border-color: var(--borde-fuerte); box-shadow: var(--shadow-sm); } }
+.ficha-item-icono { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: var(--superficie-2); color: var(--texto-suave); }
+.ficha-item.tipo-valoracion .ficha-item-icono { background: var(--ok-fondo); color: var(--ok-texto); }
+.ficha-item.tipo-lesion .ficha-item-icono { background: var(--error-fondo); color: var(--error-texto); }
+.ficha-item.tipo-control .ficha-item-icono { background: var(--info-fondo); color: var(--info-texto); }
+.ficha-item.tipo-medicion .ficha-item-icono { background: var(--aviso-fondo); color: var(--aviso-texto); }
+.ficha-item-cuerpo { display: grid; gap: 2px; min-width: 0; }
+.ficha-item-cuerpo strong { overflow-wrap: anywhere; }
+.ficha-item-cuerpo small { color: var(--texto-suave); overflow-wrap: anywhere; }
+.ficha-item-fecha { font-size: 12.5px; font-weight: 700; color: var(--texto-suave); font-variant-numeric: tabular-nums; }
+/* Llamar desde el celular: el teléfono del deportista o del contacto de emergencia es un objetivo táctil completo */
+@media (pointer: coarse) { .ficha-datos a { display: inline-flex; align-items: center; min-height: 44px; } }
+@media (max-width: 719px) {
+  .ficha-item { grid-template-columns: 36px minmax(0, 1fr); }
+  .ficha-item-icono { width: 36px; height: 36px; }
+  .ficha-item .badge { grid-column: 2; justify-self: start; }
+  .ficha-identidad h1 { font-size: 20px; }
+}
+
+/* ── v2.8 (T1.5): pendientes del personal de salud en el inicio; cada aviso lleva a su registro ── */
+.pend-grupo + .pend-grupo { margin-top: 16px; }
+.pend-grupo h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 14.5px; }
+.pend-conteo { min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--superficie-2); border: 1px solid var(--borde-claro); font-size: 12px; text-align: center; font-variant-numeric: tabular-nums; }
+.pend-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pend-item {
+  min-height: 52px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 12px;
+  border: 1px solid var(--borde-claro); border-left: 4px solid var(--aviso-borde); border-radius: 10px; background: var(--blanco);
+  color: var(--texto); text-decoration: none;
+}
+.pend-item.pend-alerta { border-left-color: var(--error-borde); }
+.pend-item:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .pend-item:hover { border-color: var(--borde-fuerte); box-shadow: var(--shadow-sm); } }
+.pend-texto { display: grid; gap: 2px; min-width: 0; }
+.pend-texto b { overflow-wrap: anywhere; }
+.pend-texto small { color: var(--texto-suave); overflow-wrap: anywhere; }
+.pend-alerta .pend-texto small { color: var(--error-texto); }
+.pend-accion { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--verde-texto); white-space: nowrap; }
+.pend-mas { margin-top: 6px; }
+.pend-antro { margin: 16px 0 0; }
+.pend-antro a { font-weight: 700; color: inherit; text-decoration: underline; text-underline-offset: 2px; } /* se distingue sin depender del color (axe: link-in-text-block) */
+
+/* ── v2.8 (T1.6): al abrir una ventana el foco entra a ella; la ventana misma no lleva anillo de foco ── */
+.modal-box:focus, .modal-box:focus-visible { outline: none; box-shadow: var(--shadow-lg, 0 20px 50px rgba(0,0,0,.25)); }

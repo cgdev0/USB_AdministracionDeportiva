@@ -805,6 +805,7 @@ export default function Jugadores() {
         <Modal
           title={editId ? 'Editar Deportista' : 'Registrar Nuevo Deportista'}
           onClose={closeModal}
+          onEnviar={() => { if (!saving) handleSubmit() }}
           footer={
             <>
               <button className="btn btn-ghost" onClick={closeModal}>Cancelar</button>
@@ -900,6 +901,7 @@ export default function Jugadores() {
         <Modal
           title={`Identificación: ${nombreConDorsal(selectedPlayer.nombre, selectedPlayer.dorsal)}`}
           onClose={() => setModalIdent(false)}
+          onEnviar={() => { if (!guardandoIdent) guardarIdent() }}
           footer={
             <>
               <button className="btn btn-ghost" onClick={() => setModalIdent(false)}>Cancelar</button>
@@ -918,7 +920,7 @@ export default function Jugadores() {
 
       {/* v2.7 (T0.4): retirar del plantel conservando la historia */}
       {retiro && (
-        <Modal title={`Retirar a ${retiro.nombre}`} onClose={() => setRetiro(null)}
+        <Modal title={`Retirar a ${retiro.nombre}`} onClose={() => setRetiro(null)} onEnviar={confirmarRetiro}
           footer={<>
             <button type="button" className="btn btn-ghost" onClick={() => setRetiro(null)}>Cancelar</button>
             <button type="button" className="btn btn-danger" onClick={confirmarRetiro}>

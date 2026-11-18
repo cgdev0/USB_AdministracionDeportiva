@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -22,7 +22,7 @@ const ACCIONES = {
   administrador:  [{ a: '/usuarios', texto: 'Gestionar usuarios', icono: 'fa-user-gear' }, { a: '/jugadores', texto: 'Registrar deportista' }],
   head_coach:     [{ a: '/head-coach', texto: 'Ver supervisión', icono: 'fa-binoculars' }, { a: '/jugadores', texto: 'Ver deportistas' }],
   entrenador:     [{ a: '/asistencia', texto: 'Tomar asistencia', icono: 'fa-clipboard-check' }, { a: '/entrenamientos', texto: 'Registrar entrenamiento' }],
-  personal_salud: [{ a: '/lesiones', texto: 'Registrar lesión', icono: 'fa-kit-medical' }, { a: '/salud', texto: 'Registrar control médico' }],
+  personal_salud: [{ a: '/pacientes', texto: 'Buscar paciente', icono: 'fa-hospital-user' }, { a: '/salud', texto: 'Registrar control médico' }],
   jugador:        [{ a: '/salud', texto: 'Ver mis controles', icono: 'fa-stethoscope' }, { a: '/estadisticas', texto: 'Ver mis estadísticas' }],
 }
 
@@ -74,12 +74,15 @@ export default function Dashboard() {
   }
 
   const esJugador = usuario?.rol === 'jugador'
+  // v2.8 (T1.5): el personal de salud entra directo a sus pendientes, cada uno con enlace a su registro
+  const pendientes = usuario?.rol === 'personal_salud' ? datos.pendientes_salud : null
   const deporte = selectedSport?.esTodos ? null : selectedSport?.nombre
 
   return (
     <div className="inicio">
       <h1 className="sr-only">Inicio</h1>
       <div className="inicio-columna">
+        {pendientes && <PendientesSalud p={pendientes} />}
         <BannerPartido partido={datos.proximo_partido} resumen={datos.resumen} esJugador={esJugador} rol={usuario?.rol}
           convocatoria={datos.convocatoria} onCambio={cargar} />
         {esJugador
@@ -91,7 +94,7 @@ export default function Dashboard() {
       </div>
       <div className="inicio-columna">
         <MiSesion usuario={usuario} onSalir={logout} />
-        {!esJugador && <ParaRevisar items={datos.revisar} />}
+        {!esJugador && !pendientes && <ParaRevisar items={datos.revisar} />}
         <AvisosEquipo />
         <EstaSemana items={datos.semana} />
         <Deportes />
@@ -193,6 +196,10 @@ function ResumenConvocatoria({ convocatoria: c, esJugador }) {
 function Disponibilidad({ plantel, resumen, deporte, rol }) {
   const { setSelectedSportId } = useDeporte()
   const [visto, setVisto] = useState(null)
+  const navegar = useNavigate()
+  // v2.8 (T1.5): el personal de salud abre la ficha clínica; los demás, el inicio como lo ve el deportista
+  const abreFicha = rol === 'personal_salud'
+  const tocar = (j) => (abreFicha ? navegar(`/pacientes/${j.id}`) : setVisto(j))
   return (
     <section className="panel orden-2" aria-labelledby="t-disp">
       <div className="panel-cabecera">
@@ -219,12 +226,12 @@ function Disponibilidad({ plantel, resumen, deporte, rol }) {
                 const apellido = j.nombre.split(' ').slice(-1)[0]
                 return (
                   <li key={j.id}>
-                    <button type="button" className={`ini-dorsal ${j.estado}`} onClick={() => setVisto(j)}
+                    <button type="button" className={`ini-dorsal ${j.estado}`} onClick={() => tocar(j)}
                       title={`${j.nombre}: ${e.texto}${j.motivo ? `. ${j.motivo}` : ''}`}>
                       {j.estado !== 'disponible' && <i className={`fa-solid ${e.icono} ini-dorsal-estado`} aria-hidden="true"></i>}
                       <span className="ini-dorsal-numero">{tieneDorsal(j.dorsal) ? j.dorsal : '–'}</span>
                       <span className="ini-dorsal-nombre">{apellido}</span>
-                      <span className="sr-only">{j.nombre}, {e.texto}{j.motivo ? `, ${j.motivo}` : ''}. Ver como lo ve el deportista</span>
+                      <span className="sr-only">{j.nombre}, {e.texto}{j.motivo ? `, ${j.motivo}` : ''}. {abreFicha ? 'Abrir su ficha clínica' : 'Ver como lo ve el deportista'}</span>
                     </button>
                   </li>
                 )
@@ -235,7 +242,7 @@ function Disponibilidad({ plantel, resumen, deporte, rol }) {
               <span><i className="fa-solid fa-triangle-exclamation l-aviso" aria-hidden="true"></i><b>{resumen.restringidos}</b> con restricciones</span>
               <span><i className="fa-solid fa-circle-xmark l-error" aria-hidden="true"></i><b>{resumen.no_disponibles}</b> no disponibles</span>
             </p>
-            <p className="ini-nota-toque">Toca un número para ver el inicio tal como lo ve ese deportista.</p>
+            <p className="ini-nota-toque">{abreFicha ? 'Toca un número para abrir la ficha clínica de ese deportista.' : 'Toca un número para ver el inicio tal como lo ve ese deportista.'}</p>
           </>
         )}
       </div>
@@ -478,6 +485,66 @@ function CambiarClave({ onCerrar }) {
 }
 
 /* ── Para revisar (alertas del portal) ──────────────────── */
+/* ── Pendientes del personal de salud (v2.8, T1.5): cada aviso lleva directo a su registro ── */
+const enFicha = (jugadorId, abrir) => `/pacientes/${jugadorId}?abrir=${abrir}`
+const VISIBLES = 5
+const diaDe = (fechaHora) => { const d = new Date(fechaHora); d.setHours(0, 0, 0, 0); return d }
+
+function PendientesSalud({ p }) {
+  const [completos, setCompletos] = useState({})
+  const grupos = [
+    { clave: 'borradores', titulo: 'Tus borradores sin cerrar', icono: 'fa-pen',
+      items: p.borradores.map(b => ({ clave: `b${b.id}`, a: enFicha(b.jugador_id, `valoracion-${b.id}`), quien: b, accion: 'Continuar',
+        texto: `Valoración ${b.tipo_nombre.toLowerCase()} · abierta ${fechaRelativa(diaDe(b.fecha_hora))}` })) },
+    { clave: 'controles', titulo: 'Controles médicos', icono: 'fa-calendar-check',
+      items: p.controles.map(c => ({ clave: `c${c.jugador_id}`, a: `/salud?jugador=${c.jugador_id}&registrar=control`, quien: c, accion: 'Registrar',
+        alerta: c.vencido, texto: c.vencido ? `Vencido desde el ${fechaCorta(c.fecha)}` : `Le toca ${fechaRelativa(c.fecha)}` })) },
+    { clave: 'aptitud', titulo: 'No aptos y con restricciones', icono: 'fa-hand',
+      items: p.aptitud.map(a => ({ clave: `a${a.jugador_id}`, a: enFicha(a.jugador_id, `control-${a.control_id}`), quien: a, accion: 'Ver control',
+        alerta: a.aptitud === 'no_apto_temporal', texto: a.aptitud === 'no_apto_temporal' ? 'No apto temporalmente' : (a.restricciones || 'Apto con restricciones') })) },
+    { clave: 'lesiones', titulo: 'Lesiones activas', icono: 'fa-kit-medical',
+      items: p.lesiones.map(l => ({ clave: `l${l.lesion_id}`, a: enFicha(l.jugador_id, `lesion-${l.lesion_id}`), quien: l, accion: 'Ver lesión', alerta: true,
+        texto: `${l.lesion || 'Lesión'} · ${l.dias} ${l.dias === 1 ? 'día' : 'días'}${l.retorno_estimado ? ` · retorno ${fechaCorta(l.retorno_estimado)}` : ''}` })) },
+  ].filter(g => g.items.length)
+  const total = grupos.reduce((n, g) => n + g.items.length, 0) + (p.antropometria ? 1 : 0)
+  return (
+    <section className="panel pendientes-salud" aria-labelledby="t-pend">
+      <div className="panel-cabecera"><h2 id="t-pend">Pendientes de salud</h2>{total > 0 && <span className="panel-contador">{total}</span>}</div>
+      <div className="panel-cuerpo">
+        {total === 0 && <div className="alerta alerta-ok"><i className="fa-solid fa-circle-check" aria-hidden="true"></i><span>Todo al día: sin borradores, controles por hacer, restricciones ni lesiones activas.</span></div>}
+        {grupos.map(g => {
+          const lista = completos[g.clave] ? g.items : g.items.slice(0, VISIBLES)
+          return (
+            <div key={g.clave} className="pend-grupo">
+              <h3 id={`pend-${g.clave}`}><i className={`fa-solid ${g.icono}`} aria-hidden="true"></i> {g.titulo} <span className="pend-conteo">{g.items.length}</span></h3>
+              <ul className="pend-lista" aria-labelledby={`pend-${g.clave}`}>
+                {lista.map(it => (
+                  <li key={it.clave}>
+                    <Link to={it.a} className={`pend-item${it.alerta ? ' pend-alerta' : ''}`}>
+                      <span className="pend-texto"><b>{nombreConDorsal(it.quien.nombre, it.quien.dorsal)}</b><small>{it.texto}</small></span>
+                      <span className="pend-accion">{it.accion} <i className="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {g.items.length > VISIBLES && (
+                <button type="button" className="btn btn-ghost btn-sm pend-mas" aria-expanded={!!completos[g.clave]}
+                  onClick={() => setCompletos(c => ({ ...c, [g.clave]: !c[g.clave] }))}>
+                  {completos[g.clave] ? 'Ver menos' : `Ver los ${g.items.length}`}
+                </button>
+              )}
+            </div>
+          )
+        })}
+        {p.antropometria > 0 && (
+          <p className="alerta alerta-info pend-antro"><i className="fa-solid fa-ruler-combined" aria-hidden="true"></i>
+            <span><b>{p.antropometria} {p.antropometria === 1 ? 'deportista no tiene' : 'deportistas no tienen'}</b> evaluación antropométrica este semestre. <Link to="/antropometria">Ir a antropometría</Link></span></p>
+        )}
+      </div>
+    </section>
+  )
+}
+
 function ParaRevisar({ items }) {
   return (
     <section className="panel orden-3" aria-labelledby="t-rev">

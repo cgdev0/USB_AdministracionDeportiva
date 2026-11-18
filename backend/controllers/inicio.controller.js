@@ -1,7 +1,10 @@
+const path = require('path');
+const { pathToFileURL } = require('url');
 const db = require('../config/db');
 
 const { responderError } = require('../utils/errores');
 const { condicionEquipos } = require('../utils/alcance');
+const moduloValoracion = import(pathToFileURL(path.join(__dirname, '..', '..', 'frontend', 'src', 'utils', 'valoracion.js')).href);
 // Restringe los jugadores visibles según el rol (mismas reglas que /api/jugadores)
 // y el deporte elegido. Devuelve condiciones SQL sobre el alias `j`.
 function alcanceJugadores(usuario, disciplinaId, params) {
@@ -67,8 +70,9 @@ exports.getInicio = async (req, res) => {
              les.id AS lesion_id, les.tipo AS lesion_tipo, les.fecha_inicio::text AS lesion_inicio,
              (CURRENT_DATE - les.fecha_inicio) AS dias_lesion,
              seg.fecha_retorno_estimada::text AS retorno_estimado,
-             ctl.aptitud, ctl.restricciones, ctl.proxima_fecha::text AS proximo_control,
-             (ctl.proxima_fecha < CURRENT_DATE) AS control_vencido
+             ctl.id AS control_id, ctl.aptitud, ctl.restricciones, ctl.proxima_fecha::text AS proximo_control,
+             (ctl.proxima_fecha < CURRENT_DATE) AS control_vencido,
+             (ctl.proxima_fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6) AS control_semana
       FROM jugadores j
       LEFT JOIN LATERAL (
         SELECT l.id, l.tipo, l.fecha_inicio FROM lesiones l
@@ -81,7 +85,7 @@ exports.getInicio = async (req, res) => {
         WHERE s.lesion_id = les.id ORDER BY s.fecha_seguimiento DESC, s.id DESC LIMIT 1
       ) seg ON TRUE
       LEFT JOIN LATERAL (
-        SELECT c.aptitud, c.restricciones, c.proxima_fecha FROM controles_medicos c
+        SELECT c.id, c.aptitud, c.restricciones, c.proxima_fecha FROM controles_medicos c
         WHERE c.jugador_id = j.id ORDER BY c.fecha DESC, c.id DESC LIMIT 1
       ) ctl ON TRUE
       WHERE ${alcanceJugadores(vista, disciplinaId, p1)}
@@ -133,6 +137,31 @@ exports.getInicio = async (req, res) => {
                                        CASE WHEN EXTRACT(MONTH FROM CURRENT_DATE) <= 6 THEN 1 ELSE 7 END, 1)
           )`, p2);
       if (sinAntro.total > 0) revisar.push({ tipo: 'antropometria', total: sinAntro.total });
+    }
+
+    // v2.8 (T1.5): pendientes del personal de salud, cada uno con lo necesario para llevar directo a su registro.
+    // Los borradores son los propios (solo quien abre un borrador lo puede cerrar) y se muestran sin importar el
+    // deporte elegido, para que ninguno quede olvidado.
+    let pendientesSalud = null;
+    if (vista === usuario && usuario.rol === 'personal_salud') {
+      const { ETIQUETA_TIPO } = await moduloValoracion;
+      const { rows: borradores } = await db.query(`
+        SELECT v.id, v.jugador_id, v.tipo, v.fecha_hora, j.nombre, j.dorsal FROM valoraciones v JOIN jugadores j ON j.id = v.jugador_id
+         WHERE v.estado = 'borrador' AND v.profesional_id = $1 ORDER BY v.fecha_hora DESC, v.id DESC`, [usuario.id]);
+      const persona = (f) => ({ jugador_id: f.id, nombre: f.nombre, dorsal: f.dorsal });
+      pendientesSalud = {
+        borradores: borradores.map(b => ({ id: b.id, jugador_id: b.jugador_id, nombre: b.nombre, dorsal: b.dorsal,
+          tipo_nombre: ETIQUETA_TIPO[b.tipo] || b.tipo, fecha_hora: b.fecha_hora })),
+        // Vencidos primero y luego los de los próximos 7 días, por fecha
+        controles: plantelFilas.filter(f => f.control_vencido || f.control_semana)
+          .map(f => ({ ...persona(f), fecha: f.proximo_control, vencido: !!f.control_vencido }))
+          .sort((a, b) => (b.vencido - a.vencido) || a.fecha.localeCompare(b.fecha)),
+        aptitud: plantelFilas.filter(f => ['no_apto_temporal', 'apto_restricciones'].includes(f.aptitud))
+          .map(f => ({ ...persona(f), control_id: f.control_id, aptitud: f.aptitud, restricciones: f.restricciones })),
+        lesiones: plantelFilas.filter(f => f.lesion_id)
+          .map(f => ({ ...persona(f), lesion_id: f.lesion_id, lesion: f.lesion_tipo, dias: Number(f.dias_lesion), retorno_estimado: f.retorno_estimado })),
+        antropometria: revisar.find(r => r.tipo === 'antropometria')?.total || 0,
+      };
     }
 
     // 3. Próximo partido y agenda de los próximos 7 días (v1.7: solo las actividades generales y las de su equipo)
@@ -252,7 +281,7 @@ exports.getInicio = async (req, res) => {
 
     // Las estadísticas deportivas no son del campo del personal de salud (v1.9)
     const esSalud = vista.rol === 'personal_salud';
-    res.json({ proximo_partido: proximo || null, plantel, resumen, revisar, semana, asistencia,
+    res.json({ proximo_partido: proximo || null, plantel, resumen, revisar, pendientes_salud: pendientesSalud, semana, asistencia,
       anotadores: esSalud ? [] : anotadores, convocatoria, reconocimientos: esSalud ? [] : reconocimientos });
   } catch (err) {
     responderError(res, err);

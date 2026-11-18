@@ -66,6 +66,8 @@ Radios de 8, 10, 14 y 20 px (`--radius-sm` a `--radius-xl`). Sombras teñidas de
 | Foco de teclado | Anillo de dos tonos (`:focus-visible`), visible sobre blanco, tiza y verde noche. |
 | Deshabilitado | Opacidad reducida y cursor `not-allowed`. Los botones de guardar muestran "Guardando…". |
 | Táctil | Con `@media (pointer: coarse)`: objetivos de al menos 44 px y campos de 16 px. Nunca se bloquea el zoom. |
+| Ventanas con teclado *(v2.8)* | `Modal` y `ConfirmModal` (hook `usarVentana`): al abrir, el foco entra a la ventana; Tab y Mayús+Tab no se salen de ella; Escape cierra solo la de arriba (una confirmación sobre un formulario se cierra sola); al cerrar, el foco vuelve al botón que la abrió. Se anuncian como `dialog` (o `alertdialog`) con su título. |
+| Enter y Ctrl+S *(v2.8)* | Con `onEnviar`, Enter en un campo de una línea guarda la ventana, como un formulario; en un texto largo, Enter es salto de línea. En el editor de valoraciones, Ctrl+S (Cmd+S en Mac) guarda el borrador en lugar de "Guardar página como…". |
 
 ### Estados de cada pantalla
 
@@ -167,10 +169,11 @@ Definido en `frontend/src/config/deportes.js` (visual) y `backend/config/metrica
 | v1.5 | Estados de interacción por dispositivo, tokens de movimiento y foco de dos tonos. Sin emojis. | Aprobada (se conserva en la v2). |
 | v2.0 | **"Cancha"**: verde noche con líneas de cancha, Barlow Condensed, marcadores, fixture y planilla; cada deporte con su perfil. | **Pedida por el equipo** ("cambiar totalmente el frontend y hacerlo más alusivo al proyecto") y aplicada. |
 | v2.1 | Estadísticas propias de cada deporte con rejilla de deportes y tabla de líderes; se quita la lista de deportes del login. | Aplicada a pedido del equipo. |
+| v2.8 | **Espacio de trabajo del personal de salud** (sección 10): componentes de formulario clínico, lista de pacientes, ficha clínica, pendientes en el inicio y uso completo con teclado. | Acordada con el docente de salud (plan de historia clínica, Fase 1). |
 
 ## 8. Calidad mínima
 
-Se verifica con Playwright en 360, 390, 768 y 1440 px (celular y tableta con emulación táctil): sin scroll horizontal · objetivos táctiles ≥ 44 px · foco visible con teclado · `prefers-reduced-motion` respetado · contraste AA · estados de carga, vacío y error en cada módulo.
+Se verifica con Playwright en 360, 390, 768, 1024 y 1440 px (celular y tableta, vertical y horizontal, con emulación táctil; desde la v2.8 también el giro de la tableta): sin scroll horizontal · objetivos táctiles ≥ 44 px · foco visible con teclado · `prefers-reduced-motion` respetado · contraste AA · estados de carga, vacío y error en cada módulo.
 
 ## 9. Capturas
 
@@ -186,3 +189,43 @@ Tomadas en la v2.2 con los datos de demostración (`npm run demo`), a 1440 × 90
 | Estadísticas de todos los deportes | `capturas/estadisticas-deportes-pc.png` | `capturas/estadisticas-deportes-celular.png` |
 | Estadísticas del entrenador (su deporte) | `capturas/estadisticas-entrenador-pc.png` | `capturas/estadisticas-entrenador-celular.png` |
 | Hoja "Más" del celular | — | `capturas/menu-mas-celular.png` |
+| Pacientes (personal de salud) *(v2.8)* | — | `capturas/pacientes-celular.png` |
+| Ficha clínica *(v2.8)* | `capturas/ficha-clinica-pc.png` | `capturas/ficha-clinica-celular.png` |
+| Inicio del personal de salud *(v2.8)* | `capturas/inicio-salud-pc.png` | `capturas/inicio-salud-celular.png` |
+
+## 10. Espacio de trabajo del personal de salud (v2.8)
+
+Reglas acordadas para las pantallas clínicas (sección 3 del plan `docs/plan/plan_historia_clinica.md`; requisito RNF-12). Se pensaron primero para el celular y la tableta, que es lo que usan los practicantes de fisioterapia en la cancha, y funcionan igual en computador.
+
+### Organización por dispositivo
+
+`usarModoPantalla()` devuelve `celular` (hasta 719 px), `tableta` (720–1023 px) o `amplio` (1024 px o más). `usarConsulta(COMPUTADOR)` (1280 px o más) se usa donde una tabla solo cabe en computador.
+
+| Pantalla | Celular | Tableta vertical | Tableta horizontal | Computador |
+|---|---|---|---|---|
+| Formulario largo (`FormularioPorSecciones`) | Una sección por pantalla, "Paso 3 de 9" y flechas abajo | Índice desplegable arriba | Índice lateral con el estado de cada sección | Igual que la tableta horizontal |
+| Lista de pacientes | Tarjetas grandes | Tarjetas en dos columnas | Tarjetas en dos columnas | Tabla |
+| Ficha clínica | Pestañas *Resumen*, *Historia* y *Accesos*; *Nueva valoración* fija abajo | Igual que el celular | Resumen a la izquierda, historia a la derecha | Igual, con *Accesos* en una ventana |
+| Inicio | *Pendientes de salud* antes que todo | Igual que el celular | Arriba de la columna principal | Igual |
+
+### Componentes (`frontend/src/components/clinico/`)
+
+| Componente | Para qué |
+|---|---|
+| `FormularioPorSecciones` | Formularios largos (la valoración de la Fase 3). Al cambiar de sección, el foco va al título. |
+| `BarraAcciones` | Guardar, siguiente o cerrar siempre a la mano: pegada abajo, encima del menú inferior, en celular y tableta. |
+| `CampoMedida` | Número con su unidad visible (kg, cm, lpm, mmHg, %), teclado decimal y coma o punto. Fuera del rango habitual muestra "Revisa el valor" sin bloquear; un valor imposible es error. |
+| `OpcionesBoton` y `SelectorLado` | Opciones como botones de 48 px (Normal/Alterado, Positivo/Negativo/No concluyente, Derecho/Izquierdo/Bilateral), en lugar de listas desplegables. |
+| `CampoFoto` | Cámara trasera o galería; la foto se endereza y se reduce a 1600 px en JPG antes de subirla. Acepta PDF. |
+| `EstadoGuardado` y `usarGuardadoAutomatico` | El borrador se guarda solo (cada 20 s, al ocultarse la página y al pulsar *Guardar borrador*); el estado se ve arriba. Sin señal, lo escrito espera en memoria, nunca en el almacenamiento del navegador. |
+| `SeccionOpcional` | Interruptor "No evaluado": todo lo clínico es opcional y lo que no se evaluó queda registrado como tal. |
+| `Paciente` (`Foto`, `Disponibilidad`, `Avisos`) | Los avisos del paciente (alergias en rojo, lesión, restricciones, borradores, control vencido, menor de edad, retirado) se ven igual en la lista y en la ficha. |
+
+### Patrones
+
+- **Avisos por tono:** rojo para lo que puede hacer daño (alergias, lesión activa, no apto); ámbar para lo que hay que hacer (borrador, control vencido, restricción); azul para datos de contexto (menor de edad, retirado).
+- **Cada aviso lleva a su registro:** en el inicio y en la ficha, tocar un aviso abre ese registro, no una lista general. La ficha acepta `?abrir=lesion-12` (o `valoracion-`, `control-`, `medicion-`) para abrir un registro al entrar.
+- **Línea de tiempo:** un solo orden, del más reciente al más antiguo, con un ícono de color por tipo y filtros con su conteo.
+- **Una acción principal por pantalla:** en la ficha, *Nueva valoración* (a 1 toque); en el inicio de salud, *Buscar paciente*.
+- **Teléfonos:** con enlace `tel:` y área táctil de 44 px, para llamar desde el celular al deportista o a su contacto de emergencia.
+- **Datos sensibles** (pertenencia étnica, discapacidad): solo en pantallas del personal de salud, con una nota que lo recuerda.

@@ -268,7 +268,7 @@ Aplican a **todas** las tareas con pantalla. Se agregan al catálogo como RNF-12
 **Objetivo:** que una tableta olvidada en el consultorio no deje historias a la vista.
 - [x] Para el rol de salud, a los 15 minutos **sin tocar la pantalla** (no de trabajo: cualquier toque o tecla reinicia la cuenta), una pantalla opaca cubre todo y pide la contraseña.
   - Un minuto antes avisa con el botón *Sigo aquí*.
-  - **El borrador no se pierde:** el bloqueo no recarga la página, y al desbloquear la persona sigue donde iba, con lo escrito. Si alguien recarga la página estando bloqueada, el bloqueo se mantiene, pero lo escrito y no guardado se pierde hasta que la T1.2 agregue el guardado automático en el servidor.
+  - **El borrador no se pierde:** el bloqueo no recarga la página, y al desbloquear la persona sigue donde iba, con lo escrito. Desde la T1.2, además, el borrador ya está guardado en el servidor cuando llega el bloqueo, así que recargar tampoco pierde nada.
 - [x] El tiempo se define en una sola constante (`frontend/src/config/seguridad.js`), para ajustarlo si el docente lo pide.
 - [x] *Agregado:* recargar no quita el bloqueo y se comparte entre pestañas; el resto de la página queda inerte; está la opción *No soy yo: cerrar sesión*.
 - [x] *Agregado:* `POST /api/auth/desbloquear` usa el mismo límite de intentos del inicio de sesión (5 fallos → 15 minutos).
@@ -277,15 +277,23 @@ Aplican a **todas** las tareas con pantalla. Se agregan al catálogo como RNF-12
 **Pruebas:** CP-AUT-010 (integración), CP-UI-SAL-001 (tableta) y CP-UI-SAL-002 (celular), con el reloj simulado de Playwright.
 
 ### T0.9 Cierre de la v2.7
-- [ ] DEF-052 a DEF-056 en `docs/calidad/defectos.md`:
+> **Estado: ✅ terminada y publicada (17-nov-2026).** Pull Request #40 con merge a `main` y etiqueta `v2.7`. Railway la desplegó en unos 45 segundos.
+
+- [x] DEF-052 a DEF-056 en `docs/calidad/defectos.md`:
   - historia sobrescrita;
   - borrado en cascada;
   - `/uploads` público;
   - administrador con acceso clínico;
   - lesiones visibles para el entrenador.
-- [ ] CHANGELOG, requisitos RF-25 (identificación), RF-26 (historia secuencial) y RF-31 (bitácora), y RNF-13 (archivos clínicos) y RNF-14 (conservación).
-- [ ] Pruebas unitarias, de integración y de interfaz en verde.
-- [ ] Pull Request, merge y etiqueta `v2.7`. 👤 Verificar el despliegue en Railway.
+- [x] CHANGELOG, requisitos RF-25 (identificación), RF-26 (historia secuencial) y RF-31 (bitácora), y RNF-13 (archivos clínicos) y RNF-14 (conservación). También la matriz de acceso clínico, el README y el informe `docs/calidad/informes/v2.7.md` (228 casos, índice 93/100).
+- [x] Pruebas unitarias, de integración y de interfaz en verde: 175 de API y 53 de interfaz en Chromium. Además, un ensayo de migración sobre una base v2.6 con datos, sin pérdida de información.
+- [x] Pull Request, merge y etiqueta `v2.7` (PR #40).
+- [x] Verificar el despliegue en Railway:
+  - `/api/health` responde 200;
+  - las rutas nuevas (valoraciones, archivos clínicos, bitácora, desbloqueo) piden sesión (401);
+  - `/uploads/clinico` responde 404;
+  - las pantallas publicadas tienen las funciones de la v2.7.
+  - 👤 Falta entrar con las cuentas y revisar los datos (no inicio sesión con las cuentas reales).
 
 ---
 
@@ -294,71 +302,112 @@ Aplican a **todas** las tareas con pantalla. Se agregan al catálogo como RNF-12
 **Objetivo de la fase:** construir una sola vez las piezas de interfaz que usan todas las pantallas clínicas, y la ficha del deportista. Deben funcionar igual en celular, tableta y computador.
 
 ### T1.1 Componentes para formularios clínicos
+> **Estado: ✅ terminada (17-nov-2026).**
+> - Los componentes están en `frontend/src/components/clinico/`.
+> - Se prueban en la página `/catalogo-clinico`, que solo existe en la compilación de pruebas (`VITE_CATALOGO=1`) y no se publica en Railway.
+> - Pruebas CP-UI-SAL-003 a 007 en 5 anchos (360, 390, 768, 1024 y 1440 px).
+> - Se revisaron capturas en celular y computador. Por eso, en el celular la barra de acciones quedó en una sola fila, con flechas de *Anterior* y *Siguiente*.
+> - Todavía no los usa ninguna pantalla real: los usarán la ficha clínica (T1.4), los consentimientos (Fase 2) y la valoración (Fase 3).
+
 **Objetivo:** tener los componentes que cumplen las reglas de la sección 3, para que cada formulario nuevo salga adaptable sin trabajo extra.
-- [ ] `FormularioPorSecciones`: pasos en el celular, índice desplegable en la tableta vertical e índice lateral en la tableta horizontal y el computador.
-- [ ] `BarraAcciones` fija abajo en el celular y la tableta.
-- [ ] `CampoMedida`: número con su unidad, teclado decimal y aviso de rango.
-- [ ] `OpcionesBoton` (opciones segmentadas) y `SelectorLado` (derecho, izquierdo o bilateral).
-- [ ] `CampoFoto`: cámara o galería, compresión a un máximo de 1600 px y vista previa.
-- [ ] `EstadoGuardado` ("Guardado hace 5 s", "Guardando…", "Sin conexión").
-- [ ] `SeccionOpcional`, con el interruptor "No evaluado".
+- [x] `FormularioPorSecciones`: pasos en el celular, índice desplegable en la tableta vertical e índice lateral en la tableta horizontal y el computador. Al cambiar de sección, el foco va al título.
+- [x] `BarraAcciones` fija abajo en el celular y la tableta, encima del menú inferior.
+- [x] `CampoMedida`: número con su unidad, teclado decimal, coma o punto, aviso de rango habitual (no bloquea) y error de rango imposible.
+- [x] `OpcionesBoton` (opciones segmentadas de 48 px, con colores para positivo y negativo) y `SelectorLado` (derecho, izquierdo o bilateral).
+- [x] `CampoFoto`: cámara trasera o galería, endereza la foto, la comprime a un máximo de 1600 px en JPG, muestra la vista previa y acepta PDF.
+- [x] `EstadoGuardado` ("Guardado hace 5 s", "Guardando…", "Sin conexión").
+- [x] `SeccionOpcional`, con el interruptor "No evaluado".
 
 **Listo cuando:** una pantalla de prueba con todos los componentes pasa en 360, 390, 768, 1024 y 1440 px sin desplazamiento horizontal, con áreas táctiles de 44 px y sin problemas graves de accesibilidad (axe).
-**Pruebas:** CP-UI-SAL-002 a 006.
+**Pruebas:** CP-UI-SAL-003 a 007.
 
 ### T1.2 Guardado automático y ediciones simultáneas
+> **Estado: ✅ terminada (18-nov-2026).**
+> - Hook reutilizable `frontend/src/components/clinico/usarGuardadoAutomatico.js`, aplicado al editor de valoraciones (`EditorValoracion.jsx`).
+> - **Consecuencia para la T0.8:** el bloqueo llega tras 15 minutos sin uso, y para entonces el borrador ya se guardó. Recargar estando bloqueado ya no pierde lo escrito.
+
 **Objetivo:** que no se pierda lo escrito si se cae la conexión o el celular se bloquea, y que dos dispositivos no se pisen.
-- [ ] El borrador se guarda cada 20 segundos y al cambiar de sección, con *debounce*.
-- [ ] Control por número de versión: si la valoración cambió en otro dispositivo, responde 409 con el mensaje "Se editó en otro dispositivo" y la opción de recargar.
-- [ ] Sin conexión, los cambios se guardan en una cola en memoria (nunca en el almacenamiento del navegador, D8) y se reintentan.
-- [ ] Antes de salir con cambios sin guardar, se pide confirmación.
+- [x] El borrador se guarda cada 20 segundos si hay cambios, al ocultarse la página (cambiar de aplicación, bloquear el celular), al pulsar *Guardar borrador* y al cerrar la ventana. El cambio de sección llama a `guardarAhora` cuando la valoración use `FormularioPorSecciones` (Fase 3).
+- [x] Control por número de versión: si la valoración cambió en otro dispositivo, el servidor responde 409 y aparece un aviso con dos opciones: *Usar la versión guardada* o *Guardar la mía encima*. Mientras tanto se detiene el guardado automático y no se puede cerrar.
+- [x] Sin conexión, los cambios esperan en memoria (nunca en el almacenamiento del navegador, D8) y se reintentan cada 5 segundos y al volver la señal. El estado lo dice: "Sin conexión: se guardará cuando vuelva la señal".
+- [x] Antes de salir con cambios sin guardar, se pide confirmación: el navegador al salir de la página, y la ventana al cerrarse si no se pudo guardar.
 
 **Listo cuando:** si se corta la red a mitad de una sección y se reconecta, todo queda guardado. Si dos sesiones editan a la vez, la segunda recibe el aviso.
-**Pruebas:** CP-HC-018 y CP-UI-SAL-007, con red simulada sin conexión.
+**Pruebas:** CP-HC-018 y CP-UI-SAL-008, con red simulada sin conexión.
 
 ### T1.3 Listado de pacientes
+> **Estado: ✅ terminada (18-nov-2026).**
+> - Pantalla `/pacientes` (solo personal de salud), en el menú inferior del celular. API `GET /api/pacientes`; cada consulta queda en la bitácora (migración `017_bitacora_paciente.sql`).
+> - Por ahora, al tocar un paciente se abren sus valoraciones en *Salud* con el deportista ya elegido. La T1.4 cambia el destino a la ficha clínica.
+> - **Pendiente para la Fase 2:** el filtro y el aviso "Falta el consentimiento", porque los consentimientos todavía no existen (T2.1).
+
 **Objetivo:** que el personal de salud encuentre a un deportista en segundos desde el celular.
-- [ ] Búsqueda por nombre, documento o dorsal, sin importar tildes.
-- [ ] Filtros: deporte, equipo, lesión activa, consentimiento pendiente, borrador sin cerrar y control vencido.
-- [ ] Vista en tarjetas en el celular y en tabla en el computador. Cada uno muestra foto, nombre, documento, deporte, disponibilidad y avisos (por ejemplo, "Falta el consentimiento" o "Alergias").
+- [x] Búsqueda por nombre (sin importar tildes ni mayúsculas), documento (con o sin puntos, desde 3 cifras) o dorsal (`#10`).
+- [x] Filtros: deporte (el selector general de la app), equipo, lesión activa, borrador sin cerrar, control vencido, sin documento e incluir retirados. Cada filtro rápido muestra cuántos deportistas cumplen. *Consentimiento pendiente: Fase 2.*
+- [x] Vista en tarjetas en el celular y la tableta, y en tabla en el computador. Cada uno muestra foto, nombre y dorsal, documento, deporte y equipo, disponibilidad (la misma regla del inicio) y avisos: alergias (de la última valoración cerrada), lesión activa con retorno estimado, restricciones, borradores sin cerrar, control vencido, sin documento, menor de edad y retirado.
 
 **Listo cuando:** en el celular se encuentra a un deportista por su documento con menos de 3 toques.
-**Pruebas:** CP-UI-SAL-008.
+**Pruebas:** CP-UI-SAL-009.
 
 ### T1.4 Ficha clínica del deportista
+> **Estado: ✅ terminada (18-nov-2026).**
+> - Pantalla `/pacientes/:id`, que se abre al tocar un paciente de la lista. La API `GET /api/pacientes/:id` trae todo en una consulta, que queda en la bitácora una sola vez ("abrió la ficha clínica").
+> - **Además de lo pedido:**
+>   - los archivos clínicos aparecen en la historia y se descargan desde la ficha (hasta ahora no tenían pantalla);
+>   - el botón *Continuar borrador* aparece si quien atiende tiene uno abierto.
+> - **Pendiente para la Fase 2:** el aviso de consentimientos en el encabezado y la pestaña *Consentimientos* (T2.3), y que *Nueva valoración* exija el consentimiento firmado (D2, T2.4).
+
 **Objetivo:** una sola pantalla con todo lo clínico del deportista y el botón para iniciar una valoración.
-- [ ] Encabezado con la identificación y alertas siempre visibles: alergias, consentimientos y si es menor de edad.
-- [ ] Línea de tiempo con valoraciones, controles, lesiones y mediciones, con filtros por tipo.
-- [ ] Botón *Nueva valoración* (exige consentimiento firmado, D2).
-- [ ] Organización por dispositivo:
-  - celular: pestañas *Resumen*, *Historia*, *Consentimientos* y *Accesos*;
-  - tableta horizontal y computador: resumen fijo a la izquierda y línea de tiempo a la derecha.
+- [x] Encabezado con la identificación y avisos visibles en todas las pestañas: alergias, lesión activa, restricciones, borradores, control vencido, sin documento, menor de edad y retirado. *Consentimientos: T2.3.*
+- [x] Línea de tiempo con valoraciones, controles, lesiones (con sus seguimientos), mediciones y archivos clínicos, con filtros por tipo y su conteo. Cada registro se abre desde la ficha.
+- [x] Botón *Nueva valoración*, a 1 toque, que propone los antecedentes de la valoración anterior. *Exigir el consentimiento firmado (D2): T2.4.*
+- [x] Organización por dispositivo:
+  - celular y tableta vertical: pestañas *Resumen*, *Historia* y *Accesos* (la de *Consentimientos* llega con la T2.3), con *Nueva valoración* fija abajo;
+  - tableta horizontal y computador: resumen a la izquierda, historia a la derecha y *Accesos* en una ventana.
 
 **Listo cuando:** desde la ficha se llega a cualquier registro del deportista y se puede iniciar una valoración en 1 toque.
-**Pruebas:** CP-UI-SAL-009 y 010.
+**Pruebas:** CP-UI-SAL-010 y 011.
 
 ### T1.5 Menú e inicio del rol de salud
+> **Estado: ✅ terminada (18-nov-2026).**
+> - El inicio del personal de salud abre con el panel *Pendientes de salud*: es lo primero en el celular y encabeza la columna principal en el computador.
+> - Cada aviso lleva a su registro: la ficha clínica se abre con ese registro a la vista (`?abrir=`), o el formulario de control viene con el deportista ya elegido.
+> - **Además de lo pedido:**
+>   - tocar un dorsal de *Disponibilidad del plantel* abre la ficha clínica;
+>   - el botón principal de *Mi sesión* pasa a ser *Buscar paciente*.
+> - **Decisión:** el menú inferior conserva *Salud*, así que queda *Inicio, Pacientes, Lesiones, Salud* y *Más*. Es el mismo esquema de 4 secciones de los demás roles, y Salud es donde se registran los controles médicos. Si se prefiere el menú de 3 secciones que decía el plan, es cambiar una línea de `navegacion.js`.
+> - **Pendiente para la Fase 2:** los consentimientos pendientes.
+
 **Objetivo:** que el personal de salud entre directo a su trabajo.
-- [ ] Menú inferior: *Inicio*, *Pacientes*, *Lesiones* y *Más*.
-- [ ] El inicio muestra:
-  - borradores sin cerrar;
-  - consentimientos pendientes;
-  - controles de esta semana;
-  - deportistas no aptos o con restricciones.
+- [x] Menú inferior: *Inicio*, *Pacientes*, *Lesiones*, *Salud* y *Más* (ver la decisión arriba).
+- [x] El inicio muestra:
+  - sus borradores sin cerrar → abre el borrador en la ficha;
+  - consentimientos pendientes → *Fase 2 (T2.3)*;
+  - controles vencidos y de los próximos 7 días → formulario de control con el deportista elegido;
+  - deportistas no aptos o con restricciones → el control médico que lo dice;
+  - lesiones activas → la lesión con sus seguimientos;
+  - deportistas sin antropometría en el semestre → Antropometría.
 
 **Listo cuando:** cada aviso del inicio lleva directamente al registro correspondiente.
-**Pruebas:** CP-UI-SAL-011.
+**Pruebas:** CP-UI-SAL-012.
 
 ### T1.6 Pruebas en todos los anchos y cierre de la v2.8
-- [ ] Agregar la tableta horizontal (1024 × 768) a `pruebas/ui/ayuda.js` y probar el cambio de orientación.
-- [ ] Repetir en **computador (1440 px)** los flujos clínicos que hoy se prueban en celular y tableta: identificación, valoración (abrir, guardar, cerrar, nota), retirar y reactivar.
-- [ ] Uso con **teclado** en computador:
-  - Tab recorre los campos en orden y con foco visible;
-  - Enter guarda y Escape cierra la ventana;
+> **Estado: 🟡 lista para publicar (18-nov-2026).** Falta la publicación, que espera la confirmación de Carlos.
+> - **Encontrado al probar, y corregido:**
+>   - Escape no cerraba las ventanas y el foco no volvía (DEF-059);
+>   - la lista de pacientes desbordaba en 1024 px (DEF-060);
+>   - un enlace del inicio de salud solo se distinguía por el color (DEF-061).
+> - **Ensayo de migración:** una base creada con el despliegue de la v2.7 (plantel de demostración y datos clínicos) pasó dos veces por `preparar_despliegue.js` de la v2.8 con los mismos conteos antes y después. El recurso `paciente` de la bitácora quedó habilitado.
+
+- [x] Agregar la tableta horizontal (1024 × 768) a `pruebas/ui/ayuda.js` y probar el cambio de orientación (CP-UI-PC-001). El recorrido de los 5 roles corre ahora en 5 anchos.
+- [x] Repetir en **computador (1440 px)** los flujos clínicos que hoy se prueban en celular y tableta: identificación, valoración (abrir, guardar, cerrar, nota), retirar y reactivar (CP-UI-PC-002 a 004).
+- [x] Uso con **teclado** en computador (hook `usarVentana` en todas las ventanas):
+  - Tab recorre los campos en orden y con foco visible, sin salirse de la ventana;
+  - Enter guarda (`onEnviar`) y Escape cierra la ventana de arriba;
   - Ctrl+S (Cmd+S en Mac) guarda el borrador de la valoración.
-- [ ] Extender el recorrido de `responsive.spec.js` a las pantallas nuevas.
-- [ ] Actualizar `DESIGN.md` con los patrones de formulario clínico y RNF-12 en el catálogo.
-- [ ] CHANGELOG, Pull Request, etiqueta `v2.8` y verificación en Railway.
+- [x] Extender el recorrido de `responsive.spec.js` a las pantallas nuevas (CP-UI-RES-005: lista y ficha en los 5 anchos).
+- [x] Actualizar `DESIGN.md` con los patrones de formulario clínico (sección 10, con capturas) y RNF-12 en el catálogo.
+- [ ] CHANGELOG ✅, informe `docs/calidad/informes/v2.8.md` ✅, Pull Request, etiqueta `v2.8` y verificación en Railway.
 
 ---
 
@@ -399,6 +448,10 @@ Aplican a **todas** las tareas con pantalla. Se agregan al catálogo como RNF-12
 ### T2.3 Pantalla de consentimientos
 **Objetivo:** registrar una firma en menos de un minuto desde la tableta.
 - [ ] Pestaña *Consentimientos* de la ficha clínica: una tarjeta por tipo, con su estado y fecha.
+- [ ] Lo que quedó pendiente de la Fase 1:
+  - aviso "Falta el consentimiento" en el encabezado de la ficha (T1.4);
+  - aviso y filtro "Consentimiento pendiente" en la lista de pacientes (T1.3);
+  - consentimientos pendientes en el inicio del personal de salud (T1.5).
 - [ ] Acciones de cada tarjeta:
   - *Imprimir formato*;
   - *Registrar firma*: pregunta quién firma, toma la foto con la cámara, pide el asentimiento si es menor y guarda;
@@ -406,7 +459,7 @@ Aplican a **todas** las tareas con pantalla. Se agregan al catálogo como RNF-12
   - *Ver soporte*, que abre la imagen por la ruta protegida.
 
 **Listo cuando:** en el celular se registra un consentimiento firmado con su foto, y la imagen solo la abre el personal de salud.
-**Pruebas:** CP-UI-SAL-012 y 013.
+**Pruebas:** CP-UI-SAL-013 y 014.
 
 ### T2.4 Reglas que dependen del consentimiento
 **Objetivo:** que el sistema haga cumplir lo firmado.
@@ -474,7 +527,7 @@ Aplican a **todas** las tareas con pantalla. Se agregan al catálogo como RNF-12
 - [ ] Organización por dispositivo: en el celular, una vista por paso; en la tableta, la foto a la izquierda y la lista a la derecha.
 
 **Listo cuando:** 👤 el docente aprobó la lista de hallazgos y una evaluación completa en el celular toma menos de 3 minutos sin las fotos.
-**Pruebas:** CP-HC-022 y CP-UI-SAL-014.
+**Pruebas:** CP-HC-022 y CP-UI-SAL-015.
 
 ### T3.5 Signos vitales
 **Objetivo:** registrar la frecuencia cardiaca, la presión arterial y la frecuencia respiratoria del tablero.
@@ -564,7 +617,7 @@ Aplican a **todas** las tareas con pantalla. Se agregan al catálogo como RNF-12
 - [ ] Al final, quién atendió: su registro profesional si lo tiene, o su condición de practicante o estudiante y el nombre del supervisor. Hay espacio para la firma de quien atendió y, si lo hay, del supervisor.
 
 **Listo cuando:** se imprime correctamente desde el computador y desde la tableta.
-**Pruebas:** CP-UI-SAL-015.
+**Pruebas:** CP-UI-SAL-016.
 
 ### T3.13 Datos de demostración y cierre de la v3.0
 - [ ] Valoraciones completas de demostración para un hombre, una mujer (con antecedentes ginecológicos) y un menor de edad (con acudiente y asentimiento).
@@ -622,12 +675,12 @@ Aplican a **todas** las tareas con pantalla. Se agregan al catálogo como RNF-12
 
 | Fase | Versión | Tareas | Terminadas |
 |---|---|---|---|
-| 0. Base legal y de seguridad | v2.7 | 9 | 8 (T0.1 a T0.8); T0.9 (cierre y publicación) en curso |
-| 1. Espacio de trabajo de salud adaptable | v2.8 | 6 | 0 |
+| 0. Base legal y de seguridad | v2.7 | 9 | **9 ✅ (publicada)** |
+| 1. Espacio de trabajo de salud adaptable | v2.8 | 6 | 5 (T1.1 a T1.5) |
 | 2. Consentimientos | v2.9 | 5 | 0 |
 | 3. Valoración fisioterapéutica | v3.0 | 13 | 0 |
 | 4. Interoperabilidad HL7 FHIR | v3.1 | 4 | 0 |
-| **Total** | | **37** | **8** |
+| **Total** | | **37** | **14** |
 
 **Puntos de revisión con el docente** 🩺:
 - textos de los consentimientos (T2.2);

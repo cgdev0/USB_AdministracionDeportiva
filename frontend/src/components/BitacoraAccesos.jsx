@@ -19,6 +19,7 @@ const RECURSO = {
   seguimiento: ['el seguimiento de lesión', 'los seguimientos de lesión'], lesion: ['la lesión', 'las lesiones'],
   historia: ['la historia anterior', 'las historias anteriores'], antropometria: ['la medición antropométrica', 'las mediciones antropométricas'],
   identificacion: ['los datos de identificación', 'los datos de identificación'],
+  paciente: ['la ficha clínica', 'la lista de pacientes'],
 }
 const ACCIONES_FILTRO = [['', 'Todas las acciones'], ['ver', 'Abrió'], ['descargar', 'Descargó'], ['crear', 'Registró'], ['editar', 'Modificó'], ['cerrar', 'Cerró'], ['listar', 'Consultó listas']]
 
@@ -31,7 +32,8 @@ export function frase(e) {
   return `${ACCION[e.accion] || e.accion} ${e.accion === 'listar' ? varios : uno}${e.recurso_id && e.accion !== 'listar' ? ` #${e.recurso_id}` : ''}`
 }
 
-export default function BitacoraAccesos({ titulo, jugadorId = null, general = false, onClose }) {
+// enLinea (v2.8, T1.4): sin ventana, dentro de una pestaña de la ficha clínica en el celular
+export default function BitacoraAccesos({ titulo, jugadorId = null, general = false, onClose, enLinea = false }) {
   const [filas, setFilas] = useState(null)
   const [error, setError] = useState(null)
   const [texto, setTexto] = useState('')
@@ -48,8 +50,8 @@ export default function BitacoraAccesos({ titulo, jugadorId = null, general = fa
   const t = texto.trim().toLowerCase()
   const visibles = (filas || []).filter(e => !t || `${e.usuario_nombre} ${e.jugador_nombre}`.toLowerCase().includes(t))
 
-  return (
-    <Modal title={titulo} onClose={onClose}>
+  const contenido = (
+    <>
       <p className="ayuda-campo">Cada vez que alguien consulta, registra, cambia o descarga un dato clínico queda aquí, con la fecha y la hora. Este registro no se puede modificar ni borrar.</p>
       {general && (
         <div className="form-grid bitacora-filtros">
@@ -79,6 +81,7 @@ export default function BitacoraAccesos({ titulo, jugadorId = null, general = fa
             ))}
           </ol>
         )}
-    </Modal>
+    </>
   )
+  return enLinea ? contenido : <Modal title={titulo} onClose={onClose}>{contenido}</Modal>
 }

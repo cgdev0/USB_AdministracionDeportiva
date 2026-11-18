@@ -25,7 +25,7 @@ Versión de referencia: **v1.3**. Responsable: Carlos Gamboa. Basado en `01_cara
 
 | ID | Factor | Métrica | Fórmula | 🟢 | 🟡 | Instrumento | Frecuencia |
 |---|---|---|---|---|---|---|---|
-| M-R1 | Madurez | Densidad de defectos | defectos abiertos al cierre de la versión ÷ 13 módulos | ≤ 1 y en descenso | 1–2 | auto: `defectos.md` | versión |
+| M-R1 | Madurez | Densidad de defectos | defectos abiertos al cierre de la versión ÷ módulos de la aplicación (13; 14 desde la v2.8 con Pacientes) | ≤ 1 y en descenso | 1–2 | auto: `defectos.md` | versión |
 | M-R2 | Madurez | Pruebas automáticas en verde | pruebas que pasan ÷ total de pruebas × 100 | 100 % para fusionar | (no hay) | auto | PR |
 | M-R3 | Tolerancia a fallos | Manejo de entradas inválidas | entradas inválidas rechazadas con 4xx y mensaje, sin error 500 ÷ entradas inválidas probadas × 100 | 100 % | ≥ 90 % | auto | PR |
 | M-R4 | Recuperación | Aviso ante caída del servidor | pantallas que muestran aviso y permiten reintentar sin el servidor ÷ pantallas probadas × 100 | ≥ 90 % | 70–89 % | auto | versión |
@@ -46,7 +46,7 @@ Versión de referencia: **v1.3**. Responsable: Carlos Gamboa. Basado en `01_cara
 |---|---|---|---|---|---|---|---|
 | M-E1 | Comportamiento temporal | Tiempo de respuesta de la API | percentil 95 del tiempo de respuesta de las rutas de lectura en la suite (local) | ≤ 500 ms | 501–1000 ms | auto | PR |
 | M-E2 | Comportamiento temporal | Carga del inicio en celular | segundos desde abrir el inicio hasta ver el contenido, con red móvil 4G simulada | ≤ 3 s | 3–5 s | auto | versión |
-| M-E3 | Utilización de recursos | Tamaño de descarga | KB comprimidos (gzip) de JavaScript y CSS propios del build | ≤ 300 KB | 301–450 KB | auto | versión |
+| M-E3 | Utilización de recursos | Descarga al abrir la app | KB comprimidos (gzip) de JavaScript y CSS que pide `index.html` al abrir la aplicación (script principal, módulos precargados y estilos). El total del build se informa aparte. *Definición cambiada en la v2.8; ver nota.* | ≤ 300 KB | 301–450 KB | auto | versión |
 
 ### Mantenibilidad (prioridad media)
 
@@ -54,7 +54,7 @@ Versión de referencia: **v1.3**. Responsable: Carlos Gamboa. Basado en `01_cara
 |---|---|---|---|---|---|---|---|
 | M-M1 | Analizado | Tiempo medio de corrección | promedio de (fecha de corrección − fecha de detección) de los defectos cerrados | ≤ 3 días | 4–7 días | auto: `defectos.md` | versión |
 | M-M2 | Estabilidad | Regresiones | pruebas que pasaban en la versión anterior y fallan tras el cambio | 0 | (no hay) | auto | PR |
-| M-M3 | Probado | Módulos con pruebas automáticas | módulos con al menos un caso automatizado ÷ 13 módulos × 100 | ≥ 80 % | 60–79 % | auto: catálogo de casos | versión |
+| M-M3 | Probado | Módulos con pruebas automáticas | módulos con al menos un caso automatizado ÷ módulos de la aplicación × 100 (13; 14 desde la v2.8) | ≥ 80 % | 60–79 % | auto: catálogo de casos | versión |
 | M-M4 | Cambiado | Trazabilidad de cambios | versiones publicadas (etiquetas de git) con entrada en `CHANGELOG.md` ÷ versiones publicadas × 100 | 100 % | ≥ 90 % | auto: git y `CHANGELOG.md` | versión |
 
 ### Portabilidad (prioridad media)
@@ -104,3 +104,5 @@ Se registran el éxito sin ayuda y el tiempo de cada tarea. Al final cada partic
 **Instalación desde cero (M-P3).** Un integrante que no haya instalado el proyecto sigue el README en un equipo sin el proyecto. Se anotan los pasos que pudo completar solo y el tiempo total.
 
 **Registro de defectos (M-R1, M-M1).** Cada defecto se anota en `defectos.md` con su fecha de detección, severidad, módulo, versión y fecha de corrección.
+
+**Nota sobre M-E3 (v2.8, 18 de noviembre de 2026).** Hasta la v2.7, M-E3 sumaba todo el JavaScript y el CSS del build (309 KB en la v2.7), aunque los informes lo llamaban "descarga inicial". Las pantallas se cargan por partes cuando se abren: lo que se descarga al abrir la aplicación eran 121 KB. Con la definición anterior, cada pantalla nueva del plan de historia clínica empeoraba la métrica sin que el inicio fuera más lento. Desde la v2.8, por decisión del equipo, M-E3 mide la descarga al abrir y el informe muestra el total como dato. Los valores de informes anteriores corresponden a la definición anterior.
