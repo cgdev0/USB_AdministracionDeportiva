@@ -1,7 +1,7 @@
 // v2.0: errores reportados en el documento "Errores en ejecución" (DEF-040 a DEF-044)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
 const { fechaEnDias, horaActual } = require('../utilidades/fechas');
 
 const T = {};
@@ -19,7 +19,7 @@ test.after(async () => {
   await sql(`DELETE FROM entrenamientos WHERE tipo LIKE 'ZZ v2%'`);
   await sql(`DELETE FROM partidos WHERE rival LIKE 'ZZ v2%'`);
   await sql(`DELETE FROM usuarios WHERE email LIKE 'zzv2%'`);
-  await sql(`DELETE FROM jugadores WHERE nombre LIKE 'ZZ v2%'`);
+  await sqlMantenimiento(`DELETE FROM jugadores WHERE nombre LIKE 'ZZ v2%'`);
   await cerrar(__filename);
 });
 

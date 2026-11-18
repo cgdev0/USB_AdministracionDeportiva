@@ -18,11 +18,11 @@ export default function App() {
       <DeporteProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
-          {MODULOS.map(({ ruta, roles }) => {
+          {MODULOS.map(({ ruta, roles, clinico }) => {
             const Pagina = PAGINAS[ruta]
             return (
               <Route key={ruta} path={ruta} element={
-                <ProtectedRoute roles={roles}>
+                <ProtectedRoute roles={roles} estricto={clinico}>
                   <AppLayout><LimiteCarga key={ruta}><Pagina /></LimiteCarga></AppLayout>
                 </ProtectedRoute>
               } />

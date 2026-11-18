@@ -61,7 +61,28 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
       const item = {}
       rawHeaders.forEach((h, idx) => {
         const val = values[idx] || ''
-        if (h.includes('dorsal') || h.includes('camiseta') || h === 'numero' || h === 'número' || h === '#') {
+        // v2.7: documento, contacto, emergencia y acudiente (se revisan antes que "nombre" y "teléfono")
+        if (h.includes('acudiente')) {
+          if (h.includes('telefono') || h.includes('teléfono') || h.includes('celular')) item.acudiente_telefono = val
+          else if (h.includes('parentesco')) item.acudiente_parentesco = val
+          else if (h.includes('tipo')) item.acudiente_tipo_documento = val
+          else if (h.includes('documento') || h.includes('cedula') || h.includes('cédula')) item.acudiente_numero_documento = val
+          else item.acudiente_nombre = val
+        } else if (h.includes('emergencia')) {
+          if (h.includes('telefono') || h.includes('teléfono') || h.includes('celular')) item.contacto_emergencia_telefono = val
+          else if (h.includes('parentesco')) item.contacto_emergencia_parentesco = val
+          else item.contacto_emergencia_nombre = val
+        } else if (h.includes('tipodoc') || h === 'tipo') {
+          item.tipo_documento = val
+        } else if (h.includes('documento') || h.includes('cedula') || h.includes('cédula') || h === 'identificacion' || h === 'identificación') {
+          item.numero_documento = val
+        } else if (h.includes('nacimiento')) {
+          item.fecha_nacimiento = val
+        } else if (h.includes('telefono') || h.includes('teléfono') || h.includes('celular')) {
+          item.telefono = val
+        } else if (h === 'eps') {
+          item.eps = val
+        } else if (h.includes('dorsal') || h.includes('camiseta') || h === 'numero' || h === 'número' || h === '#') {
           item.dorsal = val
         } else if (h.includes('nombre') || h.includes('jugador') || h.includes('atleta') || h.includes('deportista')) {
           item.nombre = val
@@ -144,6 +165,13 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
 
       const res = await api.post('/jugadores/bulk', { deportistas })
       toast.success(res.data.message || `Importados ${res.data.total} deportistas`)
+      // v2.7: filas que no se importaron (documento repetido o inválido, menor sin acudiente, fecha inválida…)
+      const errores = res.data.errores || []
+      if (errores.length) {
+        toast.error(`${errores.length} ${errores.length === 1 ? 'fila no se importó' : 'filas no se importaron'}:\n` +
+          errores.slice(0, 4).map(e => `Fila ${e.fila}: ${e.error}`).join('\n') + (errores.length > 4 ? '\n…' : ''),
+          { duration: 12000, style: { whiteSpace: 'pre-line', maxWidth: 520 } })
+      }
       const avisos = res.data.avisos || []
       if (avisos.length) {
         toast(`${avisos.length} ${avisos.length === 1 ? 'deportista se importó' : 'deportistas se importaron'} sin dorsal:\n` +
@@ -160,11 +188,12 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
   }
 
   const downloadTemplate = () => {
-    const csvContent = 'dorsal,nombre,edad,posicion,peso,altura,deporte,equipo\n' +
-      '9,Juan Pérez,22,Penetrador,78.5,1.80,Rugby,Los Cóndores\n' +
-      '10,Carlos Gómez,25,Enlace,74.0,1.75,Rugby,Los Cóndores\n' +
-      '7,Mateo Silva,20,Delantero,68.0,1.78,Fútbol,\n' +
-      ',Lucas Rossi,24,Ala,82.0,1.84,Baloncesto,\n'
+    // v2.7: documento, fecha de nacimiento, teléfono, EPS y acudiente (obligatorio si es menor de edad)
+    const csvContent = 'dorsal,nombre,tipo_documento,numero_documento,fecha_nacimiento,edad,posicion,peso,altura,deporte,equipo,telefono,eps,acudiente_nombre,acudiente_telefono\n' +
+      '9,Juan Pérez,CC,1090000001,2003-05-14,,Penetrador,78.5,1.80,Rugby,Los Cóndores,3000000001,Nueva EPS,,\n' +
+      '10,Carlos Gómez,CC,1090000002,,25,Enlace,74.0,1.75,Rugby,Los Cóndores,,,,\n' +
+      '7,Mateo Silva,TI,1090000003,2009-02-01,,Delantero,68.0,1.78,Fútbol,,,,Ana Silva,3000000003\n' +
+      ',Lucas Rossi,PA,AB123456,,24,Ala,82.0,1.84,Baloncesto,,,,,\n'
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -233,7 +262,7 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
             {file ? file.name : 'Arrastra tu archivo CSV aquí o haz clic para seleccionarlo'}
           </h4>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
-            Columnas recomendadas: <strong>dorsal, nombre, edad, posicion, peso, altura, deporte, equipo</strong>. El dorsal es opcional (0 a 99).
+            Columnas recomendadas: <strong>dorsal, nombre, tipo_documento, numero_documento, fecha_nacimiento, posicion, peso, altura, deporte, equipo</strong>. Opcionales: telefono, eps, acudiente_nombre y acudiente_telefono (obligatorios si es menor de edad). El dorsal va de 0 a 99.
           </p>
         </div>
 
@@ -273,6 +302,7 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
                     <th>#</th>
                     <th>Dorsal</th>
                     <th>Nombre</th>
+                    <th>Documento</th>
                     <th>Edad</th>
                     <th>Posición</th>
                     <th>Peso (kg)</th>
@@ -287,7 +317,8 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
                       <td style={{ color: 'var(--text-muted)' }}>{idx + 1}</td>
                       <td>{row.dorsal ? <span className="dorsal-chip">{row.dorsal}</span> : '—'}</td>
                       <td style={{ fontWeight: 600 }}>{row.nombre}</td>
-                      <td>{row.edad || '—'}</td>
+                      <td>{row.numero_documento ? `${row.tipo_documento || '¿tipo?'} ${row.numero_documento}` : '—'}</td>
+                      <td>{row.edad || row.fecha_nacimiento || '—'}</td>
                       <td>{row.posicion ? <span className="badge badge-purple">{row.posicion}</span> : '—'}</td>
                       <td>{row.peso || '—'}</td>
                       <td>{row.altura || '—'}</td>

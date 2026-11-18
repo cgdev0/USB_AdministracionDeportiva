@@ -4,6 +4,7 @@ const pool = require('../config/db');
 
 const { responderError } = require('../utils/errores');
 const { puedeVerJugador } = require('../utils/alcance');
+const { registrar, jugadorDeLaConsulta } = require('../utils/bitacora'); // v2.7 (T0.6): bitácora de accesos
 
 // v2.5: las fórmulas viven en un solo archivo, el mismo que usa la pantalla (frontend/src/utils/anthropometry.js).
 // Antes había una copia aquí y el error de la masa ósea (diámetro de húmero en lugar de muñeca) estaba en las dos.
@@ -70,6 +71,7 @@ const getAntropometriaByJugador = async (req, res) => {
       'SELECT * FROM antropometria WHERE jugador_id = $1 ORDER BY fecha DESC',
       [req.params.id]
     );
+    await registrar(req, { accion: 'listar', recurso: 'antropometria', jugador_id: req.params.id });
     res.json(rows);
   } catch (err) {
     responderError(res, err);
@@ -92,6 +94,7 @@ const createAntropometria = async (req, res) => {
       `INSERT INTO antropometria (${keys.join(', ')}) VALUES (${params}) RETURNING id`,
       vals
     );
+    await registrar(req, { accion: 'crear', recurso: 'antropometria', recurso_id: rows[0].id, jugador_id: data.jugador_id });
     res.status(201).json({ id: rows[0].id, ...fields });
   } catch (err) {
     responderError(res, err);
@@ -114,6 +117,7 @@ const updateAntropometria = async (req, res) => {
       `UPDATE antropometria SET ${setClause} WHERE id = $${vals.length}`,
       vals
     );
+    await registrar(req, { accion: 'editar', recurso: 'antropometria', recurso_id: req.params.id, jugador_id: data.jugador_id });
     res.json({ message: 'Registro actualizado correctamente', ...fields });
   } catch (err) {
     responderError(res, err);
@@ -122,7 +126,8 @@ const updateAntropometria = async (req, res) => {
 
 const deleteAntropometria = async (req, res) => {
   try {
-    await pool.query('DELETE FROM antropometria WHERE id = $1', [req.params.id]);
+    const { rows } = await pool.query('DELETE FROM antropometria WHERE id = $1 RETURNING jugador_id', [req.params.id]);
+    await registrar(req, { accion: 'eliminar', recurso: 'antropometria', recurso_id: req.params.id, jugador_id: rows[0]?.jugador_id });
     res.json({ message: 'Registro eliminado correctamente' });
   } catch (err) {
     responderError(res, err);

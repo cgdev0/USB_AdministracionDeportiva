@@ -1,7 +1,7 @@
 // Funcionalidad de cada módulo: lectura, alta, edición y baja (RF-03 a RF-17)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
 const { fechaEnDias, horaActual } = require('../utilidades/fechas');
 
 const PRE = 'ZZ prueba ';   // prefijo para identificar y limpiar los datos creados
@@ -15,7 +15,7 @@ test.before(async () => {
   ;({ rows: [{ id: T.equipo }] } = await sql(`SELECT id FROM equipos WHERE nombre = 'Unisimón Rugby (demo)'`));
 });
 test.after(async () => {
-  await sql(`DELETE FROM jugadores WHERE nombre LIKE $1`, [PRE + '%']);
+  await sqlMantenimiento(`DELETE FROM jugadores WHERE nombre LIKE $1`, [PRE + '%']);
   await sql(`DELETE FROM equipos WHERE nombre LIKE $1`, [PRE + '%']);
   await sql(`DELETE FROM entrenamientos WHERE tipo LIKE $1`, [PRE + '%']);
   await sql(`DELETE FROM partidos WHERE rival LIKE $1`, [PRE + '%']);
@@ -33,10 +33,14 @@ async function jugadorDePrueba(extra = {}) {
 test('CP-MOD-001 [RF-18] Todos los módulos responden a la lectura (administrador)', async () => {
   const rutas = ['/api/equipos', '/api/disciplinas', '/api/jugadores', '/api/entrenamientos', '/api/asistencia',
     '/api/lesiones', '/api/evaluaciones', '/api/partidos', '/api/estadisticas', '/api/dashboard', '/api/dashboard/inicio',
-    '/api/usuarios', '/api/settings/team', '/api/salud/historias', '/api/salud/controles',
-    '/api/salud/seguimientos-lesiones', '/api/salud/notificaciones', '/api/head-coach/resumen'];
+    '/api/usuarios', '/api/settings/team', '/api/salud/notificaciones', '/api/head-coach/resumen'];
   for (const ruta of rutas) {
     const r = await llamar('GET', ruta, T.administrador);
+    assert.equal(r.status, 200, `${ruta}: ${r.status} ${JSON.stringify(r.datos)?.slice(0, 120)}`);
+  }
+  // v2.7 (T0.7): la información clínica la lee el personal de salud, no el administrador
+  for (const ruta of ['/api/salud/historias', '/api/salud/controles', '/api/salud/seguimientos-lesiones', '/api/valoraciones']) {
+    const r = await llamar('GET', ruta, T.salud);
     assert.equal(r.status, 200, `${ruta}: ${r.status} ${JSON.stringify(r.datos)?.slice(0, 120)}`);
   }
 });
@@ -77,7 +81,9 @@ test('CP-MOD-005 [RF-08] Deportistas: crear, ver ficha, editar parcialmente y el
   const id = await jugadorDePrueba({ edad: 20, posicion: 'Ala' });
   const ficha = await llamar('GET', `/api/jugadores/${id}`, T.administrador);
   assert.equal(ficha.status, 200);
-  assert.ok('ultima_antropometria' in ficha.datos && 'ultima_evaluacion' in ficha.datos);
+  // v2.7 (T0.7): la antropometría de la ficha solo la recibe el personal de salud
+  assert.ok('ultima_evaluacion' in ficha.datos && !('ultima_antropometria' in ficha.datos));
+  assert.ok('ultima_antropometria' in (await llamar('GET', `/api/jugadores/${id}`, T.salud)).datos);
   assert.equal((await llamar('PUT', `/api/jugadores/${id}`, T.administrador, { posicion: 'Centro' })).status, 200);
   const { rows: [fila] } = await sql('SELECT posicion, edad FROM jugadores WHERE id = $1', [id]);
   assert.equal(fila.posicion, 'Centro');
@@ -130,10 +136,9 @@ test('CP-MOD-010 [RF-14] Lesiones: el personal de salud registra, edita y da de 
 
 test('CP-MOD-011 [RF-15] Salud: historia clínica, control médico y seguimiento de lesión', async () => {
   const j = await jugadorDePrueba();
+  // v2.7 (T0.3, DEF-052): la historia ya no se sobrescribe; cada atención es una valoración (pruebas CP-HC-006 a 010)
   const h = await llamar('POST', '/api/salud/historias', T.salud, { jugador_id: j, alergias: 'Penicilina' });
-  assert.equal(h.status, 200);
-  const h2 = await llamar('POST', '/api/salud/historias', T.salud, { jugador_id: j, alergias: 'Ninguna' });
-  assert.equal(h2.datos.id, h.datos.id, 'la historia se actualiza, no se duplica');
+  assert.equal(h.status, 410, 'el formulario que sobrescribía la historia ya no existe');
   const c = await llamar('POST', '/api/salud/controles', T.salud, { jugador_id: j, tipo: 'Precompetitivo', aptitud: 'apto_restricciones', restricciones: 'Sin contacto' });
   assert.equal(c.status, 201);
   const l = await llamar('POST', '/api/lesiones', T.salud, { jugador_id: j, tipo: 'Desgarro', fecha_inicio: '2026-10-05' });

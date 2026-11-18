@@ -25,7 +25,7 @@ exports.metricas = async (req, res) => {
     const { rows } = await db.query(`
       SELECT d.id, d.nombre,
         (SELECT COUNT(*)::int FROM jugadores j LEFT JOIN equipos eq ON eq.id = j.equipo_id
-          WHERE ${DEPORTE_JUGADOR} = d.id${alcance ? ` AND ${alcance}` : ''}) AS total_jugadores,
+          WHERE ${DEPORTE_JUGADOR} = d.id AND j.activo${alcance ? ` AND ${alcance}` : ''}) AS total_jugadores,
         (SELECT COUNT(*)::int FROM estadisticas_jugador es JOIN jugadores j ON j.id = es.jugador_id
           LEFT JOIN equipos eq ON eq.id = j.equipo_id
           WHERE ${DEPORTE_JUGADOR} = d.id${alcance ? ` AND ${alcance}` : ''}) AS total_registros

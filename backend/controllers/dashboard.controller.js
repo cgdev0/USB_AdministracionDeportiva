@@ -6,10 +6,10 @@ exports.getSummary = async (req, res) => {
     const { disciplina_id } = req.query;
     const filterSport = disciplina_id && disciplina_id !== 'todos' ? parseInt(disciplina_id, 10) : null;
 
-    let r1Query = 'SELECT COUNT(*) AS total FROM jugadores';
+    let r1Query = 'SELECT COUNT(*) AS total FROM jugadores WHERE activo';
     let r1Params = [];
     if (filterSport) {
-      r1Query += ' WHERE disciplina_id = $1';
+      r1Query += ' AND disciplina_id = $1';
       r1Params = [filterSport];
     }
     const { rows: [r1] } = await db.query(r1Query, r1Params);

@@ -30,12 +30,48 @@ async function asegurarHeadCoach(client) {
      WHERE id = (SELECT id FROM usuarios WHERE rol = 'entrenador' ORDER BY id LIMIT 1)`, [hc.id]);
 }
 
+// v2.7 (T0.1): documentos ficticios, EPS y contacto de emergencia del plantel, y un deportista menor de edad
+// (#23) con su acudiente. Solo completa a quien aún no tiene documento: así también se completa el plantel que
+// ya estaba cargado en Railway antes de la v2.7, sin tocar lo que alguien haya corregido a mano.
+const EPS_DEMO = ['Nueva EPS', 'Sanitas', 'Sura', 'Coosalud', 'Salud Total'];
+const DORSAL_MENOR = 23;
+async function completarIdentificacion(client, equipoId) {
+  const { rows } = await client.query(
+    'SELECT id, dorsal FROM jugadores WHERE equipo_id = $1 AND numero_documento IS NULL ORDER BY dorsal', [equipoId]);
+  for (const { id, dorsal } of rows) {
+    const dos = String(dorsal).padStart(2, '0');
+    const menor = dorsal === DORSAL_MENOR;
+    await client.query(
+      `UPDATE jugadores SET tipo_documento = $2, numero_documento = $3, telefono = $4, eps = $5,
+         municipio_residencia = 'Cúcuta', zona_residencia = 'urbana', nacionalidad = 'CO',
+         contacto_emergencia_nombre = $6, contacto_emergencia_parentesco = $7, contacto_emergencia_telefono = $8,
+         fecha_nacimiento = CASE WHEN $9::boolean THEN (CURRENT_DATE - INTERVAL '17 years 2 months')::date ELSE fecha_nacimiento END,
+         edad = CASE WHEN $9::boolean THEN NULL ELSE edad END,
+         acudiente_nombre = CASE WHEN $9::boolean THEN 'María Ibarra (demo)' ELSE acudiente_nombre END,
+         acudiente_tipo_documento = CASE WHEN $9::boolean THEN 'CC' ELSE acudiente_tipo_documento END,
+         acudiente_numero_documento = CASE WHEN $9::boolean THEN '60000000' ELSE acudiente_numero_documento END,
+         acudiente_parentesco = CASE WHEN $9::boolean THEN 'Madre' ELSE acudiente_parentesco END,
+         acudiente_telefono = CASE WHEN $9::boolean THEN '3000000099' ELSE acudiente_telefono END
+       WHERE id = $1`,
+      [id, menor ? 'TI' : 'CC', `10900000${dos}`, `30000000${dos}`, EPS_DEMO[dorsal % EPS_DEMO.length],
+       menor ? 'María Ibarra (demo)' : 'Contacto de emergencia (demo)', menor ? 'Madre' : 'Madre', `31000000${dos}`, menor]);
+  }
+  return rows.length;
+}
+
 async function run() {
   const client = await pool.connect();
   try {
     await asegurarHeadCoach(client);
+    // v2.7 (T0.2): la cuenta de salud de demostración es fisioterapeuta profesional (solo si aún no tiene datos)
+    await client.query(`UPDATE usuarios SET profesion = 'fisioterapia', vinculo = 'profesional'
+      WHERE email = 'salud@dtdeportivo.com' AND profesion IS NULL AND vinculo IS NULL`);
     const { rows: existe } = await client.query('SELECT id FROM equipos WHERE nombre = $1', [EQUIPO]);
-    if (existe.length) { console.log('ℹ️  El plantel de demostración ya existe; solo se verificó el head coach de prueba.'); return; }
+    if (existe.length) {
+      const completados = await completarIdentificacion(client, existe[0].id);
+      console.log(`ℹ️  El plantel de demostración ya existe; se verificó el head coach de prueba${completados ? ` y se completó la identificación de ${completados} deportistas` : ''}.`);
+      return;
+    }
 
     await client.query('BEGIN');
     const { rows: [rugby] } = await client.query(
@@ -112,6 +148,8 @@ async function run() {
         `INSERT INTO estadisticas_jugador (jugador_id, goles, asistencias, minutos_jugados, metricas) VALUES ($1, $2, $3, 80, $4)`,
         [ids[dorsal], tries, pases, metricas]);
     }
+
+    await completarIdentificacion(client, equipo.id);
 
     // El usuario jugador de prueba queda vinculado al #9
     await client.query(`UPDATE usuarios SET jugador_id = $1 WHERE email = 'jugador@dtdeportivo.com'`, [ids[9]]);

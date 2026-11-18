@@ -1,12 +1,12 @@
 // Importación por CSV (interoperabilidad, métrica M-F6; RF-03, RF-08, RF-09)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, llamarFormulario, token, sql } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, llamarFormulario, token, sql, sqlMantenimiento } = require('../utilidades/api');
 
 let A;
 test.before(async () => { await iniciar(); A = await token('administrador'); });
 test.after(async () => {
-  await sql(`DELETE FROM jugadores WHERE nombre LIKE 'ZZ csv%'`);
+  await sqlMantenimiento(`DELETE FROM jugadores WHERE nombre LIKE 'ZZ csv%'`);
   await sql(`DELETE FROM equipos WHERE nombre = 'ZZ CSV Equipo'`);
   await sql(`DELETE FROM disciplinas WHERE nombre = 'ZZ CSV Deporte'`);
   await sql(`DELETE FROM usuarios WHERE email LIKE 'zz.csv%'`);

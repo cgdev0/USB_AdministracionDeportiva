@@ -107,6 +107,15 @@ exports.guardar = async (req, res) => {
     if (!partido) { await cliente.query('ROLLBACK'); return res.status(404).json({ error: 'Partido no encontrado' }); }
 
     // El entrenador solo convoca y retira a sus propios deportistas
+    // v2.7 (T0.4): un deportista retirado no se convoca
+    if (nuevos.size) {
+      const { rows: retirados } = await cliente.query(
+        'SELECT nombre FROM jugadores WHERE id = ANY($1::int[]) AND NOT activo', [[...nuevos.keys()]]);
+      if (retirados.length) {
+        await cliente.query('ROLLBACK');
+        return res.status(400).json({ error: `${retirados.map(r => r.nombre).join(', ')} está retirado del plantel y no se puede convocar.` });
+      }
+    }
     const pAlc = [];
     const alcance = condicionAlcance(req.usuario, pAlc);
     if (alcance && nuevos.size) {

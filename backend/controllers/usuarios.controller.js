@@ -2,6 +2,32 @@ const db     = require('../config/db');
 const { hoyLocal } = require('../utils/hoy');
 const { hashClave } = require('../utils/claves');
 const { responderError } = require('../utils/errores');
+const path = require('path');
+const { pathToFileURL } = require('url');
+
+// v2.7 (T0.1): mismas reglas de identificación que Deportistas y los formularios
+const identificacion = import(pathToFileURL(path.join(__dirname, '..', '..', 'frontend', 'src', 'utils', 'identificacion.js')).href);
+// v2.7 (T0.2): datos de quien atiende (profesión, vínculo, registro profesional y supervisor)
+const { modulo: profesionales } = require('../utils/quienAtiende');
+
+// Profesión, vínculo, registro profesional (opcional, decisión D1) y supervisor (opcional) del personal de salud.
+// Para los demás roles estos datos quedan vacíos. Devuelve { cambios } o { status, error }.
+async function validarProfesionales(datos, rol, usuarioId = null) {
+  const { CAMPOS_PROFESIONALES, normalizarDatosProfesionales } = await profesionales;
+  if (rol !== 'personal_salud') return { cambios: Object.fromEntries(CAMPOS_PROFESIONALES.map(c => [c, null])) };
+  const r = normalizarDatosProfesionales(Object.fromEntries(CAMPOS_PROFESIONALES
+    .filter(c => Object.prototype.hasOwnProperty.call(datos, c)).map(c => [c, datos[c]])));
+  if (!r.ok) return { status: 400, error: r.error };
+  const supervisor = r.cambios.supervisor_id;
+  if (supervisor) {
+    if (usuarioId && Number(supervisor) === Number(usuarioId)) return { status: 400, error: 'Una persona no puede supervisarse a sí misma.' };
+    const { rows: [s] } = await db.query('SELECT rol, vinculo, activo FROM usuarios WHERE id = $1', [supervisor]);
+    if (!s || s.rol !== 'personal_salud' || !s.activo || ['practicante', 'estudiante'].includes(s.vinculo)) {
+      return { status: 400, error: 'El supervisor debe ser un profesional de salud activo (no un practicante ni un estudiante).' };
+    }
+  }
+  return { cambios: r.cambios };
+}
 
 // GET /api/usuarios
 exports.getAll = async (_req, res) => {
@@ -10,6 +36,7 @@ exports.getAll = async (_req, res) => {
       // disciplinas: deportes relacionados con la cuenta, para filtrar por deporte (v1.9). Deportista: el suyo;
       // entrenador: el asignado y los de sus deportistas; head coach: el suyo y los de sus entrenadores.
       `SELECT u.id, u.nombre, u.email, u.rol, u.jugador_id, u.head_coach_id, hc.nombre AS head_coach_nombre, u.activo, u.primer_login, u.created_at,
+              u.profesion, u.vinculo, u.registro_profesional, u.supervisor_id, sup.nombre AS supervisor_nombre,
               u.disciplina_id, ARRAY(
                 SELECT DISTINCT x FROM (
                   SELECT u.disciplina_id AS x
@@ -19,7 +46,8 @@ exports.getAll = async (_req, res) => {
                   UNION ALL SELECT e.disciplina_id FROM usuarios e WHERE e.head_coach_id = u.id
                 ) d WHERE x IS NOT NULL
               ) AS disciplinas
-       FROM usuarios u LEFT JOIN usuarios hc ON hc.id=u.head_coach_id ORDER BY u.created_at DESC`
+       FROM usuarios u LEFT JOIN usuarios hc ON hc.id=u.head_coach_id LEFT JOIN usuarios sup ON sup.id = u.supervisor_id
+       ORDER BY u.created_at DESC`
     );
     res.json(rows);
   } catch (err) {
@@ -58,6 +86,20 @@ exports.create = async (req, res) => {
   if (rol === 'jugador' && !jugador_id && !ficha?.disciplina_id) {
     return res.status(400).json({ error: 'Elige el deporte del deportista.' });
   }
+  // v2.7: documento, contacto y acudiente de la ficha nueva (el acudiente es obligatorio si es menor de edad)
+  let identFicha = {};
+  if (rol === 'jugador' && !jugador_id) {
+    const { CAMPOS_IDENTIFICACION, normalizarIdentificacion, faltaAcudiente, MENSAJE_ACUDIENTE } = await identificacion;
+    const r = normalizarIdentificacion(Object.fromEntries(CAMPOS_IDENTIFICACION
+      .filter(c => Object.prototype.hasOwnProperty.call(ficha, c)).map(c => [c, ficha[c]])));
+    if (!r.ok) return res.status(r.status).json({ error: r.error });
+    if (faltaAcudiente({ fecha_nacimiento: nacimiento.valor, ...r.cambios }, hoyLocal())) {
+      return res.status(400).json({ error: MENSAJE_ACUDIENTE });
+    }
+    identFicha = r.cambios;
+  }
+  const prof = await validarProfesionales(req.body, rol);
+  if (prof.error) return res.status(prof.status).json({ error: prof.error });
 
   const cliente = await db.connect();
   try {
@@ -66,25 +108,32 @@ exports.create = async (req, res) => {
     let jugadorId = jugador_id || null;
     if (rol === 'jugador' && !jugadorId) {
       const genero = ['masculino', 'femenino'].includes(ficha.genero) ? ficha.genero : null;
+      // v2.7: columnas de identificación ya validadas (solo nombres de la lista blanca de identificacion.js)
+      const extra = Object.keys(identFicha);
+      const columnasExtra = extra.map(c => `, ${c}`).join('');
+      const marcasExtra = extra.map((_, i) => `, $${i + 8}`).join('');
       const { rows: [j] } = await cliente.query(
-        `INSERT INTO jugadores (nombre, fecha_nacimiento, edad, genero, posicion, disciplina_id, equipo_id, entrenador_id)
-         VALUES ($1, $2::date, CASE WHEN $2::date IS NULL THEN NULL ELSE date_part('year', age($2::date))::int END, $3, $4, $5, $6, $7)
+        `INSERT INTO jugadores (nombre, fecha_nacimiento, edad, genero, posicion, disciplina_id, equipo_id, entrenador_id${columnasExtra})
+         VALUES ($1, $2::date, CASE WHEN $2::date IS NULL THEN NULL ELSE date_part('year', age($2::date))::int END, $3, $4, $5, $6, $7${marcasExtra})
          RETURNING id`,
         [String(nombre).trim(), nacimiento.valor, genero, ficha.posicion || null, ficha.disciplina_id,
-         ficha.equipo_id || null, ficha.entrenador_id || null]);
+         ficha.equipo_id || null, ficha.entrenador_id || null, ...extra.map(c => identFicha[c])]);
       jugadorId = j.id;
     }
     const { rows } = await cliente.query(
-      `INSERT INTO usuarios (nombre, email, password_hash, salt, rol, jugador_id, head_coach_id, disciplina_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      `INSERT INTO usuarios (nombre, email, password_hash, salt, rol, jugador_id, head_coach_id, disciplina_id,
+                             profesion, vinculo, registro_profesional, supervisor_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
       [nombre, email.toLowerCase().trim(), hash, salt, rol, jugadorId, head_coach_id || null,
-       ['entrenador', 'head_coach'].includes(rol) ? disciplina_id || null : null]
+       ['entrenador', 'head_coach'].includes(rol) ? disciplina_id || null : null,
+       prof.cambios.profesion ?? null, prof.cambios.vinculo ?? null, prof.cambios.registro_profesional ?? null, prof.cambios.supervisor_id ?? null]
     );
     await cliente.query('COMMIT');
     res.status(201).json({ id: rows[0].id, nombre, email, rol, jugador_id: jugadorId, activo: true, primer_login: true });
   } catch (err) {
     await cliente.query('ROLLBACK').catch(() => {});
-    if (err.code === '23505') return res.status(409).json({ error: 'El email ya está registrado' });
+    // El documento repetido tiene su propio mensaje (errores.js); cualquier otro duplicado es el email
+    if (err.code === '23505' && err.constraint !== 'uq_jugadores_documento') return res.status(409).json({ error: 'El email ya está registrado' });
     responderError(res, err);
   } finally {
     cliente.release();
@@ -106,9 +155,16 @@ exports.update = async (req, res) => {
     const headCoachId = viene('head_coach_id') ? req.body.head_coach_id || null : actual.head_coach_id;
     const disciplinaId = !['entrenador', 'head_coach'].includes(rol) ? null
       : viene('disciplina_id') ? req.body.disciplina_id || null : actual.disciplina_id;
+    // v2.7 (T0.2): datos profesionales. Si deja de ser personal de salud se borran; si no vienen, se conservan.
+    const prof = await validarProfesionales(req.body, rol, req.params.id);
+    if (prof.error) return res.status(prof.status).json({ error: prof.error });
+    const extra = Object.keys(prof.cambios);
+    const valores = [nombre, email?.toLowerCase().trim(), rol, jugadorId, headCoachId, activo ?? true, disciplinaId,
+      ...extra.map(c => prof.cambios[c]), req.params.id];
     const { rowCount } = await db.query(
-      `UPDATE usuarios SET nombre=$1, email=$2, rol=$3, jugador_id=$4, head_coach_id=$5, activo=$6, disciplina_id=$7 WHERE id=$8`,
-      [nombre, email?.toLowerCase().trim(), rol, jugadorId, headCoachId, activo ?? true, disciplinaId, req.params.id]
+      `UPDATE usuarios SET nombre=$1, email=$2, rol=$3, jugador_id=$4, head_coach_id=$5, activo=$6, disciplina_id=$7${extra.map((c, i) => `, ${c}=$${8 + i}`).join('')}
+       WHERE id=$${valores.length}`,
+      valores
     );
     if (rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json({ message: 'Usuario actualizado correctamente' });

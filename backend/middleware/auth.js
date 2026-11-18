@@ -35,3 +35,12 @@ exports.autorizar = (...roles) => (req, res, next) => {
   if (roles.includes(req.usuario.rol) || req.usuario.rol === 'administrador') return next();
   return res.status(403).json({ error: 'Acceso denegado para tu rol' });
 };
+
+// v2.7 (T0.3): igual que `autorizar`, pero SIN el pase libre del administrador. Lo usan las rutas de la historia
+// clínica: el administrador gestiona cuentas, no es parte del equipo de salud (Resolución 1995 de 1999, art. 14;
+// decisión D5 del plan). La T0.7 lo extiende al resto de rutas clínicas.
+exports.autorizarEstricto = (...roles) => (req, res, next) => {
+  if (!req.usuario) return res.status(401).json({ error: 'No autenticado' });
+  if (roles.includes(req.usuario.rol)) return next();
+  return res.status(403).json({ error: 'Acceso denegado para tu rol' });
+};

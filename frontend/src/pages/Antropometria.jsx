@@ -39,7 +39,8 @@ export default function Antropometria() {
   const { selectedSportId, selectedSport, setSelectedSportId } = useDeporte()
   // v2.0: el deportista solo ve su propio panel; no hay selector ni datos de sus compañeros
   const esJugador = usuario?.rol === 'jugador'
-  const puedeEditar = tienePermiso(['administrador', 'entrenador', 'personal_salud'])
+  // v2.7 (T0.7): la antropometría es parte de la historia clínica: solo el personal de salud la registra
+  const puedeEditar = usuario?.rol === 'personal_salud'
 
   const [jugadores, setJugadores] = useState([])
   const [selectedJugador, setSelectedJugador] = useState('')

@@ -24,6 +24,8 @@ const ENV_PRUEBAS = {
   JWT_SECRET: crypto.randomBytes(48).toString('hex'),
   JWT_REFRESH_SECRET: crypto.randomBytes(48).toString('hex'),
   SEED_CLAVE_INICIAL: CLAVE_PRUEBAS,
+  // v2.7 (T0.5): los archivos clínicos de las pruebas van a una carpeta temporal, no al repositorio
+  CLINICO_DIR: require('path').join(require('os').tmpdir(), 'dt_deportivo_pruebas_clinico'),
 };
 
 function credenciales(database) {

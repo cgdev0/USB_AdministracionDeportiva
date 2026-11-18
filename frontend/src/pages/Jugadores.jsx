@@ -14,12 +14,30 @@ import { nombreConDorsal, ordenarPorDorsal, tieneDorsal } from '../utils/jugador
 import EncabezadoPagina from '../components/EncabezadoPagina'
 import { perfilDeporte } from '../config/deportes'
 import { edadDesde, hoyISO } from '../utils/fechas'
+import CamposIdentificacion from '../components/CamposIdentificacion'
+import {
+  CAMPOS_IDENTIFICACION, CAMPOS_SENSIBLES, normalizarIdentificacion, faltaAcudiente, esMenorDeEdad, MENSAJE_ACUDIENTE,
+  documentoLegible, PAISES, PERTENENCIAS_ETNICAS, DISCAPACIDADES,
+} from '../utils/identificacion'
 
-const EMPTY = { nombre: '', dorsal: '', edad: '', fecha_nacimiento: '', genero: '', posicion: '', peso: '', altura: '', equipo_id: '', disciplina_id: '', entrenador_id: '' }
+// v2.7 (T0.1): documento, contacto, emergencia y acudiente (los datos sensibles solo los registra salud)
+const IDENT_VACIA = Object.fromEntries(CAMPOS_IDENTIFICACION.map(c => [c, '']))
+const EMPTY = { nombre: '', dorsal: '', edad: '', fecha_nacimiento: '', genero: '', posicion: '', peso: '', altura: '', equipo_id: '', disciplina_id: '', entrenador_id: '', ...IDENT_VACIA }
+const identDe = (j, campos) => Object.fromEntries(campos.map(c => [c, j?.[c] ?? '']))
+const etiquetaDe = (lista, valor) => lista.find(([v]) => v === valor)?.[1] || null
+// Valida en la pantalla con las mismas reglas del servidor; devuelve el mensaje de error o null
+function errorIdentificacion(valores, campos, registro) {
+  const r = normalizarIdentificacion(identDe(valores, campos), { sensibles: campos.includes('discapacidad') })
+  if (!r.ok) return r.error
+  if (faltaAcudiente({ ...registro, ...r.cambios }, hoyISO())) return MENSAJE_ACUDIENTE
+  return null
+}
+const telefonoEnlace = (tel) => tel ? <a href={`tel:${tel}`}>{tel}</a> : '—'
 
 export default function Jugadores() {
   const { tienePermiso, usuario } = useAuth()
   const puedeEditar = tienePermiso(['administrador', 'entrenador'])
+  const esSalud = usuario?.rol === 'personal_salud'
   const {
     disciplinas,
     selectedSportId,
@@ -51,6 +69,13 @@ export default function Jugadores() {
   const [modalNuevoDeporte, setModalNuevoDeporte] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState(null)
   const [deleteModal, setDeleteModal]     = useState({ isOpen: false, id: null, nombre: '', loading: false })
+  // v2.7: el personal de salud completa la identificación (con los datos sensibles) sin tocar equipo ni dorsal
+  const [modalIdent, setModalIdent]       = useState(false)
+  const [formIdent, setFormIdent]         = useState({})
+  const [guardandoIdent, setGuardandoIdent] = useState(false)
+  // v2.7 (T0.4): retirar en lugar de borrar (la historia se conserva 15 años, Res. 839 de 2017)
+  const [verRetirados, setVerRetirados]   = useState(false)
+  const [retiro, setRetiro]               = useState(null) // { id, nombre, motivo, aviso }
   
   // Formulario de jugador
   const [form, setForm]                   = useState(EMPTY)
@@ -65,7 +90,7 @@ export default function Jugadores() {
     setLoading(true)
     setError(null)
     try {
-      const [jRes, eRes] = await Promise.all([api.get('/jugadores'), api.get('/equipos')])
+      const [jRes, eRes] = await Promise.all([api.get('/jugadores', { params: { retirados: 'incluir' } }), api.get('/equipos')])
       setJugadores(jRes.data)
       setEquipos(eRes.data)
       if (usuario?.rol === 'administrador') { try { const uRes = await api.get('/usuarios'); setEntrenadores(uRes.data.filter(u=>u.rol==='entrenador')) } catch {} }
@@ -84,7 +109,10 @@ export default function Jugadores() {
   const currentSport = selectedSport
 
   // Jugadores filtrados por deporte y por término de búsqueda
+  const retirados = jugadores.filter(j => j.activo === false)
   const filteredJugadores = jugadores.filter(j => {
+    // v2.7 (T0.4): plantel actual o retirados
+    if ((j.activo === false) !== verRetirados) return false
     // Si hay un deporte seleccionado (y no es 'todos')
     if (selectedSportId && selectedSportId !== 'todos') {
       const matchDisciplina = String(j.disciplina_id) === String(selectedSportId)
@@ -97,7 +125,10 @@ export default function Jugadores() {
       const matchPos = j.posicion?.toLowerCase().includes(term)
       const matchEquipo = j.equipo_nombre?.toLowerCase().includes(term)
       const matchDorsal = tieneDorsal(j.dorsal) && String(j.dorsal) === term.replace('#', '')
-      if (!(matchNombre || matchPos || matchEquipo || matchDorsal)) return false
+      // v2.7: también por número de documento (sin puntos ni espacios)
+      const termDoc = term.replace(/[\s.\-]/g, '')
+      const matchDoc = termDoc.length >= 3 && String(j.numero_documento || '').toLowerCase().includes(termDoc)
+      if (!(matchNombre || matchPos || matchEquipo || matchDorsal || matchDoc)) return false
     }
     if (filtros.edadMin !== '' && Number(j.edad || 0) < Number(filtros.edadMin)) return false
     if (filtros.edadMax !== '' && Number(j.edad || 0) > Number(filtros.edadMax)) return false
@@ -153,6 +184,7 @@ export default function Jugadores() {
       equipo_id: j.equipo_id ?? '',
       disciplina_id: j.disciplina_id ?? (selectedSportId !== 'todos' ? selectedSportId : ''),
       entrenador_id: j.entrenador_id ?? '',
+      ...identDe(j, CAMPOS_IDENTIFICACION),
     })
     setModoAsociacion(j.disciplina_id ? 'disciplina' : (j.equipo_id ? 'equipo' : 'disciplina'))
     setEditId(j.id)
@@ -193,12 +225,40 @@ export default function Jugadores() {
   }
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }))
+  const cambiarIdent = (campo, valor) => setForm(f => ({ ...f, [campo]: valor }))
+  // Para la regla del acudiente: con fecha de nacimiento manda la fecha; si no, la edad registrada
+  const edadDelForm = { fecha_nacimiento: form.fecha_nacimiento, edad: form.fecha_nacimiento ? '' : form.edad }
+  const formEsMenor = esMenorDeEdad(edadDelForm, hoyISO())
+
+  const abrirIdent = () => {
+    setFormIdent(identDe(selectedPlayer, [...CAMPOS_IDENTIFICACION, ...CAMPOS_SENSIBLES]))
+    setModalFicha(false)
+    setModalIdent(true)
+  }
+  const guardarIdent = async () => {
+    const error = errorIdentificacion(formIdent, [...CAMPOS_IDENTIFICACION, ...CAMPOS_SENSIBLES], selectedPlayer)
+    if (error) return toast.error(error)
+    setGuardandoIdent(true)
+    try {
+      await api.patch(`/jugadores/${selectedPlayer.id}/identificacion`, formIdent)
+      toast.success('Datos de identificación guardados')
+      setModalIdent(false)
+      loadData()
+      openFicha(selectedPlayer.id)
+    } catch (e) {
+      toast.error(e.response?.data?.error || e.message)
+    } finally {
+      setGuardandoIdent(false)
+    }
+  }
 
   const handleSubmit = async () => {
     if (!form.nombre.trim()) return toast.error('El nombre es obligatorio')
     if (String(form.dorsal).trim() !== '' && !/^\d{1,2}$/.test(String(form.dorsal).trim())) {
       return toast.error('El dorsal debe ser un número entre 0 y 99')
     }
+    const errorIdent = errorIdentificacion(form, CAMPOS_IDENTIFICACION, edadDelForm)
+    if (errorIdent) return toast.error(errorIdent)
     setSaving(true)
 
     const payload = { ...form }
@@ -240,8 +300,37 @@ export default function Jugadores() {
       setDeleteModal({ isOpen: false, id: null, nombre: '', loading: false })
       loadData()
     } catch (e) {
+      // El cliente de la API (services/api.js) entrega el código en e.status y el mensaje del servidor en e.message
+      if (e.status === 409) {
+        // Tiene historia clínica: no se borra, se ofrece retirarlo del plantel
+        const { id, nombre } = deleteModal
+        setDeleteModal({ isOpen: false, id: null, nombre: '', loading: false })
+        setRetiro({ id, nombre, motivo: '', aviso: e.message })
+        return
+      }
       toast.error(e.response?.data?.error || e.message)
       setDeleteModal(prev => ({ ...prev, loading: false }))
+    }
+  }
+
+  const confirmarRetiro = async () => {
+    try {
+      await api.patch(`/jugadores/${retiro.id}/retirar`, { motivo: retiro.motivo })
+      toast.success(`${retiro.nombre} salió del plantel. Su historia se conserva.`)
+      setRetiro(null)
+      loadData()
+    } catch (e) {
+      toast.error(e.response?.data?.error || e.message)
+    }
+  }
+  const reactivar = async (j) => {
+    try {
+      await api.patch(`/jugadores/${j.id}/reactivar`)
+      toast.success(`${j.nombre} volvió al plantel. Asígnale de nuevo su dorsal.`)
+      closeModal()
+      loadData()
+    } catch (e) {
+      toast.error(e.response?.data?.error || e.message)
     }
   }
 
@@ -290,9 +379,14 @@ export default function Jugadores() {
       )}
 
       <div className="barra-herramientas">
+        {/* v2.7 (T0.4): los retirados salen del plantel actual pero conservan su historia */}
+        <div className="segmentado" role="group" aria-label="Ver deportistas">
+          <button type="button" aria-pressed={!verRetirados} onClick={() => setVerRetirados(false)}>Plantel actual <span>{jugadores.length - retirados.length}</span></button>
+          <button type="button" aria-pressed={verRetirados} onClick={() => setVerRetirados(true)}>Retirados <span>{retirados.length}</span></button>
+        </div>
         <div className="buscador">
           <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-          <input type="search" placeholder="Buscar por nombre, dorsal, posición o equipo" value={searchTerm}
+          <input type="search" placeholder="Buscar por nombre, documento, dorsal, posición o equipo" value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)} aria-label="Buscar deportista" />
         </div>
         <button className="btn btn-secondary" onClick={() => setMostrarFiltros(v => !v)} aria-expanded={mostrarFiltros}>
@@ -451,9 +545,15 @@ export default function Jugadores() {
                             <button className="btn btn-ghost btn-sm acc-sec" onClick={() => openEdit(j)} aria-label={`Editar a ${j.nombre}`} title="Editar">
                               <Pencil size={13} />
                             </button>
-                            <button className="btn btn-danger btn-sm acc-sec" onClick={() => handleDelete(j.id, j.nombre)} aria-label={`Eliminar a ${j.nombre}`} title="Eliminar">
-                              <Trash2 size={13} />
-                            </button>
+                            {j.activo === false ? (
+                              <button className="btn btn-secondary btn-sm acc-sec" onClick={() => reactivar(j)} aria-label={`Reactivar a ${j.nombre}`} title="Reactivar">
+                                <i className="fa-solid fa-user-check" aria-hidden="true"></i>
+                              </button>
+                            ) : (
+                              <button className="btn btn-danger btn-sm acc-sec" onClick={() => setRetiro({ id: j.id, nombre: j.nombre, motivo: '' })} aria-label={`Retirar a ${j.nombre}`} title="Retirar del plantel">
+                                <i className="fa-solid fa-user-minus" aria-hidden="true"></i>
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
@@ -517,13 +617,26 @@ export default function Jugadores() {
       {modalFicha && selectedPlayer && (
         <Modal title={`Ficha deportiva: ${nombreConDorsal(selectedPlayer.nombre, selectedPlayer.dorsal)}`} onClose={closeModal} width="800px"
           footer={puedeEditar ? <>
-            <button type="button" className="btn btn-danger" onClick={() => { const p = selectedPlayer; closeModal(); handleDelete(p.id, p.nombre) }}>
-              <Trash2 size={15} /> Eliminar
-            </button>
+            {selectedPlayer.activo === false ? (
+              <button type="button" className="btn btn-secondary" onClick={() => reactivar(selectedPlayer)}>
+                <i className="fa-solid fa-user-check" aria-hidden="true"></i> Reactivar
+              </button>
+            ) : <>
+              <button type="button" className="btn btn-ghost" onClick={() => { const p = selectedPlayer; closeModal(); handleDelete(p.id, p.nombre) }}>
+                <Trash2 size={15} /> Eliminar
+              </button>
+              <button type="button" className="btn btn-danger" onClick={() => { const p = selectedPlayer; closeModal(); setRetiro({ id: p.id, nombre: p.nombre, motivo: '' }) }}>
+                <i className="fa-solid fa-user-minus" aria-hidden="true"></i> Retirar
+              </button>
+            </>}
             <button type="button" className="btn btn-primary" onClick={() => { const p = selectedPlayer; closeModal(); openEdit(p) }}>
               <Pencil size={15} /> Editar
             </button>
-          </> : null}>
+          </> : esSalud ? (
+            <button type="button" className="btn btn-primary" onClick={abrirIdent}>
+              <i className="fa-solid fa-id-card" aria-hidden="true"></i> Datos de identificación
+            </button>
+          ) : null}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 24 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div
@@ -594,7 +707,13 @@ export default function Jugadores() {
                   Datos Generales
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <p style={{ fontSize: 14 }}><strong>Edad:</strong> {selectedPlayer.edad ? `${selectedPlayer.edad} años` : '—'}</p>
+                  {selectedPlayer.activo === false && (
+                    <p className="badge badge-orange" style={{ alignSelf: 'flex-start' }}>
+                      <i className="fa-solid fa-user-minus" aria-hidden="true"></i> Retirado{selectedPlayer.retirado_en ? ` el ${String(selectedPlayer.retirado_en).slice(0, 10)}` : ''}{selectedPlayer.motivo_retiro ? ` · ${selectedPlayer.motivo_retiro}` : ''}
+                    </p>
+                  )}
+                  <p style={{ fontSize: 14 }}><strong>Documento:</strong> {documentoLegible(selectedPlayer.tipo_documento, selectedPlayer.numero_documento) || 'Sin registrar'}</p>
+                  <p style={{ fontSize: 14 }}><strong>Edad:</strong> {selectedPlayer.edad ? `${selectedPlayer.edad} años` : '—'}{esMenorDeEdad(selectedPlayer, hoyISO()) ? ' · menor de edad' : ''}</p>
                   <p style={{ fontSize: 14 }}><strong>Dorsal:</strong> {tieneDorsal(selectedPlayer.dorsal) ? <span className="dorsal-chip">{selectedPlayer.dorsal}</span> : 'Sin asignar'}</p>
                   <p style={{ fontSize: 14 }}><strong>Posición:</strong> <span className="badge badge-purple">{selectedPlayer.posicion || '—'}</span></p>
                   <p style={{ fontSize: 14 }}><strong>Deporte:</strong> <span className="badge badge-green">{selectedPlayer.disciplina_nombre || 'General'}</span></p>
@@ -602,6 +721,31 @@ export default function Jugadores() {
                   <p style={{ fontSize: 14 }}><strong>Peso:</strong> {selectedPlayer.peso ? `${selectedPlayer.peso} kg` : '—'}</p>
                   <p style={{ fontSize: 14 }}><strong>Altura:</strong> {selectedPlayer.altura ? `${selectedPlayer.altura} m` : '—'}</p>
                 </div>
+              </div>
+              {/* v2.7: contacto, emergencia y acudiente (los datos sensibles solo llegan al personal de salud) */}
+              <div className="card" style={{ padding: 16 }}>
+                <h3 style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Contacto y emergencia
+                </h3>
+                <dl className="ficha-datos">
+                  <div><dt>Teléfono</dt><dd>{telefonoEnlace(selectedPlayer.telefono)}</dd></div>
+                  <div><dt>EPS</dt><dd>{selectedPlayer.eps || '—'}</dd></div>
+                  <div><dt>Residencia</dt><dd>{[selectedPlayer.municipio_residencia, selectedPlayer.zona_residencia && `zona ${selectedPlayer.zona_residencia}`].filter(Boolean).join(' · ') || '—'}</dd></div>
+                  <div><dt>Nacionalidad</dt><dd>{etiquetaDe(PAISES, selectedPlayer.nacionalidad) || '—'}</dd></div>
+                  <div><dt>Emergencia</dt><dd>{selectedPlayer.contacto_emergencia_nombre
+                    ? <>{selectedPlayer.contacto_emergencia_nombre}{selectedPlayer.contacto_emergencia_parentesco ? ` (${selectedPlayer.contacto_emergencia_parentesco})` : ''} · {telefonoEnlace(selectedPlayer.contacto_emergencia_telefono)}</>
+                    : '—'}</dd></div>
+                  {(selectedPlayer.acudiente_nombre || esMenorDeEdad(selectedPlayer, hoyISO())) && (
+                    <div><dt>Acudiente</dt><dd>{selectedPlayer.acudiente_nombre
+                      ? <>{selectedPlayer.acudiente_nombre}{selectedPlayer.acudiente_parentesco ? ` (${selectedPlayer.acudiente_parentesco})` : ''}
+                        {selectedPlayer.acudiente_numero_documento ? ` · ${documentoLegible(selectedPlayer.acudiente_tipo_documento, selectedPlayer.acudiente_numero_documento)}` : ''} · {telefonoEnlace(selectedPlayer.acudiente_telefono)}</>
+                      : <span className="badge badge-orange">Falta el acudiente</span>}</dd></div>
+                  )}
+                  {esSalud && <>
+                    <div><dt>Pertenencia étnica</dt><dd>{etiquetaDe(PERTENENCIAS_ETNICAS, selectedPlayer.pertenencia_etnica) || 'Sin registrar'}</dd></div>
+                    <div><dt>Discapacidad</dt><dd>{etiquetaDe(DISCAPACIDADES, selectedPlayer.discapacidad) || 'Sin registrar'}</dd></div>
+                  </>}
+                </dl>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -624,7 +768,9 @@ export default function Jugadores() {
                     </div>
                   </div>
                 ) : (
-                  <EstadoVacio compacto icono="fa-ruler-combined" titulo="Sin medición antropométrica" descripcion="Se registra en el módulo Antropometría." />
+                  !('ultima_antropometria' in selectedPlayer)
+                    ? <EstadoVacio compacto icono="fa-user-shield" titulo="Información del personal de salud" descripcion="La composición corporal hace parte de la historia clínica: la consulta el personal de salud." />
+                    : <EstadoVacio compacto icono="fa-ruler-combined" titulo="Sin medición antropométrica" descripcion="Se registra en el módulo Antropometría." />
                 )}
               </div>
               <div className="card" style={{ padding: 20 }}>
@@ -743,6 +889,48 @@ export default function Jugadores() {
               <label>Estatura (m)</label>
               <input name="altura" type="number" step="0.01" value={form.altura} onChange={handleChange} placeholder="1.80" />
             </div>
+
+            <CamposIdentificacion valores={form} onCambio={cambiarIdent} menor={formEsMenor} id="jug-ident" />
+          </div>
+        </Modal>
+      )}
+
+      {/* v2.7: identificación completa para el personal de salud (incluye los datos sensibles) */}
+      {modalIdent && selectedPlayer && (
+        <Modal
+          title={`Identificación: ${nombreConDorsal(selectedPlayer.nombre, selectedPlayer.dorsal)}`}
+          onClose={() => setModalIdent(false)}
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => setModalIdent(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={guardarIdent} disabled={guardandoIdent}>
+                {guardandoIdent ? 'Guardando…' : 'Guardar'}
+              </button>
+            </>
+          }
+        >
+          <div className="form-grid">
+            <CamposIdentificacion valores={formIdent} onCambio={(campo, valor) => setFormIdent(f => ({ ...f, [campo]: valor }))}
+              menor={esMenorDeEdad(selectedPlayer, hoyISO())} sensibles id="salud-ident" />
+          </div>
+        </Modal>
+      )}
+
+      {/* v2.7 (T0.4): retirar del plantel conservando la historia */}
+      {retiro && (
+        <Modal title={`Retirar a ${retiro.nombre}`} onClose={() => setRetiro(null)}
+          footer={<>
+            <button type="button" className="btn btn-ghost" onClick={() => setRetiro(null)}>Cancelar</button>
+            <button type="button" className="btn btn-danger" onClick={confirmarRetiro}>
+              <i className="fa-solid fa-user-minus" aria-hidden="true"></i> Retirar del plantel
+            </button>
+          </>}>
+          {retiro.aviso && <p className="alerta alerta-aviso" role="status"><i className="fa-solid fa-circle-info" aria-hidden="true"></i> {retiro.aviso}</p>}
+          <p>Sale del plantel actual (listados, asistencia y convocatorias) y libera su dorsal. Su historia clínica, sus lesiones, su asistencia y sus estadísticas se conservan, y se puede reactivar cuando quieras.</p>
+          <div className="form-group">
+            <label htmlFor="retiro-motivo">Motivo (opcional)</label>
+            <input id="retiro-motivo" value={retiro.motivo} maxLength={200} onChange={e => setRetiro(r => ({ ...r, motivo: e.target.value }))}
+              placeholder="Terminó la temporada, se graduó, cambio de equipo…" />
           </div>
         </Modal>
       )}
@@ -751,7 +939,7 @@ export default function Jugadores() {
       <ConfirmModal
         isOpen={deleteModal.isOpen}
         title="¿Eliminar deportista?"
-        message={`¿Estás seguro de que deseas eliminar permanentemente a "${deleteModal.nombre}"? Sus evaluaciones, asistencias y datos asociados también se eliminarán.`}
+        message={`Eliminar es solo para un registro creado por error: "${deleteModal.nombre}" se borra junto con su asistencia y sus estadísticas. Si tiene historia clínica no se puede eliminar; en ese caso, retíralo del plantel.`}
         confirmText="Sí, Eliminar"
         cancelText="Cancelar"
         confirmVariant="danger"

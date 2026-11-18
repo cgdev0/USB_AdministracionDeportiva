@@ -496,6 +496,10 @@ function ParaRevisar({ items }) {
 }
 
 function Aviso({ it }) {
+  const { usuario } = useAuth()
+  // v2.7 (T0.7): Salud es del personal de salud y del deportista; los demás ven el aviso sin el enlace
+  const veSalud = ['personal_salud', 'jugador'].includes(usuario?.rol)
+  const enlaceSalud = (texto) => (veSalud ? <><br /><Link to="/salud">{texto}</Link></> : null)
   const quien = <b>{nombreConDorsal(it.nombre, it.dorsal)}</b>
   if (it.tipo === 'lesion') return (
     <li className="alerta alerta-error"><i className="fa-solid fa-kit-medical" aria-hidden="true"></i>
@@ -504,16 +508,16 @@ function Aviso({ it }) {
   )
   if (it.tipo === 'restriccion') return (
     <li className="alerta alerta-aviso"><i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-      <div>{quien} juega con restricción{it.restricciones ? `: ${it.restricciones.charAt(0).toLowerCase()}${it.restricciones.slice(1)}` : ''}.<br />
-        <Link to="/salud">Ver controles médicos</Link></div></li>
+      <div>{quien} juega con restricción{it.restricciones ? `: ${it.restricciones.charAt(0).toLowerCase()}${it.restricciones.slice(1)}` : ''}.
+        {enlaceSalud('Ver controles médicos')}</div></li>
   )
   if (it.tipo === 'no_apto') return (
     <li className="alerta alerta-error"><i className="fa-solid fa-circle-xmark" aria-hidden="true"></i>
-      <div>{quien} está no apto temporalmente según su último control médico.<br /><Link to="/salud">Ver controles médicos</Link></div></li>
+      <div>{quien} está no apto temporalmente según su último control médico.{enlaceSalud('Ver controles médicos')}</div></li>
   )
   if (it.tipo === 'control_vencido') return (
     <li className="alerta alerta-info"><i className="fa-solid fa-calendar-xmark" aria-hidden="true"></i>
-      <div>{quien} tiene un control médico pendiente desde el {fechaCorta(it.fecha)}.<br /><Link to="/salud">Registrar control</Link></div></li>
+      <div>{quien} tiene un control médico pendiente desde el {fechaCorta(it.fecha)}.{enlaceSalud('Registrar control')}</div></li>
   )
   if (it.tipo === 'antropometria') return (
     <li className="alerta alerta-info"><i className="fa-solid fa-ruler-combined" aria-hidden="true"></i>

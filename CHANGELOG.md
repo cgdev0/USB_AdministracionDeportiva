@@ -3,6 +3,182 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
+## v2.7 — Historia clínica: base legal y de seguridad
+
+**Etiqueta:** `v2.7` · Fase 0 del plan `docs/plan/plan_historia_clinica.md` · Migraciones `011_identificacion.sql` a `016_bitacora.sql`.
+
+Primera versión del plan acordado con el docente de salud el 17 de noviembre de 2026. Se basa en la Resolución 1995 de 1999 (historia clínica), la Resolución 839 de 2017 (conservación), la Ley 1581 de 2012 (datos sensibles) y la guía FHIR RDA del MinSalud.
+
+**Despliegue:**
+- Railway aplica las migraciones solo al arrancar. Se ensayó sobre una base v2.6 con datos: no se pierde nada y la historia anterior pasa a ser una valoración cerrada.
+- **Requiere el volumen en `/data` con `UPLOADS_DIR=/data/uploads`**, porque los archivos clínicos van a `/data/clinico`.
+
+**Defectos corregidos:**
+- DEF-052: la historia clínica se sobrescribía.
+- DEF-053: eliminar un deportista borraba su historia.
+- DEF-054: los archivos subidos eran públicos.
+- DEF-055: el administrador entraba a la información clínica.
+- DEF-056: el entrenador veía el diagnóstico y la antropometría.
+
+**T0.1 · Identificación del deportista (RF-25)**
+- El deportista tiene tipo y número de documento. Los tipos son los códigos de la guía RDA: CC, TI, RC, CE, PA, PPT y PE.
+  - El número se guarda sin puntos ni espacios y **no se repite aunque cambie el tipo**: al cumplir 18 años la TI pasa a CC con el mismo número.
+  - CC, TI y RC solo admiten dígitos.
+  - El documento se puede dejar para después.
+- Nuevos datos:
+  - teléfono, EPS, municipio, zona (urbana o rural) y nacionalidad;
+  - contacto de emergencia;
+  - acudiente.
+- **Si es menor de edad, el acudiente es obligatorio** (nombre y teléfono).
+  - Se exige al crear al deportista, al crear su cuenta en *Usuarios*, al importarlo por CSV y al editar su edad o su acudiente.
+  - Asignarle equipo o dorsal a un menor registrado antes de esta versión no queda bloqueado.
+- **Pertenencia étnica y discapacidad son datos sensibles.**
+  - Solo los registra el personal de salud, con la nueva ruta `PATCH /api/jugadores/:id/identificacion`, que no cambia el equipo, el dorsal ni el entrenador.
+  - Solo los ven el personal de salud y el propio deportista. La API se los quita al entrenador, al head coach y al administrador.
+- **Interfaz pensada para celular y tableta:**
+  - secciones plegables y teclado numérico o de teléfono según el campo;
+  - zona de residencia con botones grandes;
+  - el acudiente aparece solo si el deportista es menor de edad.
+- **Ficha del deportista:** muestra el documento y la tarjeta *Contacto y emergencia*, con teléfonos que se marcan con un toque.
+- **Personal de salud:** tiene el botón *Datos de identificación* para completar todos los datos.
+- **Búsqueda e importación:**
+  - Deportistas se busca también por número de documento.
+  - El CSV acepta `tipo_documento`, `numero_documento`, `fecha_nacimiento`, `telefono`, `eps` y las columnas del acudiente y del contacto de emergencia.
+  - Las filas inválidas no se importan y se informan con su motivo.
+- **Datos de demostración:** documentos ficticios para todo el plantel, y el #23 queda como menor de edad con acudiente.
+- Las reglas viven en un solo archivo, `frontend/src/utils/identificacion.js`, que usan tanto los formularios como la API.
+
+Pruebas: CP-UNI-021 a 024 (unitarias), CP-HC-001 a 004 (integración) y CP-UI-HC-001 y 002 (celular y tableta). Las pruebas de interfaz que usaban el texto anterior del buscador quedaron actualizadas.
+
+**T0.2 · Datos de quien atiende (RF-26)** · Migración `012_quien_atiende.sql`
+- Las cuentas del personal de salud tienen:
+  - profesión (fisioterapia, medicina, enfermería, nutrición, psicología u otra);
+  - **vínculo** (profesional, practicante o estudiante);
+  - **registro profesional (RETHUS) opcional**: decisión D1, porque los primeros en usar el sistema serán practicantes de fisioterapia y estudiantes del área de salud;
+  - **docente supervisor opcional**.
+- Reglas del supervisor: debe ser un profesional de salud activo (no un practicante ni un estudiante) y nadie se supervisa a sí mismo.
+- Si una cuenta deja de ser de salud, sus datos profesionales se borran. Si se edita sin enviarlos, se conservan.
+- En *Usuarios*:
+  - el administrador llena estos datos con botones grandes para el vínculo;
+  - ve cómo quedará identificada la persona (por ejemplo, "Practicante de fisioterapia · Supervisa: …");
+  - la lista muestra esa descripción debajo del correo.
+- La sesión (`/auth/login` y `/auth/me`) incluye `quien_atiende`. En *Salud*, cada profesional ve "Registras como…".
+- Los controles médicos y los seguimientos de lesiones muestran quién los registró (columna *Atendió*).
+- La cuenta de salud de demostración queda como fisioterapeuta profesional.
+- Reglas compartidas en `frontend/src/utils/profesionales.js`. La función `datosDeQuienAtiende` (`backend/utils/quienAtiende.js`) la usará la T0.3 para guardar una copia al cerrar cada valoración.
+
+Pruebas: CP-UNI-025, CP-HC-005 y CP-UI-HC-003 (celular).
+
+**T0.3 · Historia clínica secuencial e inalterable (RF-26, DEF-052)** · Migración `013_valoraciones.sql`
+- **Corrige DEF-052:** antes la historia clínica era una sola fila por deportista y cada guardado reemplazaba la anterior. Ahora **cada atención es una valoración aparte**, con fecha, hora, tipo (inicial, control, pretemporada o después de lesión) y quien atiende.
+- **Ciclo de una valoración:**
+  - *Borrador:* lo edita solo quien lo abrió, con número de versión. Si otro dispositivo la cambió, responde 409 en lugar de pisar los cambios. Se puede descartar.
+  - *Cerrar y firmar:* guarda una copia de los datos de quien atiende (T0.2) y un **código de integridad SHA-256**. Desde ese momento no se modifica ni se borra.
+  - *Notas aclaratorias:* son la única forma de corregir una valoración cerrada. Tampoco se modifican ni se borran.
+- **La base de datos también lo impide:** unos *triggers* bloquean cualquier cambio a lo cerrado aunque se intente sin pasar por la API. Solo el modo de mantenimiento (`dt.mantenimiento`) lo permite, por ejemplo para limpiar la base de pruebas.
+- **Verificar integridad:** `GET /api/valoraciones/:id/integridad` detecta si una valoración cambió después de cerrarse.
+- **Requisitos para abrir una valoración:** el deportista debe tener documento de identidad (Res. 1995) y la valoración no puede estar vacía.
+- **Acceso:**
+  - solo el personal de salud registra y consulta;
+  - el deportista ve sus valoraciones cerradas;
+  - **el administrador no accede**.
+  - El middleware `autorizar` dejaba pasar siempre al administrador; las rutas nuevas usan `autorizarEstricto`. La T0.7 lo extiende al resto de rutas clínicas.
+- **Migración:**
+  - las historias anteriores pasan a ser la primera valoración de cada deportista ("Antecedentes registrados antes de la v2.7"), cerradas, con su fecha y su autor;
+  - no tienen código de integridad, porque se registraron antes de que existiera;
+  - `POST /api/salud/historias` responde 410.
+- **Pantalla Salud:**
+  - la sección *Historia clínica · Valoraciones* reemplaza el formulario anterior y muestra la lista de atenciones de cada deportista;
+  - el editor tiene botones grandes para el tipo, antecedentes plegables que se proponen desde la última valoración cerrada, y la barra de acciones fija abajo;
+  - antes de cerrar pide confirmación;
+  - la vista de la valoración cerrada incluye las notas aclaratorias y el botón *Verificar integridad*;
+  - el deportista ve *Mis valoraciones*.
+
+Pruebas: CP-HC-006 a 010 (integración) y CP-UI-HC-004 (celular). CP-MOD-011 ahora comprueba que el formulario anterior ya no existe y CP-MIG-001 cuenta 24 tablas.
+
+**T0.4 · Conservación de la historia clínica (RNF-14, DEF-053)** · Migración `014_conservacion.sql`
+- **Corrige DEF-053:** eliminar un deportista ya no borra su historia. Antes, sus lesiones, controles, seguimientos y antropometría se borraban en cascada, y la Resolución 839 de 2017 exige conservarlos mínimo 15 años.
+- **Retirar en lugar de eliminar:**
+  - nuevos `PATCH /api/jugadores/:id/retirar` (con motivo opcional) y `PATCH /api/jugadores/:id/reactivar`;
+  - el retirado sale del plantel actual y libera su dorsal;
+  - conserva sus valoraciones, lesiones, asistencia y estadísticas.
+- **Plantel actual sin retirados:** listado de deportistas (`?retirados=incluir|solo` para verlos), nómina y conteo de equipos, inicio, panel del head coach, conteos por deporte, estadísticas y tablero. **Un retirado no se puede convocar.**
+- **La base de datos lo impide:** un trigger bloquea borrar a un deportista con historia clínica (valoraciones, controles, lesiones o antropometría) y una lesión con seguimientos, aunque se intente sin pasar por la API. La API responde 409 con un mensaje claro.
+- **En Deportistas:**
+  - pestañas *Plantel actual* y *Retirados*;
+  - botones *Retirar* (con motivo) y *Reactivar*;
+  - si se intenta eliminar a alguien con historia, se explica por qué no y se ofrece retirarlo;
+  - la ficha muestra la fecha y el motivo del retiro.
+- **Historia de los retirados:** en Salud, el personal de salud la sigue viendo; en el selector de valoraciones aparecen marcados como retirados.
+- **Corrección de la T0.1:** el listado de deportistas del head coach (`/api/head-coach/jugadores`) devolvía la pertenencia étnica y la discapacidad; ya no.
+- **Pruebas:** la limpieza de la base de pruebas usa el modo de mantenimiento (`sqlMantenimiento` en `pruebas/utilidades/api.js`).
+
+Pruebas: CP-HC-011 y 012 (integración) y CP-UI-HC-005 (celular).
+
+**T0.5 · Archivos clínicos protegidos (RNF-13, DEF-054)** · Migración `015_archivos_clinicos.sql`
+- **Base para los consentimientos escaneados (Fase 2) y las fotos de postura (T3.4):**
+  - `POST /api/archivos-clinicos`: subida multipart, solo para el personal de salud;
+  - `GET /api/archivos-clinicos`: lista;
+  - `GET /api/archivos-clinicos/:id`: descarga.
+- **Corrige DEF-054:** los archivos clínicos van a `CLINICO_DIR`, fuera de `/uploads` (que es pública), con un nombre aleatorio que nunca se envía al navegador. `/uploads/clinico` responde 404.
+- **Formatos:** solo JPG, PNG o PDF de hasta 5 MB, **reconocidos por su contenido**. Un texto renombrado como `.jpg` se rechaza. Se guarda la huella SHA-256 de cada archivo.
+- **Descarga:**
+  - con sesión, por el personal de salud o el propio deportista; el administrador, el entrenador y el head coach no;
+  - sin caché (`no-store`) y con `nosniff`;
+  - si el archivo se perdió del servidor (por ejemplo, sin volumen), responde 410 con un mensaje claro.
+- **Inalterables:** los archivos clínicos no se modifican ni se borran (trigger), y un deportista que tenga alguno tampoco se puede eliminar (regla de la T0.4). Se pueden adjuntar a una valoración en borrador del mismo deportista, no a una cerrada.
+- **Despliegue:** en Railway viven en el volumen, en `/data/clinico`. Documentado en el README y en `.env.example` (`CLINICO_DIR`, opcional). Las pruebas los escriben en una carpeta temporal que se borra al terminar.
+
+Pruebas: CP-HC-013 a 015 (integración).
+
+**T0.6 · Bitácora de accesos a la historia clínica (RF-31)** · Migración `016_bitacora.sql`
+- **Qué se registra:** cada consulta, registro, cambio, cierre, verificación, descarga o eliminación de un dato clínico, con quién (copia de su nombre y su rol), qué, sobre qué registro, de qué deportista, cuándo y desde qué IP. **Sin contenido clínico.**
+- **Dónde:** valoraciones, notas aclaratorias, archivos clínicos, controles, seguimientos, lesiones, antropometría, historias anteriores y datos de identificación.
+- **Antes de responder:** el registro se hace antes de entregar la respuesta, así que, si la bitácora no se puede escribir, la consulta tampoco se entrega.
+- **Inalterable:** la bitácora no se modifica ni se borra (trigger) y no hay ruta para borrarla. Leerla no deja registro.
+- **`GET /api/bitacora`:**
+  - el personal de salud la consulta por deportista;
+  - el deportista ve quién consultó su historia (derecho del titular, Ley 1581);
+  - el administrador ve la vista general con filtros por acción, usuario y fechas, e IP;
+  - el entrenador y el head coach no tienen acceso.
+- **Pantallas:**
+  - en Salud: *Accesos a esta historia* (personal de salud) y *¿Quién consultó mi historia?* (deportista);
+  - en Usuarios: *Bitácora clínica* (administrador);
+  - los registros se muestran en lenguaje claro ("Personal Salud cerró y firmó la valoración #12") y en lista, para que quepan en el celular.
+
+Pruebas: CP-HC-016 y 017 (integración) y CP-UI-HC-006 (tableta y computador).
+
+**T0.7 · Cada rol ve solo lo que le corresponde (DEF-055, DEF-056)**
+- **Matriz de acceso acordada con el docente:** está documentada en `docs/calidad/00_requisitos.md` y la API la aplica, no solo la pantalla.
+- **El administrador ya no entra a la información clínica:** historias, controles, seguimientos, valoraciones, archivos y antropometría. Tampoco registra lesiones. Salud y Antropometría salen de su menú.
+  - La causa era que `autorizar` (servidor), `tienePermiso` y `ProtectedRoute` (pantalla) dejan pasar siempre al administrador. Las rutas clínicas usan `autorizarEstricto`, las pantallas clínicas comparan el rol directamente, y Salud y Antropometría están marcadas como `clinico` en el menú: si el administrador escribe su dirección, vuelve al inicio.
+  - Conserva la disponibilidad del plantel, sus notificaciones y la bitácora general.
+- **Lesiones:** solo el personal de salud las registra, edita o elimina. El entrenador, el head coach y el administrador ven la **disponibilidad** (desde cuándo, hasta cuándo, estado del seguimiento y retorno estimado) **sin el tipo ni la descripción**; en la pantalla de Lesiones, la columna *Retorno estimado* reemplaza a *Tipo*. El personal de salud y el propio deportista ven el detalle.
+- **Inicio:**
+  - el tipo de lesión ya no aparece para el entrenador, el head coach ni el administrador, ni siquiera en la vista "como lo ve el deportista";
+  - los avisos de controles vencidos y de antropometría pendiente son solo del personal de salud;
+  - los enlaces a Salud se muestran solo a quien puede entrar.
+- **Antropometría:** la registra y la consulta solo el personal de salud, y el deportista la suya. Antes el entrenador también podía registrarla. La ficha del deportista no se la muestra al entrenador ni al administrador.
+- **Pruebas de condición física:** las registra el entrenador (y el administrador); el personal de salud las consulta.
+- **Pruebas actualizadas:** CP-MOD-001, CP-MOD-005, CP-PER-006, CP-PER-012, CP-INI-006, CP-OBS-005, CP-DOR-008, CP-SEG-003 y CP-HC-005, porque dependían de los permisos anteriores. Además, CP-UI-REC-001 (el recorrido del administrador) ya no espera entrar a los módulos clínicos.
+
+Pruebas: CP-ROL-010 a 017 (integración) y CP-UI-HC-007 (celular y tableta).
+
+**T0.8 · Bloqueo por inactividad (RNF-02)**
+- **Para quién:** el personal de salud, en cualquier dispositivo. Así una tableta o un computador olvidado no deja historias clínicas a la vista.
+- **Cuándo:** a los **15 minutos sin tocar la pantalla** se bloquea. Cuenta la inactividad, no la duración del trabajo: cualquier toque, tecla o desplazamiento reinicia la cuenta.
+- **Aviso:** un minuto antes aparece "La pantalla se bloqueará en 1 minuto" con el botón *Sigo aquí*.
+- **La pantalla de bloqueo:**
+  - es opaca y tapa todo, sin recargar;
+  - el resto de la página queda inerte (no se puede usar con teclado ni con lectores de pantalla);
+  - pide la contraseña: al desbloquear, la persona sigue donde iba, con lo que había escrito;
+  - tiene la opción *No soy yo: cerrar sesión*.
+- **No se puede saltar:** el bloqueo se mantiene aunque se recargue la página y se comparte entre pestañas. Recargar sí pierde lo escrito y no guardado, hasta que la T1.2 agregue el guardado automático.
+- **`POST /api/auth/desbloquear`:** comprueba la contraseña de quien tiene la sesión, con el mismo límite de intentos del inicio de sesión (5 fallos → 15 minutos).
+- **Configurable:** el tiempo y los roles están en `frontend/src/config/seguridad.js`, por si el docente pide más tiempo durante las pruebas físicas.
+
+Pruebas: CP-AUT-010 (integración) y CP-UI-SAL-001 y 002 (tableta y celular, con reloj simulado).
+
 ## v2.6 — Fechas y horas disponibles en entrenamientos y partidos
 
 **Etiqueta:** `v2.6` · Sin cambios en la base de datos.

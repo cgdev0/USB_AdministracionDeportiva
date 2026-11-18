@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import api from '../services/api'
+import { CLAVE_BLOQUEO } from '../config/seguridad'
 
 const AuthContext = createContext(null)
 
@@ -22,6 +23,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
+    localStorage.removeItem(CLAVE_BLOQUEO) // v2.7 (T0.8): quien entre después empieza sin bloqueo
     setUsuario(null)
   }, [])
 
@@ -45,6 +47,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const { data } = await api.post('/auth/login', { email, password })
+      localStorage.removeItem(CLAVE_BLOQUEO)
       localStorage.setItem('access_token', data.access_token)
       localStorage.setItem('refresh_token', data.refresh_token)
       setUsuario(data.usuario)

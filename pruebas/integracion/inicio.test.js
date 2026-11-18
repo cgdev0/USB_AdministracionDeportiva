@@ -46,11 +46,12 @@ test('CP-INI-005 [RF-18] Avisos para revisar: lesiones y restricciones del plant
   assert.ok(!tipos.includes('control_vencido'), 'el entrenador no ve vencimientos de controles médicos');
 });
 
-test('CP-INI-006 [RNF-02] Solo salud y administración ven controles vencidos y antropometría pendiente', () => {
-  for (const rol of ['administrador', 'salud']) {
-    const tipos = datos[rol].revisar.map(r => r.tipo);
-    assert.ok(tipos.includes('control_vencido') && tipos.includes('antropometria'), rol);
-  }
+test('CP-INI-006 [RNF-02] Solo salud ve controles vencidos y antropometría pendiente (v2.7: ya no el administrador)', () => {
+  const tipos = datos.salud.revisar.map(r => r.tipo);
+  assert.ok(tipos.includes('control_vencido') && tipos.includes('antropometria'), 'salud');
+  const admin = datos.administrador.revisar.map(r => r.tipo);
+  assert.ok(!admin.includes('control_vencido') && !admin.includes('antropometria'), 'el administrador ve la disponibilidad, no los pendientes clínicos');
+  assert.ok(admin.includes('lesion'), 'pero sí sabe quién no está disponible');
 });
 
 test('CP-INI-007 [RF-05] El head coach ve el plantel de sus entrenadores', () => {
