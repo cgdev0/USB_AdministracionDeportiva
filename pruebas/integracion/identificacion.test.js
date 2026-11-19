@@ -2,7 +2,7 @@
 // datos sensibles solo para salud e importación por CSV (RF-25, RNF-02).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento, conDeclaracion } = require('../utilidades/api');
 
 const PRE = 'ZZ ident ';
 const T = {};
@@ -25,7 +25,7 @@ test.after(async () => {
 });
 
 async function crear(cuerpo, rol = 'administrador') {
-  return llamar('POST', '/api/jugadores', T[rol], { nombre: `${PRE}${++serie}`, disciplina_id: rugby, ...cuerpo });
+  return llamar('POST', '/api/jugadores', T[rol], conDeclaracion({ nombre: `${PRE}${++serie}`, disciplina_id: rugby, ...cuerpo }));
 }
 
 test('CP-HC-001 [RF-25] El deportista se identifica con tipo y número de documento, que no se repite', async () => {
@@ -80,15 +80,15 @@ test('CP-HC-002 [RF-25] Un menor de edad necesita acudiente (nombre y teléfono)
   // Crear la cuenta de un deportista menor también pide el acudiente y el documento no se repite
   const base = { nombre: `${PRE}cuenta`, password: 'Prueba123!', rol: 'jugador' };
   const cuenta = await llamar('POST', '/api/usuarios', T.administrador,
-    { ...base, email: `zz.ident.${Date.now()}@test.com`, ficha: { disciplina_id: rugby, fecha_nacimiento: nacidoHace(16), tipo_documento: 'TI', numero_documento: documento() } });
+    conDeclaracion({ ...base, email: `zz.ident.${Date.now()}@test.com`, ficha: { disciplina_id: rugby, fecha_nacimiento: nacidoHace(16), tipo_documento: 'TI', numero_documento: documento() } }));
   assert.equal(cuenta.status, 400);
   assert.match(cuenta.datos.error, /acudiente/);
   const numero = documento();
-  const conAcudiente = await llamar('POST', '/api/usuarios', T.administrador, { ...base, email: `zz.ident.a${Date.now()}@test.com`,
-    ficha: { disciplina_id: rugby, fecha_nacimiento: nacidoHace(16), tipo_documento: 'TI', numero_documento: numero, acudiente_nombre: 'Luis Pérez', acudiente_telefono: '3000000000' } });
+  const conAcudiente = await llamar('POST', '/api/usuarios', T.administrador, conDeclaracion({ ...base, email: `zz.ident.a${Date.now()}@test.com`,
+    ficha: { disciplina_id: rugby, fecha_nacimiento: nacidoHace(16), tipo_documento: 'TI', numero_documento: numero, acudiente_nombre: 'Luis Pérez', acudiente_telefono: '3000000000' } }));
   assert.equal(conAcudiente.status, 201, JSON.stringify(conAcudiente.datos));
-  const repetida = await llamar('POST', '/api/usuarios', T.administrador, { ...base, email: `zz.ident.b${Date.now()}@test.com`,
-    ficha: { disciplina_id: rugby, tipo_documento: 'CC', numero_documento: numero } });
+  const repetida = await llamar('POST', '/api/usuarios', T.administrador, conDeclaracion({ ...base, email: `zz.ident.b${Date.now()}@test.com`,
+    ficha: { disciplina_id: rugby, tipo_documento: 'CC', numero_documento: numero } }));
   assert.equal(repetida.status, 409);
   assert.match(repetida.datos.error, /documento/, 'el mensaje habla del documento, no del email');
 });
@@ -128,7 +128,7 @@ test('CP-HC-004 [RF-25] Importación por CSV: documento, fecha de nacimiento y a
   const existente = documento();
   await crear({ tipo_documento: 'CC', numero_documento: existente });
   const nuevo = documento();
-  const r = await llamar('POST', '/api/jugadores/bulk', T.administrador, { deportistas: [
+  const r = await llamar('POST', '/api/jugadores/bulk', T.administrador, conDeclaracion({ deportistas: [
     { nombre: `${PRE}csv bien`, deporte: 'Rugby', tipo_documento: 'CC', numero_documento: nuevo, telefono: '3000000001', eps: 'Sura' },
     { nombre: `${PRE}csv repetido en archivo`, deporte: 'Rugby', tipo_documento: 'CC', numero_documento: nuevo },
     { nombre: `${PRE}csv ya registrado`, deporte: 'Rugby', tipo_documento: 'CC', numero_documento: existente },
@@ -137,7 +137,7 @@ test('CP-HC-004 [RF-25] Importación por CSV: documento, fecha de nacimiento y a
       fecha_nacimiento: nacidoHace(15), acudiente_nombre: 'Marta', acudiente_telefono: '3000000002' },
     { nombre: `${PRE}csv fecha mala`, deporte: 'Rugby', fecha_nacimiento: '15/03/2004' },
     { nombre: `${PRE}csv cedula mala`, deporte: 'Rugby', tipo_documento: 'CC', numero_documento: 'X1' },
-  ] });
+  ] }, 'carga'));
   assert.equal(r.status, 201, JSON.stringify(r.datos));
   assert.equal(r.datos.total, 2, JSON.stringify(r.datos.errores));
   assert.deepEqual(r.datos.errores.map(e => e.fila), [2, 3, 4, 6, 7]);

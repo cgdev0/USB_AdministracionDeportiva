@@ -1,6 +1,8 @@
 // Frena los intentos de adivinar contraseñas: tras 5 fallos seguidos para la misma cuenta
 // desde la misma dirección, el inicio de sesión queda bloqueado 15 minutos (responde 429).
 // Se guarda en memoria: se reinicia con el servidor y no se comparte entre instancias.
+// v2.9 (T2.7): cada bloqueo queda en la auditoría del administrador.
+const { auditarSesion } = require('../utils/auditoria');
 const MAX_FALLOS = 5;
 const VENTANA_MS = 15 * 60 * 1000;
 const fallos = new Map(); // clave → { cantidad, desde }
@@ -13,9 +15,10 @@ function vigente(clave) {
   return r;
 }
 
-exports.limitarLogin = (req, res, next) => {
+exports.limitarLogin = async (req, res, next) => {
   const r = vigente(claveDe(req));
   if (r && r.cantidad >= MAX_FALLOS) {
+    await auditarSesion(req, 'sesion_bloqueada');
     const segundos = Math.ceil((r.desde + VENTANA_MS - Date.now()) / 1000);
     res.set('Retry-After', String(segundos));
     return res.status(429).json({ error: `Demasiados intentos fallidos. Espera ${Math.ceil(segundos / 60)} minutos e intenta de nuevo.` });

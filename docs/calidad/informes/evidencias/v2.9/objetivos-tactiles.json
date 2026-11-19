@@ -1,0 +1,125 @@
+[
+  {
+    "rol": "administrador",
+    "ruta": "/",
+    "total": 67,
+    "adecuados": 67,
+    "ejemplos": []
+  },
+  {
+    "rol": "administrador",
+    "ruta": "/jugadores",
+    "total": 77,
+    "adecuados": 77,
+    "ejemplos": []
+  },
+  {
+    "rol": "administrador",
+    "ruta": "/equipos",
+    "total": 22,
+    "adecuados": 19,
+    "ejemplos": [
+      "button 24px \"Cambiar el escudo de Unisimón \"",
+      "button 24px \"Cambiar el escudo de Club Rugb\"",
+      "button 24px \"Cambiar el escudo de Los Cóndo\""
+    ]
+  },
+  {
+    "rol": "administrador",
+    "ruta": "/lesiones",
+    "total": 8,
+    "adecuados": 8,
+    "ejemplos": []
+  },
+  {
+    "rol": "administrador",
+    "ruta": "/usuarios",
+    "total": 38,
+    "adecuados": 38,
+    "ejemplos": []
+  },
+  {
+    "rol": "entrenador",
+    "ruta": "/",
+    "total": 45,
+    "adecuados": 45,
+    "ejemplos": []
+  },
+  {
+    "rol": "entrenador",
+    "ruta": "/asistencia",
+    "total": 35,
+    "adecuados": 35,
+    "ejemplos": []
+  },
+  {
+    "rol": "entrenador",
+    "ruta": "/entrenamientos",
+    "total": 36,
+    "adecuados": 36,
+    "ejemplos": []
+  },
+  {
+    "rol": "entrenador",
+    "ruta": "/partidos",
+    "total": 14,
+    "adecuados": 14,
+    "ejemplos": []
+  },
+  {
+    "rol": "salud",
+    "ruta": "/",
+    "total": 57,
+    "adecuados": 57,
+    "ejemplos": []
+  },
+  {
+    "rol": "salud",
+    "ruta": "/pacientes",
+    "total": 45,
+    "adecuados": 45,
+    "ejemplos": []
+  },
+  {
+    "rol": "salud",
+    "ruta": "/pacientes/:id",
+    "total": 17,
+    "adecuados": 17,
+    "ejemplos": []
+  },
+  {
+    "rol": "salud",
+    "ruta": "/salud",
+    "total": 18,
+    "adecuados": 18,
+    "ejemplos": []
+  },
+  {
+    "rol": "salud",
+    "ruta": "/evaluaciones",
+    "total": 8,
+    "adecuados": 8,
+    "ejemplos": []
+  },
+  {
+    "rol": "salud",
+    "ruta": "/antropometria",
+    "total": 13,
+    "adecuados": 13,
+    "ejemplos": []
+  },
+  {
+    "rol": "jugador",
+    "ruta": "/",
+    "total": 17,
+    "adecuados": 17,
+    "ejemplos": []
+  },
+  {
+    "rol": "jugador",
+    "ruta": "/estadisticas",
+    "total": 11,
+    "adecuados": 11,
+    "ejemplos": []
+  }
+]

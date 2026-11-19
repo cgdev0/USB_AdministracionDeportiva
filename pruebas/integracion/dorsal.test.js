@@ -1,7 +1,7 @@
 // Dorsal: asignación, unicidad por equipo, cambio rápido y conservación (RF-09)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento, conDeclaracion } = require('../utilidades/api');
 
 const PRE = 'ZZ dorsal ';
 let A, equipo, entrenador;
@@ -19,7 +19,7 @@ test.after(async () => {
   await cerrar(__filename);
 });
 
-const crear = (nombre, extra) => llamar('POST', '/api/jugadores', A, { nombre: PRE + nombre, ...extra });
+const crear = (nombre, extra) => llamar('POST', '/api/jugadores', A, conDeclaracion({ nombre: PRE + nombre, ...extra }));
 
 test('CP-DOR-001 [RF-09] Crear un deportista con dorsal', async () => {
   const r = await crear('Uno', { equipo_id: equipo, dorsal: 10, entrenador_id: entrenador });

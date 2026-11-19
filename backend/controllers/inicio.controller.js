@@ -72,7 +72,12 @@ exports.getInicio = async (req, res) => {
              seg.fecha_retorno_estimada::text AS retorno_estimado,
              ctl.id AS control_id, ctl.aptitud, ctl.restricciones, ctl.proxima_fecha::text AS proximo_control,
              (ctl.proxima_fecha < CURRENT_DATE) AS control_vencido,
-             (ctl.proxima_fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6) AS control_semana
+             (ctl.proxima_fecha BETWEEN CURRENT_DATE AND CURRENT_DATE + 6) AS control_semana,
+             -- v2.9 (T2.3): consentimientos obligatorios vigentes (sin registro: pendiente)
+             COALESCE((SELECT c.estado FROM consentimientos c WHERE c.jugador_id = j.id AND c.tipo = 'atencion'
+                        ORDER BY c.registrado_en DESC, c.id DESC LIMIT 1), 'pendiente') AS consentimiento_atencion,
+             COALESCE((SELECT c.estado FROM consentimientos c WHERE c.jugador_id = j.id AND c.tipo = 'datos_personales'
+                        ORDER BY c.registrado_en DESC, c.id DESC LIMIT 1), 'pendiente') AS consentimiento_datos
       FROM jugadores j
       LEFT JOIN LATERAL (
         SELECT l.id, l.tipo, l.fecha_inicio FROM lesiones l
@@ -161,6 +166,9 @@ exports.getInicio = async (req, res) => {
         lesiones: plantelFilas.filter(f => f.lesion_id)
           .map(f => ({ ...persona(f), lesion_id: f.lesion_id, lesion: f.lesion_tipo, dias: Number(f.dias_lesion), retorno_estimado: f.retorno_estimado })),
         antropometria: revisar.find(r => r.tipo === 'antropometria')?.total || 0,
+        // v2.9 (T2.3): sin el consentimiento de atención o la autorización de datos firmados
+        consentimientos: plantelFilas.filter(f => f.consentimiento_atencion !== 'firmado' || f.consentimiento_datos !== 'firmado')
+          .map(f => ({ ...persona(f), atencion: f.consentimiento_atencion, datos_personales: f.consentimiento_datos })),
       };
     }
 

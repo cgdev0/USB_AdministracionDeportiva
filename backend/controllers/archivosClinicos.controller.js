@@ -39,18 +39,50 @@ exports.recibirArchivo = (req, res, next) => recibir(req, res, (err) => {
 
 const META = 'a.id, a.jugador_id, a.valoracion_id, a.tipo, a.nombre_original, a.mime, a.tamano, a.sha256, a.descripcion, a.subido_por, a.creado_en';
 
+// Revisa el archivo recibido: { ok, formato } o { ok: false, status, error }
+function revisarArchivo(file) {
+  if (!file) return { ok: false, status: 400, error: 'Adjunta el archivo (foto JPG o PNG, o documento PDF).' };
+  const formato = detectarFormato(file.buffer);
+  if (!formato) return { ok: false, status: 400, error: 'Solo se aceptan fotos JPG o PNG y documentos PDF.' };
+  return { ok: true, formato };
+}
+
+// Escribe el archivo en CLINICO_DIR y lo registra con `cliente` (una conexión o una transacción).
+// v2.9 (T2.1): el consentimiento firmado guarda su papel en la misma transacción. Si después algo falla, quien
+// llama debe borrar `ruta` del disco (sin registro en la base, el archivo no se conserva).
+async function guardarArchivo(cliente, file, { jugador_id, valoracion_id = null, tipo, descripcion = null, subido_por }) {
+  const { formato } = revisarArchivo(file);
+  const nombre = `${crypto.randomUUID()}.${formato.ext}`;
+  const sha256 = crypto.createHash('sha256').update(file.buffer).digest('hex');
+  const nombreOriginal = path.basename(String(file.originalname || '')).replace(/[\u0000-\u001f]/g, '').slice(0, 200) || null;
+  await fs.promises.mkdir(CLINICO_DIR, { recursive: true, mode: 0o700 });
+  const ruta = path.join(CLINICO_DIR, nombre);
+  await fs.promises.writeFile(ruta, file.buffer, { flag: 'wx', mode: 0o600 });
+  try {
+    const { rows: [archivo] } = await cliente.query(
+      `INSERT INTO archivos_clinicos (jugador_id, valoracion_id, tipo, nombre_archivo, nombre_original, mime, tamano, sha256, descripcion, subido_por)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING id, jugador_id, valoracion_id, tipo, nombre_original, mime, tamano, sha256, descripcion, subido_por, creado_en`,
+      [jugador_id, valoracion_id || null, tipo, nombre, nombreOriginal, formato.mime, file.size, sha256, descripcion, subido_por]);
+    return { archivo, ruta };
+  } catch (err) {
+    await fs.promises.unlink(ruta).catch(() => {});
+    throw err;
+  }
+}
+exports.revisarArchivo = revisarArchivo;
+exports.guardarArchivo = guardarArchivo;
+
 // POST /api/archivos-clinicos  (multipart: archivo, jugador_id, tipo, valoracion_id?, descripcion?)
 exports.subir = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'Adjunta el archivo (foto JPG o PNG, o documento PDF).' });
-    const formato = detectarFormato(req.file.buffer);
-    if (!formato) return res.status(400).json({ error: 'Solo se aceptan fotos JPG o PNG y documentos PDF.' });
+    const revision = revisarArchivo(req.file);
+    if (!revision.ok) return res.status(revision.status).json({ error: revision.error });
     const { jugador_id, valoracion_id } = req.body;
     const tipo = req.body.tipo || 'otro';
     if (!TIPOS.includes(tipo)) return res.status(400).json({ error: 'El tipo de archivo no es válido.' });
     if (!/^[1-9]\d{0,9}$/.test(String(jugador_id || ''))) return res.status(400).json({ error: 'El deportista es obligatorio.' });
     const descripcion = typeof req.body.descripcion === 'string' ? req.body.descripcion.trim().slice(0, 200) || null : null;
-    const nombreOriginal = path.basename(String(req.file.originalname || '')).replace(/[\u0000-\u001f]/g, '').slice(0, 200) || null;
 
     const { rows: [j] } = await db.query('SELECT id FROM jugadores WHERE id = $1', [jugador_id]);
     if (!j) return res.status(404).json({ error: 'Deportista no encontrado' });
@@ -60,22 +92,22 @@ exports.subir = async (req, res) => {
       if (v.estado === 'cerrada') return res.status(409).json({ error: 'La valoración está cerrada: no se le pueden agregar archivos.' });
     }
 
-    const nombre = `${crypto.randomUUID()}.${formato.ext}`;
-    const sha256 = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
-    await fs.promises.mkdir(CLINICO_DIR, { recursive: true, mode: 0o700 });
-    const ruta = path.join(CLINICO_DIR, nombre);
-    await fs.promises.writeFile(ruta, req.file.buffer, { flag: 'wx', mode: 0o600 });
+    // El registro del archivo y su entrada en la bitácora van juntos: si uno falla, no queda ninguno (ni el archivo)
+    const cliente = await db.connect();
+    let ruta = null;
     try {
-      const { rows: [a] } = await db.query(
-        `INSERT INTO archivos_clinicos (jugador_id, valoracion_id, tipo, nombre_archivo, nombre_original, mime, tamano, sha256, descripcion, subido_por)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         RETURNING id, jugador_id, valoracion_id, tipo, nombre_original, mime, tamano, sha256, descripcion, subido_por, creado_en`,
-        [jugador_id, valoracion_id || null, tipo, nombre, nombreOriginal, formato.mime, req.file.size, sha256, descripcion, req.usuario.id]);
-      await registrar(req, { accion: 'crear', recurso: 'archivo', recurso_id: a.id, jugador_id });
-      res.status(201).json(a);
+      await cliente.query('BEGIN');
+      const guardado = await guardarArchivo(cliente, req.file, { jugador_id, valoracion_id, tipo, descripcion, subido_por: req.usuario.id });
+      ruta = guardado.ruta;
+      await registrar(req, { accion: 'crear', recurso: 'archivo', recurso_id: guardado.archivo.id, jugador_id }, cliente);
+      await cliente.query('COMMIT');
+      res.status(201).json(guardado.archivo);
     } catch (err) {
-      await fs.promises.unlink(ruta).catch(() => {}); // sin registro en la base, el archivo no se conserva
+      await cliente.query('ROLLBACK').catch(() => {});
+      if (ruta) await fs.promises.unlink(ruta).catch(() => {});
       throw err;
+    } finally {
+      cliente.release();
     }
   } catch (err) {
     responderError(res, err);

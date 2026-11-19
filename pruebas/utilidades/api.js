@@ -15,7 +15,10 @@ const tiempos = [];
 let servidor = null;
 let base = '';
 
+// v2.9 (T2.6): versión vigente de las declaraciones (frontend/src/utils/avisos.js), para conDeclaracion
+let VERSIONES = null;
 async function iniciar() {
+  VERSIONES = (await import(require('url').pathToFileURL(path.join(RAIZ, 'frontend', 'src', 'utils', 'avisos.js')).href)).VERSIONES_AVISO;
   await new Promise(resolve => { servidor = app.listen(0, '127.0.0.1', resolve); });
   base = `http://127.0.0.1:${servidor.address().port}`;
 }
@@ -66,10 +69,20 @@ async function descargar(ruta, token) {
   return { status: res.status, headers: res.headers, buffer: Buffer.from(await res.arrayBuffer()) };
 }
 
-async function token(rol) {
-  const [email, password] = CUENTAS[rol];
+// v2.9 (T2.5): sin aceptar su aviso nadie trabaja con datos, así que la sesión de prueba lo acepta, como haría la
+// persona. Con { aceptar: false } queda pendiente (pruebas de los avisos). `credenciales`: [email, clave] de otra cuenta.
+async function aceptarAviso(tk) {
+  const { datos } = await llamar('GET', '/api/avisos/mios', tk);
+  if (datos?.aviso && !datos.aceptado) {
+    const r = await llamar('POST', '/api/avisos/aceptar', tk, { aviso: datos.aviso.aviso, version: datos.aviso.version, acepto: true });
+    if (r.status >= 300) throw new Error(`No se pudo aceptar el aviso: ${r.status} ${JSON.stringify(r.datos)}`);
+  }
+}
+async function token(rol, { aceptar = true, credenciales = null } = {}) {
+  const [email, password] = credenciales || CUENTAS[rol];
   const r = await llamar('POST', '/api/auth/login', null, { email, password });
   if (r.status !== 200) throw new Error(`No se pudo iniciar sesión como ${rol}: ${r.status}`);
+  if (aceptar) await aceptarAviso(r.datos.access_token);
   return r.datos.access_token;
 }
 
@@ -94,4 +107,10 @@ async function sqlMantenimiento(texto, params) {
   }
 }
 
-module.exports = { iniciar, cerrar, llamar, llamarFormulario, llamarCrudo, descargar, token, sql, sqlMantenimiento, CUENTAS };
+// v2.9 (T2.6): quien registra a un deportista declara que lo informó y que autorizó; con 'carga', la de una carga masiva
+function conDeclaracion(cuerpo = {}, tipo = 'registro') {
+  return { ...cuerpo, declaracion: { acepto: true, version: VERSIONES[tipo === 'carga' ? 'declaracion_carga' : 'declaracion_registro'] } };
+}
+const declaracionDeCarga = () => ({ declaracion_acepto: 'true', declaracion_version: VERSIONES.declaracion_carga });
+
+module.exports = { iniciar, cerrar, llamar, llamarFormulario, llamarCrudo, descargar, token, aceptarAviso, sql, sqlMantenimiento, CUENTAS, conDeclaracion, declaracionDeCarga };

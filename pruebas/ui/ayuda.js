@@ -29,12 +29,26 @@ async function modulos() {
   return MODULOS;
 }
 
+// v2.9 (T2.5): sin aceptar su aviso nadie trabaja con datos; las sesiones de prueba lo aceptan como la persona.
+async function aceptarAviso(request, access_token) {
+  const headers = { Authorization: `Bearer ${access_token}` };
+  const { aviso, aceptado } = await (await request.get('/api/avisos/mios', { headers })).json();
+  if (aviso && !aceptado) await request.post('/api/avisos/aceptar', { headers, data: { aviso: aviso.aviso, version: aviso.version, acepto: true } });
+}
+
+// v2.9 (T2.6): la declaración de quien registra, con la versión vigente del texto (para crear deportistas por la API)
+async function declaracion(tipo = 'registro') {
+  const { VERSIONES_AVISO } = await import(pathToFileURL(path.join(RAIZ, 'frontend/src/utils/avisos.js')).href);
+  return { acepto: true, version: VERSIONES_AVISO[tipo === 'carga' ? 'declaracion_carga' : 'declaracion_registro'] };
+}
+
 // Inicia sesión rápido (por API) y deja la sesión guardada para la página.
 async function entrar(page, rol) {
   const [email, password] = CUENTAS[rol];
   const r = await page.request.post('/api/auth/login', { data: { email, password } });
   if (!r.ok()) throw new Error(`No se pudo iniciar sesión como ${rol}: ${r.status()}`);
   const { access_token, refresh_token } = await r.json();
+  await aceptarAviso(page.request, access_token);
   await page.addInitScript(([a, b]) => {
     localStorage.setItem('access_token', a);
     localStorage.setItem('refresh_token', b);
@@ -45,6 +59,8 @@ async function entrar(page, rol) {
 // Inicia sesión por el formulario, como lo haría una persona.
 async function entrarPorFormulario(page, rol) {
   const [email, password] = CUENTAS[rol];
+  const r = await page.request.post('/api/auth/login', { data: { email, password } });
+  if (r.ok()) await aceptarAviso(page.request, (await r.json()).access_token);
   await page.goto('/login');
   await page.fill('#email', email);
   await page.fill('#password', password);
@@ -72,4 +88,4 @@ function guardarMetrica(nombre, datos) {
   fs.writeFileSync(path.join(DIR_METRICAS, `${nombre}.json`), JSON.stringify(datos, null, 2));
 }
 
-module.exports = { esTactil, paginaEn, ANCHOS, modulos, entrar, entrarPorFormulario, vigilar, desborde, guardarMetrica, CUENTAS };
+module.exports = { esTactil, paginaEn, ANCHOS, modulos, entrar, entrarPorFormulario, aceptarAviso, declaracion, vigilar, desborde, guardarMetrica, CUENTAS };

@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import DeclaracionCasilla, { declaracionPara, huellaTexto, MENSAJE_DECLARACION } from './DeclaracionCasilla'
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, Download, X } from 'lucide-react'
 import Modal from './Modal'
 import toast from 'react-hot-toast'
@@ -12,6 +13,9 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
   const [loading, setLoading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [defaultDeporte, setDefaultDeporte] = useState('')
+  // v2.9 (T2.6): declaración de la carga y huella del archivo, que quedan registradas con la carga
+  const [declarado, setDeclarado] = useState(false)
+  const [huella, setHuella] = useState(null)
   const fileInputRef = useRef(null)
 
   if (!isOpen) return null
@@ -121,6 +125,7 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
     const reader = new FileReader()
     reader.onload = (event) => {
       parseCSV(event.target.result)
+      huellaTexto(event.target.result).then(setHuella)
     }
     reader.readAsText(f, 'UTF-8')
   }
@@ -145,6 +150,7 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
       const reader = new FileReader()
       reader.onload = (event) => {
         parseCSV(event.target.result)
+        huellaTexto(event.target.result).then(setHuella)
       }
       reader.readAsText(f, 'UTF-8')
     }
@@ -155,6 +161,7 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
       toast.error('No hay registros válidos para importar')
       return
     }
+    if (!declarado) return toast.error(MENSAJE_DECLARACION.carga)
 
     setLoading(true)
     try {
@@ -163,7 +170,7 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
         deporte: r.deporte || defaultDeporte || undefined
       }))
 
-      const res = await api.post('/jugadores/bulk', { deportistas })
+      const res = await api.post('/jugadores/bulk', { deportistas, declaracion: declaracionPara('carga'), archivo: { nombre: file?.name, sha256: huella } })
       toast.success(res.data.message || `Importados ${res.data.total} deportistas`)
       // v2.7: filas que no se importaron (documento repetido o inválido, menor sin acudiente, fecha inválida…)
       const errores = res.data.errores || []
@@ -341,6 +348,8 @@ export default function ImportCsvModal({ isOpen, onClose, onSuccess, disciplinas
             </div>
           </div>
         )}
+        {/* v2.9 (T2.6): sin la declaración de la carga no se importa */}
+        {parsedRows.length > 0 && <DeclaracionCasilla tipo="carga" marcado={declarado} onCambio={setDeclarado} />}
       </div>
     </Modal>
   )

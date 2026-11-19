@@ -10,7 +10,7 @@ import EncabezadoPagina from '../components/EncabezadoPagina'
 import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
 import { usarConsulta, COMPUTADOR } from '../components/clinico/usarModoPantalla'
 import { useFiltroDeporte } from '../context/DeporteContext'
-import { Avisos, Disponibilidad, Foto, documentoDe as documento } from '../components/clinico/Paciente'
+import { Avisos, Disponibilidad, Foto, documentoDe as documento, consentimientosPendientes } from '../components/clinico/Paciente'
 import { SUBPAGINAS } from '../config/paginas'
 import { nombreConDorsal, tieneDorsal } from '../utils/jugador'
 import { fechaCorta } from '../utils/fechas'
@@ -22,6 +22,8 @@ const FILTROS = [
   ['borrador', 'Borrador sin cerrar', p => p.borradores > 0],
   ['control', 'Control vencido', p => p.control_vencido],
   ['documento', 'Sin documento', p => !p.numero_documento],
+  ['consentimiento', 'Consentimiento pendiente', p => consentimientosPendientes(p).length > 0], // v2.9 (T2.3)
+  ['aceptacion', 'Falta aceptación', p => ['falta_propia', 'sin_declaracion'].includes(p.autorizacion)], // v2.9 (T2.6)
 ]
 
 const enlace = (p) => `/pacientes/${p.id}`

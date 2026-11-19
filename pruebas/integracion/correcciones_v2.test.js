@@ -1,7 +1,7 @@
 // v2.0: errores reportados en el documento "Errores en ejecución" (DEF-040 a DEF-044)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento, conDeclaracion } = require('../utilidades/api');
 const { fechaEnDias, horaActual } = require('../utilidades/fechas');
 
 const T = {};
@@ -65,9 +65,9 @@ test('CP-COR-004 [RF-03] [DEF-043] Un usuario desactivado se puede reactivar y v
 
 test('CP-COR-005 [RF-03] [RF-08] Crear un deportista desde Usuarios crea su ficha con deporte y edad calculada', async () => {
   const { rows: [{ id: rugby }] } = await sql(`SELECT id FROM disciplinas WHERE nombre = 'Rugby'`);
-  const c = await llamar('POST', '/api/usuarios', T.administrador, {
+  const c = await llamar('POST', '/api/usuarios', T.administrador, conDeclaracion({
     nombre: 'ZZ v2 deportista', email: 'zzv2dep@x.com', password: 'Prueba123*', rol: 'jugador',
-    ficha: { disciplina_id: rugby, equipo_id: equipoDemo, fecha_nacimiento: '2004-03-15', posicion: 'Ala' } });
+    ficha: { disciplina_id: rugby, equipo_id: equipoDemo, fecha_nacimiento: '2004-03-15', posicion: 'Ala' } }));
   assert.equal(c.status, 201, JSON.stringify(c.datos));
   assert.ok(c.datos.jugador_id);
   const j = (await llamar('GET', `/api/jugadores/${c.datos.jugador_id}`, T.administrador)).datos;

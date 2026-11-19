@@ -3,7 +3,7 @@
 // se retira del plantel actual y conserva todos sus registros. Tampoco se borra una lesión con seguimientos.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento, conDeclaracion } = require('../utilidades/api');
 
 const PRE = 'ZZ conserva ';
 const T = {};
@@ -20,7 +20,7 @@ test.after(async () => {
 });
 
 async function deportista(extra = {}, rol = 'administrador') {
-  const r = await llamar('POST', '/api/jugadores', T[rol], { nombre: `${PRE}${++serie}`, tipo_documento: 'CC', numero_documento: documento(), ...extra });
+  const r = await llamar('POST', '/api/jugadores', T[rol], conDeclaracion({ nombre: `${PRE}${++serie}`, tipo_documento: 'CC', numero_documento: documento(), ...extra }));
   assert.equal(r.status, 201, JSON.stringify(r.datos));
   return r.datos.id;
 }

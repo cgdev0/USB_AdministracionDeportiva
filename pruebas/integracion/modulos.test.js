@@ -1,7 +1,7 @@
 // Funcionalidad de cada módulo: lectura, alta, edición y baja (RF-03 a RF-17)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento, conDeclaracion } = require('../utilidades/api');
 const { fechaEnDias, horaActual } = require('../utilidades/fechas');
 
 const PRE = 'ZZ prueba ';   // prefijo para identificar y limpiar los datos creados
@@ -25,7 +25,7 @@ test.after(async () => {
 });
 
 async function jugadorDePrueba(extra = {}) {
-  const r = await llamar('POST', '/api/jugadores', T.administrador, { nombre: `${PRE}Jugador ${Date.now()}`, genero: 'masculino', ...extra });
+  const r = await llamar('POST', '/api/jugadores', T.administrador, conDeclaracion({ nombre: `${PRE}Jugador ${Date.now()}`, genero: 'masculino', ...extra }));
   assert.equal(r.status, 201, JSON.stringify(r.datos));
   return r.datos.id;
 }

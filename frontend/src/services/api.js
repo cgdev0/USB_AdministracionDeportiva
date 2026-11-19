@@ -47,6 +47,9 @@ api.interceptors.response.use(
       || 'Error de conexión'
     const err = new Error(msg)
     err.status = error.response?.status
+    err.codigo = error.response?.data?.codigo
+    // v2.9 (T2.5): falta aceptar el aviso (por ejemplo, se publicó un texto nuevo durante la sesión): la pantalla lo muestra
+    if (err.codigo === 'ACEPTACION_PENDIENTE') window.dispatchEvent(new CustomEvent('dt:aceptacion-pendiente'))
     return Promise.reject(err)
   }
 )

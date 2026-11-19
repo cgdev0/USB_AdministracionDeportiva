@@ -12,6 +12,7 @@ import { iniciales } from '../config/navegacion'
 import { perfilDeporte } from '../config/deportes'
 import { edadDesde, hoyISO } from '../utils/fechas'
 import CamposIdentificacion from '../components/CamposIdentificacion'
+import DeclaracionCasilla, { declaracionPara, MENSAJE_DECLARACION } from '../components/DeclaracionCasilla'
 import BitacoraAccesos from '../components/BitacoraAccesos'
 import { CAMPOS_IDENTIFICACION, normalizarIdentificacion, faltaAcudiente, esMenorDeEdad, MENSAJE_ACUDIENTE } from '../utils/identificacion'
 import { PROFESIONES, VINCULOS, CAMPOS_PROFESIONALES, normalizarDatosProfesionales, descripcionQuienAtiende } from '../utils/profesionales'
@@ -38,6 +39,9 @@ export default function Usuarios() {
   const [error, setError] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [csvOpen, setCsvOpen] = useState(false)
+  // v2.9 (T2.6): declaración de quien registra a un deportista (uno por uno) o carga un archivo
+  const [declarado, setDeclarado] = useState(false)
+  const [csvDeclarado, setCsvDeclarado] = useState(false)
   // v2.7 (T0.6): auditoría de accesos a la historia clínica (sin contenido clínico)
   const [bitacoraOpen, setBitacoraOpen] = useState(false)
   const [editando, setEditando] = useState(null)
@@ -73,6 +77,7 @@ export default function Usuarios() {
 
   const abrirCrear = () => {
     setEditando(null)
+    setDeclarado(false)
     setForm({ ...FORM_VACIO, ficha: { ...FICHA_VACIA, disciplina_id: filtro.hay ? String(disciplinas.find(d => filtro.deDisciplina(d.id))?.id || '') : '' } })
     setModalOpen(true)
   }
@@ -100,6 +105,7 @@ export default function Usuarios() {
       const r = normalizarIdentificacion(Object.fromEntries(CAMPOS_IDENTIFICACION.map(c => [c, form.ficha[c]])))
       if (!r.ok) return toast.error(r.error)
       if (faltaAcudiente({ fecha_nacimiento: form.ficha.fecha_nacimiento, ...r.cambios }, hoyISO())) return toast.error(MENSAJE_ACUDIENTE)
+      if (!declarado) return toast.error(MENSAJE_DECLARACION.registro)
     }
     const datosProf = form.rol === 'personal_salud' ? Object.fromEntries(CAMPOS_PROFESIONALES.map(c => [c, form[c]])) : {}
     const prof = normalizarDatosProfesionales(datosProf)
@@ -111,7 +117,7 @@ export default function Usuarios() {
         toast.success('Usuario actualizado')
       } else {
         const { ficha, ...resto } = form
-        await api.post('/usuarios', creaDeportista ? { ...resto, ficha } : resto)
+        await api.post('/usuarios', creaDeportista ? { ...resto, ficha, declaracion: declaracionPara('registro') } : resto)
         toast.success(creaDeportista ? 'Deportista creado y agregado al plantel' : 'Usuario creado')
       }
       setModalOpen(false)
@@ -168,8 +174,12 @@ export default function Usuarios() {
     e.preventDefault()
     const archivo = csvRef.current?.files[0]
     if (!archivo) return toast.error('Selecciona un archivo CSV')
+    if (!csvDeclarado) return toast.error(MENSAJE_DECLARACION.carga)
     const fd = new FormData()
     fd.append('archivo', archivo)
+    const d = declaracionPara('carga')
+    fd.append('declaracion_acepto', 'true')
+    fd.append('declaracion_version', d.version)
     try {
       const { data } = await api.post('/usuarios/csv', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       setCsvResultado(data)
@@ -206,7 +216,7 @@ export default function Usuarios() {
             <button className="btn btn-secondary" onClick={() => setBitacoraOpen(true)}>
               <i className="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> Bitácora clínica
             </button>
-            <button className="btn btn-secondary" onClick={() => setCsvOpen(true)}>
+            <button className="btn btn-secondary" onClick={() => { setCsvDeclarado(false); setCsvOpen(true) }}>
               <i className="fa-solid fa-file-arrow-up" aria-hidden="true"></i> Cargar CSV
             </button>
             <button className="btn btn-primary" onClick={abrirCrear}>
@@ -479,6 +489,7 @@ export default function Usuarios() {
                     onCambio={(campo, valor) => setForm(f => ({ ...f, ficha: { ...f.ficha, [campo]: valor } }))}
                     menor={esMenorDeEdad({ fecha_nacimiento: form.ficha.fecha_nacimiento }, hoyISO())} />
                 </div>
+                <DeclaracionCasilla tipo="registro" marcado={declarado} onCambio={setDeclarado} />
               </fieldset>
             )}
           </form>
@@ -496,6 +507,7 @@ export default function Usuarios() {
                 <label htmlFor="csv-archivo">Archivo CSV</label>
                 <input id="csv-archivo" type="file" accept=".csv" ref={csvRef} />
               </div>
+              <DeclaracionCasilla tipo="carga" marcado={csvDeclarado} onCambio={setCsvDeclarado} />
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setCsvOpen(false)}>Cancelar</button>
                 <button type="submit" className="btn btn-primary"><i className="fa-solid fa-upload" aria-hidden="true"></i> Procesar</button>

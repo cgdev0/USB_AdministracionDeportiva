@@ -71,7 +71,8 @@ test('CP-UI-SAL-012 [RF-26][RNF-04] Salud entra directo a sus pendientes y cada 
   await volverAlInicio();
 
   // 4. Control vencido → el formulario de control con el deportista ya elegido, listo para escribir
-  await pendientes.locator('.pend-item').filter({ hasText: 'Daniel Rincón' }).filter({ hasText: 'Registrar' }).click();
+  // (Daniel también aparece en "Consentimientos sin firmar": se toma el de controles)
+  await pendientes.locator('.pend-grupo').filter({ hasText: 'Controles médicos' }).locator('.pend-item').filter({ hasText: 'Daniel Rincón' }).click();
   await expect(page).toHaveURL(/\/salud\?jugador=\d+&registrar=control$/);
   const elegido = new URL(page.url()).searchParams.get('jugador');
   await expect(page.locator('#form-control select').first()).toHaveValue(elegido);

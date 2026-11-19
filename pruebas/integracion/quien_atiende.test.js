@@ -2,7 +2,7 @@
 // opcional (decisión D1: los primeros usuarios serán practicantes y estudiantes) y supervisor opcional (RF-26).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, aceptarAviso, sql, sqlMantenimiento } = require('../utilidades/api');
 
 const CLAVE = 'Prueba123!';
 const T = {};
@@ -17,6 +17,8 @@ test.before(async () => {
 test.after(async () => {
   await sql(`DELETE FROM controles_medicos WHERE tipo LIKE 'ZZ prof%'`);
   await sql(`UPDATE usuarios SET supervisor_id = NULL WHERE email LIKE 'zz.prof%'`);
+  // v2.9 (T2.5): las aceptaciones no se borran por la app; la limpieza de la base de pruebas usa el mantenimiento
+  await sqlMantenimiento(`DELETE FROM aceptaciones WHERE usuario_id IN (SELECT id FROM usuarios WHERE email LIKE 'zz.prof%')`);
   await sql(`DELETE FROM usuarios WHERE email LIKE 'zz.prof%'`);
   await cerrar(__filename);
 });
@@ -49,6 +51,8 @@ test('CP-HC-005 [RF-26] Un practicante sin registro profesional atiende y queda 
   const yo = await llamar('GET', '/api/auth/me', login.datos.access_token);
   assert.equal(yo.datos.quien_atiende.supervisor_id, id.docente);
 
+  // v2.9 (T2.5): como todo usuario nuevo, acepta su compromiso antes de trabajar
+  await aceptarAviso(login.datos.access_token);
   // Registra un control médico sin registro profesional, y el control muestra quién lo hizo
   const { rows: [jugador] } = await sql(`SELECT id FROM jugadores WHERE nombre = 'Mateo Carrillo'`);
   const control = await llamar('POST', '/api/salud/controles', login.datos.access_token, { jugador_id: jugador.id, tipo: 'ZZ prof control', aptitud: 'apto' });

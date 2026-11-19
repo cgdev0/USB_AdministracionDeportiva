@@ -13,13 +13,27 @@ export const DISPONIBILIDAD = {
   no_disponible: ['badge-red', 'fa-circle-xmark', 'No disponible'],
 }
 
-// [tono, icono, texto]; el orden es el de importancia clínica
+// v2.9 (T2.3): consentimientos obligatorios sin firmar (atención y datos personales; investigación es opcional)
+const OBLIGATORIOS = [['consentimiento_atencion', 'atención'], ['consentimiento_datos', 'datos personales']]
+export function consentimientosPendientes(p) {
+  return OBLIGATORIOS.filter(([campo]) => p[campo] && p[campo] !== 'firmado').map(([campo, nombre]) => ({ nombre, estado: p[campo] }))
+}
+export function textoConsentimientos(faltan) {
+  return `Falta firmar: ${faltan.map(f => (f.estado === 'pendiente' ? f.nombre : `${f.nombre} (${f.estado === 'revocado' ? 'revocado' : 'no aceptó'})`)).join(' y ')}`
+}
+
+// [tono, icono, texto, clave]; el orden es el de importancia clínica
 export function avisosDe(p) {
   const lista = []
   if (!sinAlergias(p.alergias)) lista.push(['alerta', 'fa-triangle-exclamation', `Alergias: ${p.alergias}`])
   if (p.lesion_activa) lista.push(['alerta', 'fa-kit-medical', `Lesión: ${p.lesion_tipo || 'sin tipo'}${p.retorno_estimado ? ` · retorno ${fechaCorta(p.retorno_estimado)}` : ''}`])
   if (p.aptitud === 'no_apto_temporal') lista.push(['alerta', 'fa-ban', 'No apto temporalmente'])
   if (p.aptitud === 'apto_restricciones' && p.restricciones) lista.push(['aviso', 'fa-hand', p.restricciones])
+  const faltan = consentimientosPendientes(p)
+  if (faltan.length) lista.push([faltan.some(f => f.estado !== 'pendiente') ? 'alerta' : 'aviso', 'fa-file-signature', textoConsentimientos(faltan), 'consentimiento'])
+  // v2.9 (T2.6): solo se avisa; no bloquea la atención
+  if (p.autorizacion === 'falta_propia') lista.push(['info', 'fa-user-check', 'Falta la aceptación del deportista', 'aceptacion'])
+  if (p.autorizacion === 'sin_declaracion') lista.push(['aviso', 'fa-user-check', 'Sin autorización registrada', 'aceptacion'])
   if (p.borradores > 0) lista.push(['aviso', 'fa-pen', p.borradores === 1 ? 'Borrador sin cerrar' : `${p.borradores} borradores sin cerrar`])
   if (p.control_vencido) lista.push(['aviso', 'fa-calendar-xmark', 'Control vencido'])
   if (!p.numero_documento) lista.push(['aviso', 'fa-id-card', 'Sin documento: no se puede abrir una valoración'])
@@ -28,13 +42,20 @@ export function avisosDe(p) {
   return lista
 }
 
-export function Avisos({ paciente, id }) {
+// `acciones`: avisos que se pueden tocar, por su clave (en la ficha, el de consentimientos lleva a registrarlos)
+export function Avisos({ paciente, id, acciones = {} }) {
   const lista = avisosDe(paciente)
   if (!lista.length) return null
   return (
     <ul className="paciente-avisos" aria-label="Avisos" id={id}>
-      {lista.map(([tono, icono, texto]) => (
-        <li key={texto} className={`paciente-aviso tono-${tono}`}><i className={`fa-solid ${icono}`} aria-hidden="true"></i> {texto}</li>
+      {lista.map(([tono, icono, texto, clave]) => (
+        acciones[clave] ? (
+          <li key={texto}>
+            <button type="button" className={`paciente-aviso tono-${tono} aviso-accion`} onClick={acciones[clave]}>
+              <i className={`fa-solid ${icono}`} aria-hidden="true"></i> {texto} <span className="aviso-accion-ir">Registrar <i className="fa-solid fa-chevron-right" aria-hidden="true"></i></span>
+            </button>
+          </li>
+        ) : <li key={texto} className={`paciente-aviso tono-${tono}`}><i className={`fa-solid ${icono}`} aria-hidden="true"></i> {texto}</li>
       ))}
     </ul>
   )

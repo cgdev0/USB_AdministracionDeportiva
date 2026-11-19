@@ -30,17 +30,21 @@ Diseño alineado con las plataformas oficiales de Unisimón y pensado para celul
 | Estadísticas | `frontend/src/pages/EstadisticasJugador.jsx` |
 | Antropometría | `frontend/src/pages/Antropometria.jsx` |
 | Usuarios | `frontend/src/pages/Usuarios.jsx` |
+| Auditoría (solo administrador, v2.9) | `frontend/src/pages/Auditoria.jsx` |
+| Consentimientos (en la ficha clínica, v2.9) | `frontend/src/components/clinico/Consentimientos.jsx` y `frontend/src/pages/FormatoConsentimiento.jsx` |
 | Panel Head Coach | `frontend/src/pages/HeadCoach.jsx` |
 
 ## Roles contemplados
 
 El frontend reconoce los roles `administrador`, `head_coach`, `entrenador`, `personal_salud` y `jugador`.
 
-- **Administrador:** gestiona usuarios, deportes y equipos. Desde la v2.7 **no entra a la información clínica** (no es parte del equipo de salud); ve la disponibilidad del plantel y la bitácora de accesos.
+- **Administrador:** gestiona usuarios, deportes y equipos. Desde la v2.7 **no entra a la información clínica** (no es parte del equipo de salud); ve la disponibilidad del plantel y la bitácora de accesos. Desde la v2.9 tiene el módulo exclusivo de *Auditoría* (altas, cargas masivas, aceptaciones, gestión de cuentas, inicios de sesión fallidos y ajustes).
 - **Head Coach:** panel de supervisión y vistas deportivas; de las lesiones ve la disponibilidad, no el diagnóstico.
 - **Entrenador:** equipos, deportistas, entrenamientos, asistencia, partidos y pruebas de condición física; de las lesiones ve la disponibilidad, no el diagnóstico.
 - **Personal de salud:** historia clínica (valoraciones), controles, lesiones, antropometría y datos sensibles. Desde la v2.8 trabaja desde *Pacientes* (lista y ficha clínica de cada deportista) y su inicio muestra sus pendientes. Puede ser profesional, practicante o estudiante (el registro RETHUS es opcional). Su pantalla se bloquea a los 15 minutos sin uso.
 - **Jugador:** consulta lo suyo, incluidas sus valoraciones cerradas y quién consultó su historia.
+
+Desde la v2.9, todas las cuentas aceptan un aviso de manejo de datos antes de trabajar. La API las bloquea hasta entonces. Quien registra un deportista (uno por uno o por CSV) declara que lo informó.
 
 La matriz de acceso a la información clínica está en `docs/calidad/00_requisitos.md` y la aplica la API, no solo la pantalla (pruebas `CP-ROL`). Las rutas clínicas usan `autorizarEstricto`, porque `autorizar` deja pasar siempre al administrador.
 
@@ -66,7 +70,7 @@ npm run dev       # API + frontend en http://localhost:3000
 
 Las contraseñas no están en el código. `npm run seed` asigna a cada usuario nuevo una clave aleatoria y la muestra en la consola, o usa `SEED_CLAVE_INICIAL` si está definida en `.env`. Los usuarios que ya existen no se modifican.
 
-**Base existente de una versión anterior:** después de hacer un respaldo, ejecutar en orden los scripts de `backend/migrations/` que falten (`001_roles_y_salud.sql` a `017_bitacora_paciente.sql`; en Railway, `database.sql` ya los aplica al desplegar). La v2.7 (011 a 016) convierte las historias clínicas anteriores en la primera valoración de cada deportista, sin perder datos.
+**Base existente de una versión anterior:** después de hacer un respaldo, ejecutar en orden los scripts de `backend/migrations/` que falten (`001_roles_y_salud.sql` a `021_auditoria.sql`; en Railway, `database.sql` ya los aplica al desplegar). La v2.7 (011 a 016) convierte las historias clínicas anteriores en la primera valoración de cada deportista, sin perder datos.
 
 **Historia clínica (v2.7):** no se borra ni se modifica lo cerrado. Los *triggers* de la base lo impiden, salvo el modo de mantenimiento (`SET dt.mantenimiento = 'on'` dentro de una transacción), que solo debe usarse para limpiar una base de pruebas. Los usuarios existentes siguen entrando con su clave de siempre; su contraseña se protege con el hash nuevo la primera vez que inician sesión.
 
@@ -133,10 +137,10 @@ El proyecto se evalúa con la norma ISO/IEC 9126. El marco completo está en `do
 ```bash
 npx playwright install   # solo la primera vez
 npm test                 # API (unitarias e integración) y navegador; usa una base aparte, dt_deportivo_pruebas
-npm run test:reporte -- v2.8   # regenera el catálogo y escribe el informe de esa versión
+npm run test:reporte -- v2.9   # regenera el catálogo y escribe el informe de esa versión
 ```
 
-Las pruebas de la API necesitan PostgreSQL local (usuario `postgres`, clave `postgres`, puerto 5432). Detalle de los comandos y de cómo agregar casos: `pruebas/README.md`. Último informe: `docs/calidad/informes/v2.8.md`. Plan de la historia clínica y su avance: `docs/plan/plan_historia_clinica.md`.
+Las pruebas de la API necesitan PostgreSQL local (usuario `postgres`, clave `postgres`, puerto 5432). Detalle de los comandos y de cómo agregar casos: `pruebas/README.md`. Último informe: `docs/calidad/informes/v2.9.md`. Plan de la historia clínica y su avance: `docs/plan/plan_historia_clinica.md`.
 
 ## Alcance de esta versión
 

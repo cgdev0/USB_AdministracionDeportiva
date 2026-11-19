@@ -3,9 +3,161 @@
 Registro de cambios y autoría de cada versión del sistema.
 Cada versión está marcada con una etiqueta (tag) en el repositorio.
 
-## v2.8 — Espacio de trabajo de salud adaptable *(en desarrollo)*
+## v2.9 — Consentimientos, avisos de datos y auditoría
 
-**Etiqueta:** `v2.8` (al terminar la Fase 1 del plan `docs/plan/plan_historia_clinica.md`).
+**Etiqueta:** `v2.9` · Fase 2 del plan `docs/plan/plan_historia_clinica.md` · Migraciones `018_consentimientos.sql` a `021_auditoria.sql`.
+
+**Al publicarla:**
+- **Avisos de manejo de datos:** cada cuenta, incluidas las de administrador, ve su aviso en el próximo inicio de sesión y debe aceptarlo antes de seguir.
+- **Formatos y avisos:** son **borradores** (`borrador-2026-11`) hasta que el docente los apruebe. Cuando cambie el texto, se acepta de nuevo.
+- **Regla D2** (consentimiento de atención para valorar): queda **apagada**.
+- **Datos anteriores:** los deportistas cargados antes de esta versión son de demostración y quedan exentos de la autorización (D11).
+
+**T2.1 · Modelo y reglas de los consentimientos** (RF-27)
+- **Tres tipos separados**, cada uno con su estado:
+  - atención fisioterapéutica;
+  - tratamiento de datos personales (Ley 1581 de 2012);
+  - uso en investigación (Res. 8430 de 1993), que es opcional: negarlo no afecta la atención.
+- **Cada firma, rechazo o revocación es un registro aparte** que no se modifica ni se borra; lo impide también la base de datos. El estado es el del último registro; sin registros, *pendiente*.
+- **Firmado solo con el papel:** la foto o el PDF se guarda como archivo clínico protegido, en la misma operación.
+- **Menores de edad:**
+  - firma el acudiente, por defecto el registrado en la identificación del deportista, o se escribe otro con su nombre y documento;
+  - se registra el asentimiento del menor (sí o no);
+  - para investigación, sin el asentimiento del menor el consentimiento no autoriza.
+- **Revocar** pide el motivo y crea un registro nuevo; el firmado queda en el historial. Lo firmado no se "rechaza" después: se revoca.
+- **Quién:** los registra el personal de salud y los consulta también el propio deportista. El administrador, el entrenador y el head coach no tienen acceso.
+- **Bitácora:** cada consulta, registro y revocación queda registrada, con la acción nueva "revocó".
+- **Conservación:** un deportista con consentimientos no se elimina, se retira (regla de la T0.4).
+- **Código:** la subida de archivos clínicos y su entrada en la bitácora van ahora en una sola transacción: si una falla, no queda la otra.
+
+Pruebas: CP-UNI-026 a 030 (reglas) y CP-CON-001 a 006 (API: papel obligatorio, menor de edad, revocación sin borrar, investigación independiente, permisos y bitácora).
+
+**T2.2 · Formatos de consentimiento para imprimir (borradores)**
+- **Cuatro formatos en hoja carta:**
+  - atención fisioterapéutica (con casilla aparte para las fotos de la postura);
+  - tratamiento de datos personales;
+  - uso en investigación;
+  - asentimiento del menor, en lenguaje para él.
+- **Cada hoja lleva** los datos del deportista ya diligenciados y, si es menor, los de su acudiente, que es quien firma. Tiene espacio para la firma, el documento, la huella y quien explica.
+- **Dónde se abren:** `/pacientes/:id/formatos/:tipo` (diligenciado) y `/formatos-consentimiento/:tipo` (en blanco). Solo los abre el personal de salud; se muestran sin el menú y con el bloqueo por inactividad activo.
+- **Son borradores:** lo dice cada hoja, y lo que debe completar la universidad va resaltado. Los PDF y la guía de revisión para el docente están en `docs/plan/formatos/`.
+
+Pruebas: CP-UI-CON-001 (cada formato cabe en una hoja carta: en blanco, de un mayor y de un menor) y CP-UI-CON-002 (datos diligenciados, asentimiento solo para menores, la barra no se imprime, sin acceso para el administrador ni el entrenador).
+
+**T2.3 · Pantalla de consentimientos**
+- **Dónde:** en la ficha clínica, una tarjeta por tipo con su estado y su fecha. En celular y tableta vertical, en la pestaña *Consentimientos*; en pantallas amplias, arriba de la columna izquierda.
+- **Acciones de cada tarjeta:**
+  - *Registrar firma*: firmó o no aceptó; quién firma (si es menor, el acudiente ya diligenciado); asentimiento del menor; fecha; y la foto del papel con la cámara o un PDF.
+  - *Ver papel*: se abre por la ruta protegida y solo vive en memoria mientras se ve.
+  - *Revocar*, con el motivo.
+  - *Imprimir formato*.
+- **Historial** de cada tipo: lo anterior, plegado.
+- **Las reglas se revisan en la pantalla** con la misma lógica de la API, así el mensaje sale de inmediato.
+- **"Falta firmar"** (atención y datos personales; investigación es opcional) aparece en:
+  - el encabezado de la ficha, como aviso que lleva a los consentimientos;
+  - la lista de pacientes, con aviso y filtro *Consentimiento pendiente*;
+  - el inicio del personal de salud, en el grupo *Consentimientos sin firmar*.
+- **El papel firmado** aparece también en la historia de la ficha, como archivo clínico.
+
+Pruebas:
+- **CP-UI-SAL-013 (celular, menor de edad):** filtro de la lista, aviso de la ficha, firma con foto y asentimiento, ver el papel y revocar con historial.
+- **CP-UI-SAL-014:** quién abre el papel (solo salud), el inicio que lleva a la pestaña y el panel en computador.
+- **CP-HC-021 (API):** estado de los consentimientos en la lista, la ficha y el inicio.
+
+**T2.4 · Avisos de manejo de datos** (RF-32; decisiones D9 a D13 del plan)
+- **Tres textos, como borradores para el docente y la universidad:**
+  - *compromiso de confidencialidad y manejo de datos* para todo el personal: Ley 1581 de 2012, Res. 1995 de 1999 y Ley 181 de 1995. Cada rol suma lo propio; salud, la responsabilidad clínica (Ley 528 de 1999) y la supervisión de practicantes;
+  - *aviso de privacidad* del deportista, con versión en lenguaje sencillo para menores;
+  - *declaraciones* de quien registra a un deportista o carga un archivo con varios.
+- **Cada aceptación se guarda** con el aviso, su versión, la huella SHA-256 del texto exacto, quién, cómo (cuenta, tableta, papel, registro o carga), cuándo y desde qué IP. No se modifica ni se borra. Si el texto cambia, cambia la versión y se acepta de nuevo.
+- **API:** `GET /api/avisos/mios` (el aviso que le toca a cada uno) y `POST /api/avisos/aceptar`. Todavía no se exige: eso llega con la T2.5.
+- **Para el docente:** `docs/plan/formatos/avisos-borrador.md`, generado desde los mismos textos.
+- **Migración:** `019_aceptaciones.sql`.
+
+Pruebas: CP-UNI-031 y 032 (textos por rol, versión para menores y huella) y CP-AVI-001 a 003 (aviso de cada rol; aceptación con versión, huella e IP sin duplicarse; el deportista en su cuenta; no se modifican ni se borran).
+
+**T2.5 · Nadie trabaja con datos sin aceptar su aviso**
+- **Cuándo aparece:** al entrar por primera vez, o cuando cambia el texto, en lugar de la aplicación aparece el aviso que le corresponde:
+  - el personal, su compromiso de confidencialidad;
+  - el deportista en su cuenta, su aviso de privacidad.
+- **Cómo se acepta:** la casilla y el botón *Aceptar y continuar* están siempre a la vista; sin aceptar solo se puede *Salir*. Funciona en celular, tableta y computador.
+- **La API también lo exige:** sin la aceptación, cualquier ruta responde 403 ("Acepta el compromiso…"), salvo la sesión y el aviso mismo. Si un texto nuevo se publica durante una sesión, la pantalla lo muestra en cuanto la API lo pide.
+- **A quién aplica:** a todo usuario nuevo, creado uno por uno o por carga CSV.
+- **Al publicar esta versión, todas las cuentas** (también las de demostración en Railway) verán su aviso al entrar.
+
+Pruebas:
+- **CP-AVI-004 a 006 (API):** sin aceptar no se consulta ni se registra; usuarios nuevos uno por uno y por CSV; un texto con versión nueva se acepta de nuevo.
+- **CP-UI-AVI-001 y 002:** el aviso al entrar en 360 px (sin problemas graves de accesibilidad), *Salir*, el aviso del deportista en computador y las cuentas que ya aceptaron entran directo.
+
+**T2.6 · Autorización de cada deportista**
+- **Declaración obligatoria de quien registra:** "Declaro que informé al deportista, o a su acudiente si es menor de edad, sobre el aviso de privacidad, y que autorizó…". Sin marcarla no se guarda, en ninguno de los cuatro caminos que crean personas:
+  - el formulario de Deportistas;
+  - la carga CSV de Deportistas;
+  - la cuenta de deportista con ficha nueva, desde Usuarios;
+  - la carga CSV de usuarios.
+- **Cada carga masiva queda registrada** (tabla nueva `cargas_masivas`, que no se modifica ni se borra): quién la hizo, el archivo y su huella SHA-256, las filas creadas y rechazadas con su motivo, y la declaración de la carga. Cada deportista creado queda ligado a ella.
+- **Aceptación propia del deportista**, por tres vías:
+  - en su cuenta, al entrar (T2.5);
+  - en la tableta del profesional: lee el aviso (en lenguaje sencillo si es menor), escribe su nombre y acepta, con el profesional como testigo;
+  - con la autorización de datos personales firmada en papel (T2.3).
+- **Si falta, solo se avisa:** "Falta la aceptación del deportista" en la ficha clínica (se toca y abre la aceptación), en la lista de pacientes (con el filtro *Falta aceptación*) y en la ficha de Deportistas, para el entrenador. No bloquea la atención.
+- **Los deportistas registrados antes de esta versión** (de demostración) quedan exentos.
+- **Un deportista registrado por error y sin historia clínica** se puede seguir eliminando; sus declaraciones se borran con él.
+
+Pruebas:
+- **CP-AVI-007 a 012 (API):** registro uno por uno; cargas de deportistas y de usuarios con su registro y huella; cuenta de deportista; tableta con testigo, alcance y versión para menores; papel; eliminar un deportista sin historia.
+- **CP-UI-AVI-003 (celular):** el formulario y la carga CSV no guardan sin la declaración.
+- **CP-UI-AVI-004:** salud en la tableta y el entrenador en su celular registran la aceptación del deportista.
+
+**T2.7 · Módulo de Auditoría** (solo el administrador; RF-33)
+- **Nuevo módulo *Auditoría*** en *Gestión*. Ningún otro rol entra, ni por la API. Tiene seis pestañas:
+  - *Actividad:* altas de deportistas y usuarios; cambios de rol; contraseñas restablecidas; cuentas desactivadas y reactivadas; retiros, reincorporaciones y eliminaciones de deportistas; cargas masivas; inicios de sesión fallidos y bloqueos (con el usuario intentado, nunca la contraseña); cambios de ajustes y exportaciones;
+  - *Cargas masivas:* cada una con su archivo, huella, resultado, lo creado, las filas rechazadas y la declaración de quien cargó;
+  - *Aceptaciones:* quién aceptó qué aviso, cómo, con qué versión y testigo;
+  - *Pendientes:* personal que no ha aceptado su compromiso y deportistas a los que les falta su aceptación;
+  - *Historia clínica:* la bitácora general de accesos;
+  - *Ajustes.*
+- **Filtros** por persona, acción y fechas, y **exportación a CSV**, que también queda registrada.
+- **Registro** en la tabla nueva `auditoria`, que no se modifica ni se borra y nunca guarda contenido clínico.
+- **Ajuste "Exigir el consentimiento de atención firmado para iniciar una valoración"** (regla D2): está apagado y se enciende con confirmación cuando el docente apruebe los formatos. Cada cambio queda registrado.
+- **Corrección (DEF-062):** *Pacientes* no aparecía en el menú lateral del computador desde la v2.8.
+
+Pruebas:
+- **CP-AUD-001 a 006 (API):** solo el administrador; gestión de cuentas y deportistas; cargas con su detalle; aceptaciones y pendientes; inicios fallidos y bloqueos sin la contraseña; ajuste, exportación y que nada se modifique.
+- **CP-UI-AUD-001:** el recorrido del módulo en computador y en un celular de 360 px, y que otro rol no entre.
+
+**T2.8 · Reglas que dependen del consentimiento**
+- **Regla D2: sin el consentimiento de atención firmado y vigente no se inicia una valoración.**
+  - La API responde 409 "Falta el consentimiento de atención".
+  - En la ficha, *Nueva valoración* avisa antes de abrir el editor y lleva a registrarlo.
+  - **Solo actúa con el ajuste encendido** en *Auditoría → Ajustes*. Queda **apagada** hasta que el docente apruebe los formatos (D12), así que por ahora nada cambia en el uso diario.
+- **Exportaciones** (llegan en la Fase 4), con la regla ya lista y probada:
+  - FHIR, solo para deportistas con la autorización de datos personales firmada y vigente;
+  - investigación, solo para quienes firmaron su consentimiento y, si son menores, dieron su asentimiento.
+
+Pruebas:
+- **CP-UNI-033:** la regla de exportación.
+- **CP-CON-007:** la regla D2 encendida y apagada, firmar y revocar.
+- **CP-CON-008:** la exportación FHIR.
+- **CP-CON-009:** la exportación para investigación, con menores con y sin asentimiento.
+- **CP-UI-CON-003:** el aviso de la ficha.
+
+**T2.9 · Cierre de la versión**
+- **Datos de demostración con consentimientos en distintos estados.** Cada uno trae un PDF ficticio como papel firmado, para que *Ver papel* funcione:
+  - #2: atención y datos personales firmados;
+  - #9: lo mismo, y rechazó el de investigación;
+  - #10: firmó atención y luego lo revocó;
+  - #15: firmó atención y aceptó el aviso en la tableta del profesional;
+  - #23 (menor): firmó su acudiente; asintió a la atención, pero no a la investigación.
+  - En Railway se agregan una sola vez al plantel ya cargado.
+- **Ensayo de la migración:** una base creada con la v2.8 se actualizó dos veces con esta versión. Sin errores, conserva todos sus datos y pasa de 26 a 31 tablas.
+
+Pruebas:
+- **CP-CON-010:** los consentimientos y aceptaciones de demostración, y que no se repiten.
+
+## v2.8 — Espacio de trabajo de salud adaptable
+
+**Etiqueta:** `v2.8` · Fase 1 del plan `docs/plan/plan_historia_clinica.md` · Pull Request #41 · Migración `017_bitacora_paciente.sql`.
 
 **T1.1 · Componentes para formularios clínicos** (`frontend/src/components/clinico/`)
 - **`FormularioPorSecciones`:** en el celular, una sección por pantalla ("Paso 2 de 9" con barra de avance); en la tableta vertical, índice desplegable; en la tableta horizontal y el computador, índice lateral con el estado de cada sección (completa, no evaluada o pendiente).

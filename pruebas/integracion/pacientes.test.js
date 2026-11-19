@@ -1,7 +1,7 @@
 // Lista de pacientes del personal de salud (v2.8, T1.3 del plan de historia clínica; RF-26, RNF-02).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, llamarFormulario, token, sql, sqlMantenimiento } = require('../utilidades/api');
 
 const MARCA = 'ZZ paciente';
 const T = {};
@@ -11,11 +11,16 @@ test.before(async () => {
   for (const rol of ['administrador', 'entrenador', 'head_coach', 'salud', 'jugador']) T[rol] = await token(rol);
 });
 test.after(async () => {
-  await sqlMantenimiento(`DELETE FROM archivos_clinicos WHERE descripcion LIKE '${MARCA}%'`);
-  await sqlMantenimiento(`DELETE FROM antropometria WHERE peso = 82.5 AND porcentaje_grasa = 14.2`);
-  await sqlMantenimiento(`DELETE FROM valoraciones WHERE contenido->>'motivo_consulta' LIKE '${MARCA}%'`);
-  await sqlMantenimiento(`DELETE FROM jugadores WHERE nombre LIKE '${MARCA}%'`);
-  await cerrar(__filename);
+  try {
+    await sqlMantenimiento(`DELETE FROM consentimientos WHERE jugador_id IN (SELECT id FROM jugadores WHERE numero_documento IN ('1090000015', '1090000014'))`);
+    await sqlMantenimiento(`DELETE FROM archivos_clinicos WHERE tipo = 'consentimiento' AND jugador_id IN (SELECT id FROM jugadores WHERE numero_documento IN ('1090000015', '1090000014'))`);
+    await sqlMantenimiento(`DELETE FROM archivos_clinicos WHERE descripcion LIKE '${MARCA}%'`);
+    await sqlMantenimiento(`DELETE FROM antropometria WHERE peso = 82.5 AND porcentaje_grasa = 14.2`);
+    await sqlMantenimiento(`DELETE FROM valoraciones WHERE contenido->>'motivo_consulta' LIKE '${MARCA}%'`);
+    await sqlMantenimiento(`DELETE FROM jugadores WHERE nombre LIKE '${MARCA}%'`);
+  } finally {
+    await cerrar(__filename);
+  }
 });
 
 const lista = async (query = '') => (await llamar('GET', `/api/pacientes${query}`, T.salud)).datos;
@@ -67,6 +72,7 @@ test('CP-HC-020 [RF-26][RF-31][RNF-02] La ficha clínica trae en una sola consul
   await sql(`INSERT INTO archivos_clinicos (jugador_id, tipo, nombre_archivo, nombre_original, mime, tamano, sha256, descripcion, subido_por)
              SELECT $1, 'examen', 'zz-ficha.pdf', 'resonancia.pdf', 'application/pdf', 1024, repeat('a', 64), '${MARCA} examen', id FROM usuarios WHERE rol = 'personal_salud' LIMIT 1`, [pedro]);
 
+  const { rows: [{ ahora }] } = await sql('SELECT now() AS ahora'); // la bitácora no se borra: se cuenta desde aquí
   const r = await llamar('GET', `/api/pacientes/${pedro}`, T.salud);
   assert.equal(r.status, 200);
   const { paciente: p, valoraciones, controles, lesiones, mediciones, archivos } = r.datos;
@@ -89,7 +95,7 @@ test('CP-HC-020 [RF-26][RF-31][RNF-02] La ficha clínica trae en una sola consul
   assert.ok(!('nombre_archivo' in archivos[0]), 'no expone el nombre interno del archivo');
 
   // Una sola entrada en la bitácora por abrir la ficha
-  const { rows: [b] } = await sql(`SELECT COUNT(*)::int AS n FROM bitacora_clinica WHERE recurso = 'paciente' AND accion = 'ver' AND jugador_id = $1`, [pedro]);
+  const { rows: [b] } = await sql(`SELECT COUNT(*)::int AS n FROM bitacora_clinica WHERE recurso = 'paciente' AND accion = 'ver' AND jugador_id = $1 AND creado_en >= $2`, [pedro, ahora]);
   assert.equal(b.n, 1);
   // Inexistente, inválido y roles sin acceso
   assert.equal((await llamar('GET', '/api/pacientes/999999', T.salud)).status, 404);
@@ -97,4 +103,36 @@ test('CP-HC-020 [RF-26][RF-31][RNF-02] La ficha clínica trae en una sola consul
   for (const rol of ['administrador', 'entrenador', 'head_coach', 'jugador']) {
     assert.equal((await llamar('GET', `/api/pacientes/${pedro}`, T[rol])).status, 403, rol);
   }
+});
+
+test('CP-HC-021 [RF-27] La lista, la ficha y el inicio de salud muestran el estado de los consentimientos obligatorios (v2.9, T2.3)', async () => {
+  const PDF = Buffer.from('%PDF-1.4\n% consentimiento\n%%EOF\n');
+  const firmar = (jugador_id, tipo) => {
+    const f = new FormData();
+    f.append('archivo', new Blob([PDF], { type: 'application/pdf' }), 'papel.pdf');
+    for (const [k, v] of Object.entries({ jugador_id, tipo, estado: 'firmado' })) f.append(k, String(v));
+    return llamarFormulario('/api/consentimientos', T.salud, f);
+  };
+  const filas = await lista();
+  const mateo = de(filas, 'Mateo Carrillo').id;
+  const julian = de(filas, 'Julián Duarte').id;
+  assert.deepEqual([de(filas, 'Mateo Carrillo').consentimiento_atencion, de(filas, 'Mateo Carrillo').consentimiento_datos], ['pendiente', 'pendiente']);
+  assert.equal((await firmar(mateo, 'atencion')).status, 201);
+  assert.equal((await firmar(julian, 'atencion')).status, 201);
+  assert.equal((await firmar(julian, 'datos_personales')).status, 201);
+
+  // Lista: estado vigente de cada uno
+  const despues = await lista();
+  assert.deepEqual([de(despues, 'Mateo Carrillo').consentimiento_atencion, de(despues, 'Mateo Carrillo').consentimiento_datos], ['firmado', 'pendiente']);
+  // Ficha: estado y historial en la misma consulta
+  const ficha = (await llamar('GET', `/api/pacientes/${mateo}`, T.salud)).datos;
+  assert.equal(ficha.paciente.consentimiento_atencion, 'firmado');
+  assert.deepEqual([ficha.consentimientos.actual.atencion.estado, ficha.consentimientos.actual.investigacion.estado], ['firmado', 'pendiente']);
+  assert.equal(ficha.consentimientos.historial.length, 1);
+  assert.ok(ficha.archivos.some(a => a.tipo === 'consentimiento'), 'el papel aparece en la historia');
+  // Inicio de salud: quien tiene ambos firmados ya no está pendiente
+  const pendientes = (await llamar('GET', '/api/dashboard/inicio', T.salud)).datos.pendientes_salud.consentimientos;
+  const m = pendientes.find(c => c.jugador_id === mateo);
+  assert.deepEqual([m.atencion, m.datos_personales], ['firmado', 'pendiente']);
+  assert.ok(!pendientes.some(c => c.jugador_id === julian), 'con los dos firmados, no aparece');
 });

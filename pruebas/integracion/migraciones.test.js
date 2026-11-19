@@ -42,7 +42,7 @@ test('CP-MIG-001 [RNF-09] database.sql crea el esquema completo en una base vac√
   const { rows: [t] } = await c.query(`SELECT COUNT(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public'`);
   const { rows: [j] } = await c.query('SELECT COUNT(*)::int AS n FROM jugadores');
   await c.end();
-  assert.equal(t.n, 26, 'tablas creadas (v2.0: categorias; v2.7: valoraciones, notas_aclaratorias, archivos_clinicos y bitacora_clinica)');
+  assert.equal(t.n, 31, 'tablas creadas (v2.0: categorias; v2.7: valoraciones, notas_aclaratorias, archivos_clinicos y bitacora_clinica; v2.9: consentimientos, aceptaciones, cargas_masivas, auditoria y ajustes)');
   assert.equal(j.n, 5, 'las semillas no se duplican al repetir');
 });
 
