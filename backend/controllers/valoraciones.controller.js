@@ -12,8 +12,10 @@ const db = require('../config/db');
 const { responderError } = require('../utils/errores');
 const { columnasQuienAtiende, conQuienAtiende, datosDeQuienAtiende } = require('../utils/quienAtiende');
 const { registrar, jugadorDeLaConsulta } = require('../utils/bitacora'); // v2.7 (T0.6): bitácora de accesos
+const { exigeConsentimientoAtencion, consentimientoAtencionFirmado } = require('../utils/reglasConsentimiento'); // v2.9 (T2.8)
 
 const modulo = import(pathToFileURL(path.join(__dirname, '..', '..', 'frontend', 'src', 'utils', 'valoracion.js')).href);
+const reglasConsentimiento = import(pathToFileURL(path.join(__dirname, '..', '..', 'frontend', 'src', 'utils', 'consentimientos.js')).href);
 const QA = columnasQuienAtiende('pr');
 const esSalud = (usuario) => usuario?.rol === 'personal_salud';
 
@@ -121,6 +123,12 @@ exports.crear = async (req, res) => {
     // Res. 1995 de 1999: la historia clínica se identifica con el documento de identidad (T0.1)
     if (!j.numero_documento) {
       return res.status(400).json({ error: 'Para abrir una valoración, registra primero el documento de identidad del deportista.' });
+    }
+    // v2.9 (T2.8, D2): con la regla encendida (ajuste del administrador), sin el consentimiento de atención firmado no
+    // se abre una valoración. Queda apagada hasta que el docente apruebe los formatos (D12).
+    if (await exigeConsentimientoAtencion() && !(await consentimientoAtencionFirmado(j.id))) {
+      const { MENSAJE_FALTA_ATENCION } = await reglasConsentimiento;
+      return res.status(409).json({ error: MENSAJE_FALTA_ATENCION, codigo: 'FALTA_CONSENTIMIENTO_ATENCION' });
     }
     const { rows: [nueva] } = await db.query(
       `INSERT INTO valoraciones (jugador_id, profesional_id, tipo, contenido) VALUES ($1, $2, $3, $4) RETURNING id`,

@@ -19,6 +19,7 @@ const CARGADORES = {
   '/evaluaciones': () => import('../pages/Evaluaciones'),
   '/antropometria': () => import('../pages/Antropometria'),
   '/usuarios': () => import('../pages/Usuarios'),
+  '/auditoria': () => import('../pages/Auditoria'),
 }
 
 // Una sola descarga por módulo; si falla (sin conexión), se puede volver a intentar
@@ -46,8 +47,12 @@ export const PAGINAS = {
   ...Object.fromEntries(Object.keys(CARGADORES).map(ruta => [ruta, lazy(() => cargar(ruta))])),
 }
 
-// Páginas dentro de un módulo (v2.8, T1.4): heredan los roles y la marca clínica del módulo (config/navegacion.js)
+// Páginas dentro de un módulo (v2.8, T1.4): heredan los roles y la marca clínica del módulo (config/navegacion.js).
+// `sinMarco`: sin el menú ni la cabecera de la aplicación (hojas para imprimir, v2.9 T2.2).
 const cargarFicha = () => import('../pages/FichaClinica')
+const Formato = lazy(() => import('../pages/FormatoConsentimiento'))
 export const SUBPAGINAS = [
   { ruta: '/pacientes/:id', modulo: '/pacientes', Pagina: lazy(cargarFicha), precargar: () => cargarFicha().catch(() => {}) },
+  { ruta: '/pacientes/:id/formatos/:tipo', modulo: '/pacientes', Pagina: Formato, sinMarco: true },
+  { ruta: '/formatos-consentimiento/:tipo', modulo: '/pacientes', Pagina: Formato, sinMarco: true },
 ]

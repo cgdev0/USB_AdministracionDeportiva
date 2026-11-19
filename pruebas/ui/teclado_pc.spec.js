@@ -4,7 +4,7 @@
 // el borrador. También el giro de la tableta (vertical ↔ horizontal).
 const path = require('path');
 const { test, expect } = require('@playwright/test');
-const { paginaEn, entrar, desborde, ANCHOS, CUENTAS } = require('./ayuda');
+const { paginaEn, entrar, desborde, ANCHOS, CUENTAS, declaracion } = require('./ayuda');
 const { credenciales, BD_PRUEBAS, RAIZ } = require('../utilidades/bd');
 const { Client } = require(path.join(RAIZ, 'node_modules', 'pg'));
 
@@ -84,6 +84,7 @@ test('CP-UI-PC-002 [RF-25][RNF-06] En computador, la identificación se completa
   // Documento y Enter para guardar
   await hoja.getByLabel('Tipo de documento', { exact: true }).selectOption('CC');
   await hoja.getByLabel('Número de documento', { exact: true }).fill(`7${String(Date.now()).slice(-9)}`);
+  await hoja.getByLabel(/Declaro que informé al deportista/).check(); // v2.9 (T2.6)
   await hoja.getByLabel('Número de documento', { exact: true }).press('Enter');
   await expect(page.getByText('Deportista registrado con éxito')).toBeVisible();
   await expect(hoja).toHaveCount(0);
@@ -157,7 +158,7 @@ test('CP-UI-PC-004 [RNF-14][RNF-06] En computador, un deportista con historia se
   const entrenador = await cabeceras(page, 'entrenador');
   const rugby = (await (await page.request.get('/api/disciplinas', { headers: entrenador })).json()).find(d => d.nombre === 'Rugby').id;
   const { id } = await (await page.request.post('/api/jugadores', { headers: entrenador,
-    data: { nombre: RETIRO, disciplina_id: rugby, tipo_documento: 'CC', numero_documento: `6${String(Date.now()).slice(-9)}` } })).json();
+    data: { nombre: RETIRO, disciplina_id: rugby, tipo_documento: 'CC', numero_documento: `6${String(Date.now()).slice(-9)}`, declaracion: await declaracion() } })).json();
   await page.request.post('/api/salud/controles', { headers: await cabeceras(page, 'salud'), data: { jugador_id: id, tipo: 'Control UI PC', aptitud: 'apto' } });
 
   await entrar(page, 'entrenador');

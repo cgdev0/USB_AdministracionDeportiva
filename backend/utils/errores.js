@@ -43,6 +43,21 @@ const RESTRICCIONES = {
   lesion_con_seguimiento: 'Esta lesión tiene seguimientos clínicos y no se puede eliminar.',
   // v2.7 (T0.5): archivos clínicos (migración 015)
   archivo_clinico_inalterable: 'Los archivos clínicos no se modifican ni se borran.',
+  // v2.9 (T2.1): consentimientos
+  consentimiento_inalterable: 'Los consentimientos no se modifican ni se borran: para retirarlo, regístralo como revocado.',
+  chk_consentimientos_tipo: 'El tipo de consentimiento no es válido.',
+  chk_consentimientos_estado: 'El estado del consentimiento no es válido.',
+  chk_consentimientos_firma_quien: 'Quien firma debe ser el deportista o su acudiente.',
+  chk_consentimientos_firmado_con_archivo: 'Para marcarlo como firmado, adjunta la foto o el PDF del papel firmado.',
+  chk_consentimientos_firmado_con_firmante: 'Indica quién firma el consentimiento.',
+  chk_consentimientos_revocado: 'Escribe el motivo de la revocación.',
+  // v2.9 (T2.4): aceptaciones de los avisos de manejo de datos
+  aceptacion_inalterable: 'Las aceptaciones no se modifican ni se borran.',
+  carga_masiva_inalterable: 'El registro de las cargas masivas no se modifica ni se borra.',
+  auditoria_inalterable: 'El registro de auditoría no se modifica ni se borra.',
+  chk_aceptaciones_aviso: 'El aviso no es válido.',
+  chk_aceptaciones_via: 'La forma de aceptación no es válida.',
+  chk_aceptaciones_datos: 'Faltan datos de quién aceptó el aviso.',
   chk_archivos_tipo: 'El tipo de archivo no es válido.',
   chk_archivos_mime: 'Solo se aceptan fotos JPG o PNG y documentos PDF.',
   chk_archivos_tamano: 'El archivo supera los 5 MB.',
@@ -51,7 +66,7 @@ const RESTRICCIONES = {
 };
 
 // Restricciones que protegen la historia clínica: responden 409 (conflicto con el estado del registro), no 400
-const CONFLICTOS = new Set(['valoracion_cerrada', 'nota_aclaratoria_inalterable', 'jugador_con_historia_clinica', 'lesion_con_seguimiento', 'archivo_clinico_inalterable', 'bitacora_inalterable']);
+const CONFLICTOS = new Set(['valoracion_cerrada', 'nota_aclaratoria_inalterable', 'jugador_con_historia_clinica', 'lesion_con_seguimiento', 'archivo_clinico_inalterable', 'bitacora_inalterable', 'consentimiento_inalterable', 'aceptacion_inalterable', 'carga_masiva_inalterable', 'auditoria_inalterable']);
 
 // Mensajes de los índices únicos con nombre (23505). No dicen quién tiene el dato, para no revelar
 // deportistas que están fuera del alcance de quien guarda.

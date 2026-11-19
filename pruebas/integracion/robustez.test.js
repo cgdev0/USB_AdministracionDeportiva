@@ -2,7 +2,7 @@
 // Una entrada inválida debe rechazarse con 4xx y un mensaje, nunca con un error 500.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento } = require('../utilidades/api');
+const { iniciar, cerrar, llamar, token, sql, sqlMantenimiento, conDeclaracion } = require('../utilidades/api');
 const { fechaEnDias, horaActual } = require('../utilidades/fechas');
 
 let A;
@@ -86,7 +86,7 @@ test('CP-SEG-010 [RNF-03] Referencia a un jugador inexistente', async () => {
 test('CP-SEG-011 [RNF-03] Valores numéricos imposibles (negativos)', async () => {
   const { rows: [j] } = await sql('SELECT id FROM jugadores LIMIT 1');
   rechaza(await llamar('POST', '/api/estadisticas', A, { jugador_id: j.id, goles: -5 }), 'goles negativos');
-  rechaza(await llamar('POST', '/api/jugadores', A, { nombre: 'ZZ robustez', edad: -3, peso: -70 }), 'edad y peso negativos');
+  rechaza(await llamar('POST', '/api/jugadores', A, conDeclaracion({ nombre: 'ZZ robustez', edad: -3, peso: -70 })), 'edad y peso negativos');
 });
 
 test('CP-SEG-012 [RNF-03] Correo de usuario repetido', async () => {

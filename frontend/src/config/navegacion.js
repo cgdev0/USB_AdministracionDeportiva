@@ -34,6 +34,9 @@ export const MODULOS = [
     roles: ['personal_salud', 'jugador'], clinico: true },
   { ruta: '/usuarios',       etiqueta: 'Usuarios',          corto: 'Usuarios',     icono: 'fa-solid fa-user-gear',
     roles: ['administrador'] },
+  // v2.9 (T2.7): auditoría, exclusiva del administrador (altas, cargas, aceptaciones, cuentas y accesos)
+  { ruta: '/auditoria',      etiqueta: 'Auditoría',         corto: 'Auditoría',    icono: 'fa-solid fa-user-shield',
+    roles: ['administrador'] },
 ]
 
 // Las 4 secciones del menú inferior para cada rol; el resto va en "Más".
@@ -67,6 +70,7 @@ export function iniciales(nombre = '') {
 // Secciones del menú lateral (v2.0): el juego, el cuidado del deportista y la administración
 export const GRUPOS = [
   { titulo: 'Competencia', rutas: ['/', '/head-coach', '/equipos', '/jugadores', '/entrenamientos', '/asistencia', '/partidos', '/estadisticas'] },
-  { titulo: 'Salud y rendimiento', rutas: ['/lesiones', '/salud', '/evaluaciones', '/antropometria'] },
-  { titulo: 'Gestión', rutas: ['/usuarios'] },
+  // v2.9: Pacientes faltaba en el menú lateral del computador desde la v2.8 (DEF-062)
+  { titulo: 'Salud y rendimiento', rutas: ['/pacientes', '/lesiones', '/salud', '/evaluaciones', '/antropometria'] },
+  { titulo: 'Gestión', rutas: ['/usuarios', '/auditoria'] },
 ]

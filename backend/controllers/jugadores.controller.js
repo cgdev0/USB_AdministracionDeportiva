@@ -8,6 +8,9 @@ const multer = require('multer');
 const { responderError } = require('../utils/errores');
 const { UPLOADS_DIR } = require('../config/archivos');
 const { registrar } = require('../utils/bitacora'); // v2.7 (T0.6)
+// v2.9 (T2.6): declaración de quien registra, cargas masivas y estado de la autorización de cada deportista
+const { revisarDeclaracion, registrarDeclaracion, registrarCarga, COLUMNAS_AUTORIZACION, conAutorizacion } = require('../utils/autorizaciones');
+const { auditar } = require('../utils/auditoria'); // v2.9 (T2.7): altas, retiros y eliminaciones en la auditoría
 
 // v2.7 (T0.1): las reglas de identificación viven en un solo archivo, el mismo que usan los formularios
 // (frontend/src/utils/identificacion.js), igual que las fórmulas de antropometría.
@@ -95,7 +98,8 @@ exports.getAll = async (req, res) => {
     }
 
     let query = `
-      SELECT j.*, COALESCE(date_part('year', age(j.fecha_nacimiento))::int, j.edad) AS edad, eq.nombre AS equipo_nombre, d.nombre AS disciplina_nombre, u.nombre AS entrenador_nombre
+      SELECT j.*, COALESCE(date_part('year', age(j.fecha_nacimiento))::int, j.edad) AS edad, eq.nombre AS equipo_nombre, d.nombre AS disciplina_nombre, u.nombre AS entrenador_nombre,
+             ${COLUMNAS_AUTORIZACION}
       FROM jugadores j
       LEFT JOIN equipos eq ON j.equipo_id = eq.id
       LEFT JOIN disciplinas d ON j.disciplina_id = d.id
@@ -130,7 +134,7 @@ exports.getAll = async (req, res) => {
     query += ` ORDER BY j.nombre ASC`;
 
     const { rows } = await db.query(query, params);
-    res.json(rows.map(f => ocultarSensibles(f, req.usuario)));
+    res.json((await Promise.all(rows.map(conAutorizacion))).map(f => ocultarSensibles(f, req.usuario)));
   } catch (err) {
     responderError(res, err);
   }
@@ -140,7 +144,8 @@ exports.getAll = async (req, res) => {
 exports.getOne = async (req, res) => {
   try {
     const { rows: playerRows } = await db.query(
-      `SELECT j.*, COALESCE(date_part('year', age(j.fecha_nacimiento))::int, j.edad) AS edad, eq.nombre AS equipo_nombre, d.nombre AS disciplina_nombre
+      `SELECT j.*, COALESCE(date_part('year', age(j.fecha_nacimiento))::int, j.edad) AS edad, eq.nombre AS equipo_nombre, d.nombre AS disciplina_nombre,
+              ${COLUMNAS_AUTORIZACION}
        FROM jugadores j
        LEFT JOIN equipos eq ON j.equipo_id = eq.id
        LEFT JOIN disciplinas d ON j.disciplina_id = d.id
@@ -149,7 +154,7 @@ exports.getOne = async (req, res) => {
     );
     if (!playerRows.length) return res.status(404).json({ error: 'Jugador no encontrado' });
 
-    const player = playerRows[0];
+    const player = await conAutorizacion(playerRows[0]);
     if (req.usuario?.rol === 'jugador' && Number(player.id) !== Number(req.usuario.jugador_id)) {
       return res.status(403).json({ error: 'Solo puedes consultar tu propio perfil' });
     }
@@ -243,7 +248,11 @@ exports.create = async (req, res) => {
   // v2.7: documento, contacto, emergencia y acudiente (obligatorio si es menor de edad)
   const ident = await validarIdentificacion(req.body, req.usuario, { fecha_nacimiento, edad });
   if (ident.error) return res.status(ident.status).json({ error: ident.error });
+  // v2.9 (T2.6, D10): sin la declaración de quien registra, no se guarda
+  const declaracion = await revisarDeclaracion(req.body, 'declaracion_registro');
+  if (!declaracion.ok) return res.status(declaracion.status).json({ error: declaracion.error });
 
+  const client = await db.connect();
   try {
     const valores = {
       nombre: String(nombre).trim(), edad: edad || null, posicion: posicion || null, peso: peso || null, altura: altura || null,
@@ -251,14 +260,21 @@ exports.create = async (req, res) => {
       ...ident.cambios,
     };
     const columnas = Object.keys(valores);
-    const { rows } = await db.query(
+    await client.query('BEGIN');
+    const { rows } = await client.query(
       `INSERT INTO jugadores (${columnas.join(', ')}) VALUES (${columnas.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING id`,
       Object.values(valores)
     );
+    await registrarDeclaracion(client, req, declaracion, { jugadorId: rows[0].id });
+    await auditar(req, { accion: 'crear', recurso: 'deportista', recurso_id: rows[0].id, detalle: { nombre: valores.nombre } }, client);
+    await client.query('COMMIT');
     res.status(201).json({ id: rows[0].id, nombre, edad, posicion, peso, altura, equipo_id, disciplina_id, dorsal: dorsal.valor });
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
     if (await responderDorsalOcupado(err, res, { dorsal: dorsal.valor, equipo_id })) return;
     responderError(res, err);
+  } finally {
+    client.release();
   }
 };
 
@@ -269,6 +285,9 @@ exports.bulkCreate = async (req, res) => {
   if (!Array.isArray(deportistas) || deportistas.length === 0) {
     return res.status(400).json({ error: 'Se requiere una lista de deportistas' });
   }
+  // v2.9 (T2.6, D10): quien carga declara que cada persona del archivo fue informada y autorizó
+  const declaracion = await revisarDeclaracion(req.body, 'declaracion_carga');
+  if (!declaracion.ok) return res.status(declaracion.status).json({ error: declaracion.error });
 
   try {
     const { CAMPOS_IDENTIFICACION, normalizarIdentificacion, faltaAcudiente, MENSAJE_ACUDIENTE } = await identificacion;
@@ -277,6 +296,7 @@ exports.bulkCreate = async (req, res) => {
     const errors = [];
     const avisos = [];
     const documentosDelArchivo = new Set();
+    let carga = null;
 
     try {
       await client.query('BEGIN');
@@ -370,6 +390,16 @@ exports.bulkCreate = async (req, res) => {
         inserted.push({ id: rows[0].id, nombre, posicion, disciplina_id, equipo_id, dorsal });
       }
 
+      // La carga queda registrada (archivo, huella y resultado) y cada deportista creado, con la declaración de la carga
+      carga = await registrarCarga(client, req, declaracion, {
+        tipo: 'deportistas', archivoNombre: req.body.archivo?.nombre, archivoSha: req.body.archivo?.sha256,
+        filasTotal: deportistas.length, creadas: inserted.length, rechazadas: errors.length,
+        detalle: { creados: inserted.map(d => d.id), errores: errors },
+      });
+      for (const d of inserted) await registrarDeclaracion(client, req, declaracion, { jugadorId: d.id, cargaId: carga });
+      await auditar(req, { accion: 'importar', recurso: 'carga', recurso_id: carga,
+        detalle: { tipo: 'deportistas', archivo: req.body.archivo?.nombre || null, creadas: inserted.length, rechazadas: errors.length } }, client);
+
       await client.query('COMMIT');
     } catch (txErr) {
       await client.query('ROLLBACK');
@@ -381,6 +411,7 @@ exports.bulkCreate = async (req, res) => {
     res.status(201).json({
       message: `Se importaron ${inserted.length} deportistas correctamente`,
       total: inserted.length,
+      carga_id: carga,
       insertados: inserted,
       errores: errors,
       avisos,
@@ -513,10 +544,11 @@ exports.retirar = async (req, res) => {
     if (permiso.error) return res.status(permiso.status).json({ error: permiso.error });
     const motivo = typeof req.body?.motivo === 'string' ? req.body.motivo.trim() : '';
     if (motivo.length > 200) return res.status(400).json({ error: 'El motivo admite máximo 200 caracteres.' });
-    const { rowCount } = await db.query(
-      `UPDATE jugadores SET activo = FALSE, retirado_en = now(), motivo_retiro = $1, dorsal = NULL WHERE id = $2 AND activo`,
+    const { rows: [j] } = await db.query(
+      `UPDATE jugadores SET activo = FALSE, retirado_en = now(), motivo_retiro = $1, dorsal = NULL WHERE id = $2 AND activo RETURNING nombre`,
       [motivo || null, req.params.id]);
-    if (!rowCount) return res.status(409).json({ error: 'El deportista ya está retirado.' });
+    if (!j) return res.status(409).json({ error: 'El deportista ya está retirado.' });
+    await auditar(req, { accion: 'retirar', recurso: 'deportista', recurso_id: req.params.id, detalle: { nombre: j.nombre, motivo: motivo || null } });
     res.json({ message: 'Deportista retirado del plantel. Su historia se conserva.' });
   } catch (err) {
     responderError(res, err);
@@ -528,9 +560,10 @@ exports.reactivar = async (req, res) => {
   try {
     const permiso = await verificarPermisoEscritura(req, req.params.id, 'reactivar');
     if (permiso.error) return res.status(permiso.status).json({ error: permiso.error });
-    const { rowCount } = await db.query(
-      'UPDATE jugadores SET activo = TRUE, retirado_en = NULL, motivo_retiro = NULL WHERE id = $1 AND NOT activo', [req.params.id]);
-    if (!rowCount) return res.status(409).json({ error: 'El deportista ya está en el plantel.' });
+    const { rows: [j] } = await db.query(
+      'UPDATE jugadores SET activo = TRUE, retirado_en = NULL, motivo_retiro = NULL WHERE id = $1 AND NOT activo RETURNING nombre', [req.params.id]);
+    if (!j) return res.status(409).json({ error: 'El deportista ya está en el plantel.' });
+    await auditar(req, { accion: 'reactivar', recurso: 'deportista', recurso_id: req.params.id, detalle: { nombre: j.nombre } });
     res.json({ message: 'Deportista de nuevo en el plantel.' });
   } catch (err) {
     responderError(res, err);
@@ -544,8 +577,9 @@ exports.remove = async (req, res) => {
   try {
     const permiso = await verificarPermisoEscritura(req, req.params.id, 'eliminar');
     if (permiso.error) return res.status(permiso.status).json({ error: permiso.error });
-    const { rowCount } = await db.query('DELETE FROM jugadores WHERE id = $1', [req.params.id]);
-    if (rowCount === 0) return res.status(404).json({ error: 'Jugador no encontrado' });
+    const { rows: [borrado] } = await db.query('DELETE FROM jugadores WHERE id = $1 RETURNING nombre', [req.params.id]);
+    if (!borrado) return res.status(404).json({ error: 'Jugador no encontrado' });
+    await auditar(req, { accion: 'eliminar', recurso: 'deportista', recurso_id: req.params.id, detalle: { nombre: borrado.nombre } });
     res.json({ message: 'Jugador eliminado correctamente' });
   } catch (err) {
     responderError(res, err);

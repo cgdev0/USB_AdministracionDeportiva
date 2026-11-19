@@ -5,12 +5,19 @@
 //   cerrar, alergias (de la última valoración cerrada) y fecha de la última valoración.
 // - Ficha clínica (T1.4): todo lo clínico del deportista en una sola consulta (una sola entrada en la bitácora):
 //   identificación completa, estado, antecedentes de la última valoración cerrada, y sus valoraciones, controles,
-//   lesiones con seguimientos, mediciones antropométricas y archivos clínicos.
+//   lesiones con seguimientos, mediciones antropométricas, archivos clínicos y consentimientos (v2.9, T2.3).
 const db = require('../config/db');
 const { responderError } = require('../utils/errores');
 const { registrar } = require('../utils/bitacora');
 const { columnasQuienAtiende, conQuienAtiende } = require('../utils/quienAtiende');
 const { SELECT_VALORACIONES, presentarValoraciones } = require('./valoraciones.controller');
+const { historialDe: consentimientosDe } = require('./consentimientos.controller');
+const { COLUMNAS_AUTORIZACION, conAutorizacion } = require('../utils/autorizaciones'); // v2.9 (T2.6)
+const { exigeConsentimientoAtencion } = require('../utils/reglasConsentimiento'); // v2.9 (T2.8)
+const path = require('path');
+const { pathToFileURL } = require('url');
+
+const reglasConsentimiento = import(pathToFileURL(path.join(__dirname, '..', '..', 'frontend', 'src', 'utils', 'consentimientos.js')).href);
 
 const QA = columnasQuienAtiende('pr');
 
@@ -20,7 +27,8 @@ function disponibilidad(f) {
   if (f.aptitud === 'apto_restricciones') return 'restringido';
   return 'disponible';
 }
-const conEstado = (f) => ({ ...f, disponibilidad: disponibilidad(f), menor: f.edad !== null && f.edad < 18 });
+// v2.9 (T2.6): con el estado de la autorización del deportista (declaración y aceptación propia)
+const conEstado = async (f) => ({ ...(await conAutorizacion(f)), disponibilidad: disponibilidad(f), menor: f.edad !== null && f.edad < 18 });
 
 const BASICAS = 'j.id, j.nombre, j.dorsal, j.foto_url, j.tipo_documento, j.numero_documento, j.genero, j.activo';
 // Identificación completa (T0.1), con los datos sensibles: solo llega aquí el personal de salud
@@ -38,7 +46,13 @@ const consulta = (columnas, donde) => `
          les.id IS NOT NULL AS lesion_activa, les.tipo AS lesion_tipo, seg.fecha_retorno_estimada AS retorno_estimado,
          ctl.aptitud, ctl.restricciones, COALESCE(ctl.proxima_fecha < CURRENT_DATE, FALSE) AS control_vencido,
          (SELECT COUNT(*)::int FROM valoraciones vb WHERE vb.jugador_id = j.id AND vb.estado = 'borrador') AS borradores,
-         ult.fecha_hora AS ultima_valoracion, ult.antecedentes->>'alergias' AS alergias
+         ult.fecha_hora AS ultima_valoracion, ult.antecedentes->>'alergias' AS alergias,
+         -- v2.9 (T2.3): estado vigente de los consentimientos obligatorios (sin registro: pendiente)
+         COALESCE((SELECT c.estado FROM consentimientos c WHERE c.jugador_id = j.id AND c.tipo = 'atencion'
+                    ORDER BY c.registrado_en DESC, c.id DESC LIMIT 1), 'pendiente') AS consentimiento_atencion,
+         COALESCE((SELECT c.estado FROM consentimientos c WHERE c.jugador_id = j.id AND c.tipo = 'datos_personales'
+                    ORDER BY c.registrado_en DESC, c.id DESC LIMIT 1), 'pendiente') AS consentimiento_datos,
+         ${COLUMNAS_AUTORIZACION}
     FROM jugadores j
     LEFT JOIN equipos eq ON eq.id = j.equipo_id
     LEFT JOIN disciplinas d ON d.id = COALESCE(j.disciplina_id, eq.disciplina_id)
@@ -63,7 +77,7 @@ exports.listar = async (req, res) => {
     const conRetirados = req.query.retirados === 'incluir';
     const { rows } = await db.query(`${consulta(BASICAS, conRetirados ? 'TRUE' : 'j.activo')} ORDER BY j.nombre`);
     await registrar(req, { accion: 'listar', recurso: 'paciente' });
-    res.json(rows.map(({ antecedentes, ...f }) => conEstado(f)));
+    res.json(await Promise.all(rows.map(({ antecedentes, ...f }) => conEstado(f))));
   } catch (err) {
     responderError(res, err);
   }
@@ -75,7 +89,7 @@ exports.ficha = async (req, res) => {
     const { rows: [p] } = await db.query(consulta(IDENTIFICACION, 'j.id = $1'), [req.params.id]);
     if (!p) return res.status(404).json({ error: 'Deportista no encontrado' });
     const id = p.id;
-    const [valoraciones, controles, lesiones, seguimientos, mediciones, archivos] = await Promise.all([
+    const [valoraciones, controles, lesiones, seguimientos, mediciones, archivos, consentimientos] = await Promise.all([
       db.query(`${SELECT_VALORACIONES} WHERE v.jugador_id = $1 ORDER BY v.fecha_hora DESC, v.id DESC`, [id]),
       db.query(`SELECT c.id, c.fecha, c.proxima_fecha, c.tipo, c.resultado, c.restricciones, c.aptitud, c.created_at, ${QA.columnas}
                   FROM controles_medicos c LEFT JOIN usuarios pr ON pr.id = c.profesional_id ${QA.join}
@@ -94,16 +108,19 @@ exports.ficha = async (req, res) => {
       db.query(`SELECT a.id, a.valoracion_id, a.tipo, a.nombre_original, a.mime, a.tamano, a.descripcion, a.creado_en, u.nombre AS subido_por_nombre
                   FROM archivos_clinicos a LEFT JOIN usuarios u ON u.id = a.subido_por
                  WHERE a.jugador_id = $1 ORDER BY a.creado_en DESC, a.id DESC`, [id]),
+      consentimientosDe(id),
     ]);
     await registrar(req, { accion: 'ver', recurso: 'paciente', jugador_id: id });
     const segs = await conQuienAtiende(seguimientos.rows);
     res.json({
-      paciente: conEstado(p),
+      paciente: await conEstado(p),
       valoraciones: await presentarValoraciones(valoraciones.rows),
       controles: await conQuienAtiende(controles.rows),
       lesiones: lesiones.rows.map(l => ({ ...l, seguimientos: segs.filter(s => s.lesion_id === l.id) })),
       mediciones: mediciones.rows,
       archivos: archivos.rows,
+      consentimientos: { actual: (await reglasConsentimiento).estadoActual(consentimientos), historial: consentimientos },
+      reglas: { exigir_consentimiento_atencion: await exigeConsentimientoAtencion() },
     });
   } catch (err) {
     responderError(res, err);

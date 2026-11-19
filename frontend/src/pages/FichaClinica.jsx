@@ -1,14 +1,15 @@
 // Ficha clínica del deportista (v2.8, T1.4 del plan de historia clínica).
 // Todo lo clínico de un deportista en una pantalla, con el botón para iniciar una valoración a un toque.
-// - Encabezado con la identificación y los avisos (alergias, lesión, menor de edad…), visibles en todas las pestañas.
-//   El aviso de consentimientos llega con la Fase 2.
-// - Celular y tableta vertical: pestañas Resumen, Historia y Accesos, y la barra con "Nueva valoración" fija abajo.
-// - Tableta horizontal y computador: resumen fijo a la izquierda e historia a la derecha.
+// - Encabezado con la identificación y los avisos (alergias, lesión, consentimientos sin firmar, menor de edad…),
+//   visibles en todas las pestañas. El de consentimientos se toca y lleva a registrarlos (v2.9, T2.3).
+// - Celular y tableta vertical: pestañas Resumen, Historia, Consentimientos y Accesos, y la barra con
+//   "Nueva valoración" fija abajo.
+// - Tableta horizontal y computador: consentimientos y resumen a la izquierda, historia a la derecha.
 // - Historia: valoraciones, controles, lesiones con sus seguimientos, mediciones y archivos, del más reciente al más
 //   antiguo, con filtros por tipo. Cada registro se abre desde aquí.
 // Abrir la ficha queda una sola vez en la bitácora (GET /api/pacientes/:id trae todo en una consulta).
 // ?abrir=lesion-12 (o valoracion-, control-, medicion-) abre ese registro al entrar: así cada aviso del inicio del
-// personal de salud lleva directo a su registro (T1.5).
+// personal de salud lleva directo a su registro (T1.5). ?abrir=consentimientos lleva a los consentimientos (T2.3).
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -19,6 +20,8 @@ import EditorValoracion, { borradorNuevo, contenidoParaEditar } from '../compone
 import DetalleValoracion from '../components/DetalleValoracion'
 import BitacoraAccesos from '../components/BitacoraAccesos'
 import BarraAcciones from '../components/clinico/BarraAcciones'
+import PanelConsentimientos from '../components/clinico/Consentimientos'
+import AceptacionDeportista from '../components/AceptacionDeportista'
 import usarModoPantalla from '../components/clinico/usarModoPantalla'
 import { Avisos, Disponibilidad, Foto, documentoDe } from '../components/clinico/Paciente'
 import { useAuth } from '../context/AuthContext'
@@ -38,7 +41,7 @@ const TIPOS = [
   ['archivo', 'Archivos', 'fa-file-medical'],
 ]
 const ICONO = Object.fromEntries(TIPOS.map(([t, , i]) => [t, i]))
-const PESTANAS = [['resumen', 'Resumen'], ['historia', 'Historia'], ['accesos', 'Accesos']]
+const PESTANAS = [['resumen', 'Resumen'], ['historia', 'Historia'], ['consentimientos', 'Consentimientos'], ['accesos', 'Accesos']]
 
 const numero = (v, decimales = 1) => (v === null || v === undefined || v === '' ? null : Number(v).toLocaleString('es-CO', { maximumFractionDigits: decimales }))
 const etiquetaDe = (lista, valor) => lista.find(([c]) => c === valor)?.[1] || valor
@@ -249,6 +252,19 @@ function DetalleRegistro({ item, onClose }) {
 
 function Pestanas({ actual, onCambiar, conteo }) {
   const refs = useRef({})
+  const barra = useRef(null)
+  const [hayMas, setHayMas] = useState(false)
+  // Si la barra no cabe y se desliza de lado, la pestaña elegida siempre queda a la vista
+  useEffect(() => { refs.current[actual]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }) }, [actual])
+  // …y un desvanecido en el borde avisa que hay más pestañas a la derecha
+  useEffect(() => {
+    const el = barra.current
+    const medir = () => setHayMas(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+    medir()
+    el.addEventListener('scroll', medir, { passive: true })
+    window.addEventListener('resize', medir)
+    return () => { el.removeEventListener('scroll', medir); window.removeEventListener('resize', medir) }
+  }, [])
   // Flechas izquierda y derecha entre pestañas (patrón de pestañas de WAI-ARIA)
   const teclas = (e, i) => {
     const paso = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
@@ -259,7 +275,7 @@ function Pestanas({ actual, onCambiar, conteo }) {
     refs.current[siguiente]?.focus()
   }
   return (
-    <div className="ficha-pestanas" role="tablist" aria-label="Secciones de la ficha">
+    <div ref={barra} className={`ficha-pestanas${hayMas ? ' hay-mas' : ''}`} role="tablist" aria-label="Secciones de la ficha">
       {PESTANAS.map(([clave, nombre], i) => (
         <button key={clave} type="button" role="tab" id={`ficha-tab-${clave}`} aria-controls={`ficha-panel-${clave}`}
           aria-selected={actual === clave} tabIndex={actual === clave ? 0 : -1} ref={el => { refs.current[clave] = el }}
@@ -283,6 +299,8 @@ export default function FichaClinica() {
   const [detalle, setDetalle] = useState(null)     // valoración abierta (cerrada o borrador ajeno)
   const [registro, setRegistro] = useState(null)   // control, lesión o medición abiertos
   const [verAccesos, setVerAccesos] = useState(false)
+  const [aceptacion, setAceptacion] = useState(false) // v2.9 (T2.6): aceptación del deportista en este dispositivo
+  const [faltaAtencion, setFaltaAtencion] = useState(false) // v2.9 (T2.8): regla D2 encendida y sin consentimiento
   const cambio = useRef(false)
   const [parametros, setParametros] = useSearchParams()
 
@@ -330,11 +348,22 @@ export default function FichaClinica() {
     setRegistro(item)
   }
 
+  // Los consentimientos: en celular y tableta, su pestaña; en pantallas amplias, el panel de la izquierda
+  const irAConsentimientos = () => {
+    setPestana('consentimientos')
+    requestAnimationFrame(() => {
+      const panel = document.getElementById('ficha-consentimientos')
+      panel?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+      panel?.focus({ preventScroll: true })
+    })
+  }
+
   // Un registro pedido desde el inicio: se abre una sola vez y se quita de la dirección
   const pedido = parametros.get('abrir')
   useEffect(() => {
     if (!datos || !pedido) return
     setParametros({}, { replace: true })
+    if (pedido === 'consentimientos') { irAConsentimientos(); return }
     const item = lineaDeTiempo(datos).find(i => i.clave === pedido)
     if (!item) { toast.error('Ese registro ya no está en la historia.'); return }
     setPestana('historia')
@@ -356,7 +385,9 @@ export default function FichaClinica() {
   const items = lineaDeTiempo(datos)
   const miBorrador = datos.valoraciones.find(v => v.estado === 'borrador' && Number(v.profesional_id) === Number(usuario?.id))
   const amplio = modo === 'amplio'
-  const nueva = () => setEditor(borradorNuevo(datos.valoraciones))
+  // v2.9 (T2.8, D2): con la regla encendida, sin el consentimiento de atención firmado se avisa antes de abrir el editor
+  const exigeAtencion = datos.reglas?.exigir_consentimiento_atencion && datos.consentimientos?.actual?.atencion?.estado !== 'firmado'
+  const nueva = () => (exigeAtencion ? setFaltaAtencion(true) : setEditor(borradorNuevo(datos.valoraciones)))
 
   const sinDocumento = !p.numero_documento
   const acciones = (
@@ -372,6 +403,8 @@ export default function FichaClinica() {
     </>
   )
   const edad = p.edad !== null && p.edad !== undefined ? `${p.edad} años` : null
+  // Al registrar o revocar se vuelve a leer la ficha: cambian los avisos y el papel aparece en la historia
+  const consentimientos = <PanelConsentimientos paciente={p} consentimientos={datos.consentimientos} onCambio={() => cargar({ silencioso: true })} />
 
   return (
     <div className="ficha">
@@ -393,12 +426,15 @@ export default function FichaClinica() {
             </div>
           )}
         </div>
-        <Avisos paciente={p} id="ficha-avisos" />
+        <Avisos paciente={p} id="ficha-avisos" acciones={{ consentimiento: irAConsentimientos, aceptacion: () => setAceptacion(true) }} />
       </header>
 
       {amplio ? (
         <div className="ficha-columnas">
-          <aside aria-label="Resumen del deportista"><Resumen p={p} mediciones={datos.mediciones} /></aside>
+          <aside aria-label="Resumen del deportista">
+            {consentimientos}
+            <Resumen p={p} mediciones={datos.mediciones} />
+          </aside>
           <Historia items={items} filtro={filtro} onFiltro={setFiltro} onAbrir={abrir} />
         </div>
       ) : (
@@ -407,6 +443,7 @@ export default function FichaClinica() {
           <div role="tabpanel" id={`ficha-panel-${pestana}`} aria-labelledby={`ficha-tab-${pestana}`} className="ficha-panel">
             {pestana === 'resumen' && <Resumen p={p} mediciones={datos.mediciones} />}
             {pestana === 'historia' && <Historia items={items} filtro={filtro} onFiltro={setFiltro} onAbrir={abrir} />}
+            {pestana === 'consentimientos' && consentimientos}
             {pestana === 'accesos' && (
               <section className="card" aria-labelledby="fa-titulo">
                 <h2 id="fa-titulo" className="ficha-subtitulo"><i className="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> Accesos a esta historia</h2>
@@ -426,6 +463,20 @@ export default function FichaClinica() {
       )}
       {detalle && <DetalleValoracion key={detalle.id} valoracion={detalle} onClose={() => setDetalle(null)} />}
       {registro && <DetalleRegistro item={registro} onClose={() => setRegistro(null)} />}
+      {faltaAtencion && (
+        <Modal title="Falta el consentimiento de atención" onClose={() => setFaltaAtencion(false)}
+          footer={<>
+            <button type="button" className="btn btn-ghost" onClick={() => setFaltaAtencion(false)}>Cancelar</button>
+            <button type="button" className="btn btn-primary" onClick={() => { setFaltaAtencion(false); irAConsentimientos() }}>
+              <i className="fa-solid fa-file-signature" aria-hidden="true"></i> Registrar el consentimiento
+            </button>
+          </>}>
+          <p>Para iniciar una valoración, {p.nombre} debe tener firmado el consentimiento de atención fisioterapéutica{p.menor ? ' (lo firma su acudiente)' : ''}.</p>
+          <p className="ayuda-campo">Imprime el formato, haz que lo firmen y registra la foto del papel en Consentimientos.</p>
+        </Modal>
+      )}
+      {aceptacion && <AceptacionDeportista jugador={p} onClose={() => setAceptacion(false)}
+        onAceptado={() => { setAceptacion(false); cargar({ silencioso: true }) }} />}
       {verAccesos && <BitacoraAccesos titulo={`Accesos a la historia de ${p.nombre}`} jugadorId={p.id} onClose={() => setVerAccesos(false)} />}
     </div>
   )

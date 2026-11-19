@@ -1,4 +1,5 @@
 const jwt    = require('jsonwebtoken');
+const { auditarSesion } = require('../utils/auditoria'); // v2.9 (T2.7)
 const db     = require('../config/db');
 const { JWT_SECRET, JWT_REFRESH_SECRET } = require('../config/secretos');
 const { hashClave, verificarClave, simularVerificacion } = require('../utils/claves');
@@ -39,6 +40,7 @@ exports.login = async (req, res) => {
     if (!rows.length) {
       await simularVerificacion(password);
       registrarFallo(req);
+      await auditarSesion(req, 'sesion_fallida'); // v2.9 (T2.7)
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
@@ -46,6 +48,7 @@ exports.login = async (req, res) => {
     const { valida, rehacer } = await verificarClave(password, usuario);
     if (!valida) {
       registrarFallo(req);
+      await auditarSesion(req, 'sesion_fallida'); // v2.9 (T2.7)
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
     limpiarFallos(req);

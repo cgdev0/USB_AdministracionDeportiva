@@ -3,7 +3,7 @@
 // queda en la pestaña "Retirados" y se puede reactivar.
 const path = require('path');
 const { test, expect } = require('@playwright/test');
-const { paginaEn, entrar, desborde, CUENTAS } = require('./ayuda');
+const { paginaEn, entrar, desborde, CUENTAS, declaracion } = require('./ayuda');
 const { credenciales, BD_PRUEBAS, RAIZ } = require('../utilidades/bd');
 const { Client } = require(path.join(RAIZ, 'node_modules', 'pg'));
 
@@ -30,7 +30,7 @@ test('CP-UI-HC-005 [RNF-14][RNF-04] En el celular, un deportista con historia no
   const deportes = await (await page.request.get('/api/disciplinas', { headers: entrenador })).json();
   const rugby = deportes.find(d => d.nombre === 'Rugby').id;
   const creado = await page.request.post('/api/jugadores', { headers: entrenador,
-    data: { nombre: NOMBRE, disciplina_id: rugby, tipo_documento: 'CC', numero_documento: `5${String(Date.now()).slice(-9)}` } });
+    data: { nombre: NOMBRE, disciplina_id: rugby, tipo_documento: 'CC', numero_documento: `5${String(Date.now()).slice(-9)}`, declaracion: await declaracion() } });
   const { id } = await creado.json();
   await page.request.post('/api/salud/controles', { headers: await tokenDe(page, 'salud'),
     data: { jugador_id: id, tipo: 'Control UI', aptitud: 'apto' } });

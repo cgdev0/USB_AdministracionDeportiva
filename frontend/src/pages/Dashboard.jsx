@@ -16,6 +16,7 @@ import { ROLES, iniciales } from '../config/navegacion'
 import { capitalizar, diaCorto, diasHasta, fechaCorta, fechaLarga, fechaRelativa, numeroDia } from '../utils/fechas'
 import { nombreConDorsal, tieneDorsal } from '../utils/jugador'
 import { perfilDeporte, TEXTO_TIPO } from '../config/deportes'
+import { consentimientosPendientes, textoConsentimientos } from '../components/clinico/Paciente'
 
 // Acciones del panel "Mi sesión" según el rol (la primera es la destacada en naranja)
 const ACCIONES = {
@@ -496,6 +497,13 @@ function PendientesSalud({ p }) {
     { clave: 'borradores', titulo: 'Tus borradores sin cerrar', icono: 'fa-pen',
       items: p.borradores.map(b => ({ clave: `b${b.id}`, a: enFicha(b.jugador_id, `valoracion-${b.id}`), quien: b, accion: 'Continuar',
         texto: `Valoración ${b.tipo_nombre.toLowerCase()} · abierta ${fechaRelativa(diaDe(b.fecha_hora))}` })) },
+    // v2.9 (T2.3): sin el consentimiento de atención o la autorización de datos firmados
+    { clave: 'consentimientos', titulo: 'Consentimientos sin firmar', icono: 'fa-file-signature',
+      items: (p.consentimientos || []).map(c => {
+        const faltan = consentimientosPendientes({ consentimiento_atencion: c.atencion, consentimiento_datos: c.datos_personales })
+        return { clave: `s${c.jugador_id}`, a: enFicha(c.jugador_id, 'consentimientos'), quien: c, accion: 'Registrar',
+          alerta: faltan.some(f => f.estado !== 'pendiente'), texto: textoConsentimientos(faltan) }
+      }) },
     { clave: 'controles', titulo: 'Controles médicos', icono: 'fa-calendar-check',
       items: p.controles.map(c => ({ clave: `c${c.jugador_id}`, a: `/salud?jugador=${c.jugador_id}&registrar=control`, quien: c, accion: 'Registrar',
         alerta: c.vencido, texto: c.vencido ? `Vencido desde el ${fechaCorta(c.fecha)}` : `Le toca ${fechaRelativa(c.fecha)}` })) },
@@ -511,7 +519,7 @@ function PendientesSalud({ p }) {
     <section className="panel pendientes-salud" aria-labelledby="t-pend">
       <div className="panel-cabecera"><h2 id="t-pend">Pendientes de salud</h2>{total > 0 && <span className="panel-contador">{total}</span>}</div>
       <div className="panel-cuerpo">
-        {total === 0 && <div className="alerta alerta-ok"><i className="fa-solid fa-circle-check" aria-hidden="true"></i><span>Todo al día: sin borradores, controles por hacer, restricciones ni lesiones activas.</span></div>}
+        {total === 0 && <div className="alerta alerta-ok"><i className="fa-solid fa-circle-check" aria-hidden="true"></i><span>Todo al día: sin borradores, consentimientos por firmar, controles por hacer, restricciones ni lesiones activas.</span></div>}
         {grupos.map(g => {
           const lista = completos[g.clave] ? g.items : g.items.slice(0, VISIBLES)
           return (

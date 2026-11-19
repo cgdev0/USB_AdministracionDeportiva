@@ -34,12 +34,13 @@ export default function App() {
               } />
             )
           })}
-          {SUBPAGINAS.map(({ ruta, modulo, Pagina }) => {
+          {SUBPAGINAS.map(({ ruta, modulo, Pagina, sinMarco }) => {
             const { roles, clinico } = MODULOS.find(m => m.ruta === modulo)
+            const pagina = <LimiteCarga key={ruta}><Pagina /></LimiteCarga>
             return (
               <Route key={ruta} path={ruta} element={
                 <ProtectedRoute roles={roles} estricto={clinico}>
-                  <AppLayout><LimiteCarga key={ruta}><Pagina /></LimiteCarga></AppLayout>
+                  {sinMarco ? pagina : <AppLayout>{pagina}</AppLayout>}
                 </ProtectedRoute>
               } />
             )

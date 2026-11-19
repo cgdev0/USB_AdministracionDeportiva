@@ -19,6 +19,9 @@ const isDemoToken = () => localStorage.getItem('access_token')?.startsWith('demo
 export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null)
   const [cargando, setCargando] = useState(true)
+  // v2.9 (T2.5): aviso de manejo de datos que le falta aceptar (null si ya lo aceptó) y de qué usuario se revisó
+  const [aviso, setAviso] = useState(null)
+  const [avisoRevisadoDe, setAvisoRevisadoDe] = useState(null)
 
   const logout = useCallback(() => {
     localStorage.removeItem('access_token')
@@ -74,6 +77,32 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const revisarAviso = useCallback(async (id) => {
+    try {
+      const { data } = await api.get('/avisos/mios')
+      setAviso(data.aviso && !data.aceptado ? data.aviso : null)
+    } catch {
+      setAviso(null) // si no se pudo revisar, la API igual protege los datos y la pantalla se entera con su 403
+    } finally {
+      setAvisoRevisadoDe(id)
+    }
+  }, [])
+  useEffect(() => {
+    if (!usuario) { setAviso(null); setAvisoRevisadoDe(null); return }
+    if (usuario.modo_demo || isDemoToken()) { setAviso(null); setAvisoRevisadoDe(usuario.id); return }
+    revisarAviso(usuario.id)
+  }, [usuario?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const pendiente = () => { if (usuario) revisarAviso(usuario.id) }
+    window.addEventListener('dt:aceptacion-pendiente', pendiente)
+    return () => window.removeEventListener('dt:aceptacion-pendiente', pendiente)
+  }, [usuario, revisarAviso])
+  const aceptarAviso = async () => {
+    await api.post('/avisos/aceptar', { aviso: aviso.aviso, version: aviso.version, acepto: true })
+    setAviso(null)
+  }
+  const avisoListo = !usuario || avisoRevisadoDe === usuario.id
+
   const tienePermiso = (rolesPermitidos) => {
     if (!usuario) return false
     if (usuario.rol === 'administrador') return true
@@ -81,7 +110,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ usuario, cargando, login, logout, tienePermiso }}>
+    <AuthContext.Provider value={{ usuario, cargando, login, logout, tienePermiso, aviso, avisoListo, aceptarAviso }}>
       {children}
     </AuthContext.Provider>
   )

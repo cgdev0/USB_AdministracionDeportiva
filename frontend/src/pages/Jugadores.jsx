@@ -5,6 +5,8 @@ import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
 import { Esqueleto, EstadoVacio, EstadoSinResultados, EstadoError } from '../components/EstadoVista'
 import ImportCsvModal from '../components/ImportCsvModal'
+import AceptacionDeportista, { FALTA_ACEPTACION } from '../components/AceptacionDeportista'
+import DeclaracionCasilla, { declaracionPara, MENSAJE_DECLARACION } from '../components/DeclaracionCasilla'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useDeporte } from '../context/DeporteContext'
@@ -50,6 +52,8 @@ export default function Jugadores() {
   } = useDeporte()
 
   const [jugadores, setJugadores]         = useState([])
+  const [declarado, setDeclarado] = useState(false) // v2.9 (T2.6): declaración de quien registra
+  const [aceptacion, setAceptacion] = useState(null) // deportista que acepta su aviso en este dispositivo
   const [equipos, setEquipos]             = useState([])
   const [entrenadores, setEntrenadores]   = useState([])
   
@@ -167,6 +171,7 @@ export default function Jugadores() {
       disciplina_id: selectedSportId !== 'todos' ? selectedSportId : (disciplinas[0]?.id || '')
     })
     setEditId(null)
+    setDeclarado(false)
     setModoAsociacion('disciplina')
     setModal(true)
   }
@@ -259,6 +264,7 @@ export default function Jugadores() {
     }
     const errorIdent = errorIdentificacion(form, CAMPOS_IDENTIFICACION, edadDelForm)
     if (errorIdent) return toast.error(errorIdent)
+    if (!editId && !declarado) return toast.error(MENSAJE_DECLARACION.registro)
     setSaving(true)
 
     const payload = { ...form }
@@ -275,7 +281,7 @@ export default function Jugadores() {
         await api.put(`/jugadores/${editId}`, payload)
         toast.success('Deportista actualizado')
       } else {
-        await api.post('/jugadores', payload)
+        await api.post('/jugadores', { ...payload, declaracion: declaracionPara('registro') })
         toast.success('Deportista registrado con éxito')
       }
       closeModal()
@@ -637,6 +643,14 @@ export default function Jugadores() {
               <i className="fa-solid fa-id-card" aria-hidden="true"></i> Datos de identificación
             </button>
           ) : null}>
+          {/* v2.9 (T2.6): falta que el deportista acepte su aviso de privacidad (solo se avisa) */}
+          {FALTA_ACEPTACION.includes(selectedPlayer.autorizacion) && (
+            <div className="alerta alerta-info aviso-aceptacion" role="status">
+              <i className="fa-solid fa-user-check" aria-hidden="true"></i>
+              <span>{selectedPlayer.autorizacion === 'sin_declaracion' ? 'Sin autorización registrada.' : 'Falta que el deportista acepte el aviso de privacidad.'}</span>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAceptacion(selectedPlayer)}>Registrar aceptación</button>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: 24 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div
@@ -892,6 +906,7 @@ export default function Jugadores() {
             </div>
 
             <CamposIdentificacion valores={form} onCambio={cambiarIdent} menor={formEsMenor} id="jug-ident" />
+            {!editId && <DeclaracionCasilla tipo="registro" marcado={declarado} onCambio={setDeclarado} />}
           </div>
         </Modal>
       )}
@@ -917,6 +932,9 @@ export default function Jugadores() {
           </div>
         </Modal>
       )}
+
+      {aceptacion && <AceptacionDeportista jugador={aceptacion} onClose={() => setAceptacion(null)}
+        onAceptado={() => { const id = aceptacion.id; setAceptacion(null); openFicha(id); loadData() }} />}
 
       {/* v2.7 (T0.4): retirar del plantel conservando la historia */}
       {retiro && (

@@ -59,6 +59,88 @@ async function completarIdentificacion(client, equipoId) {
   return rows.length;
 }
 
+// v2.9 (T2.9): consentimientos y aceptaciones de demostración en distintos estados, con un PDF de demostración como
+// papel firmado (para que "Ver papel" funcione). Solo si el plantel de demostración aún no tiene consentimientos:
+// así también se completa el plantel que ya estaba cargado en Railway, sin repetir nada.
+const PAPEL_DEMO = Buffer.from('%PDF-1.4\n% Documento de demostracion: consentimiento ficticio, sin valor legal\n%%EOF\n');
+async function completarConsentimientos(client, equipoId) {
+  if (process.env.DEMO_SIN_CONSENTIMIENTOS === '1') return 0;
+  const { rows: [{ n }] } = await client.query(
+    'SELECT COUNT(*)::int AS n FROM consentimientos c JOIN jugadores j ON j.id = c.jugador_id WHERE j.equipo_id = $1', [equipoId]);
+  if (n > 0) return 0;
+  const crypto = require('crypto');
+  const fs = require('fs');
+  const path = require('path');
+  const { pathToFileURL } = require('url');
+  const { CLINICO_DIR } = require('./archivos');
+  const { datosDeQuienAtiende } = require('../utils/quienAtiende');
+  const utilidad = (f) => import(pathToFileURL(path.join(__dirname, '..', '..', 'frontend', 'src', 'utils', f)).href);
+  const [{ VERSION_FORMATO }, { avisoDeportista, textoCanonico }] = await Promise.all([utilidad('consentimientos.js'), utilidad('avisos.js')]);
+  const { rows: [salud] } = await client.query(`SELECT id, nombre FROM usuarios WHERE email = 'salud@dtdeportivo.com'`);
+  if (!salud) return 0;
+  const qa = await datosDeQuienAtiende(client, salud.id);
+  const { rows } = await client.query(
+    `SELECT id, dorsal, nombre, tipo_documento, numero_documento, acudiente_nombre, acudiente_tipo_documento, acudiente_numero_documento, acudiente_parentesco
+       FROM jugadores WHERE equipo_id = $1`, [equipoId]);
+  const porDorsal = Object.fromEntries(rows.map(j => [j.dorsal, j]));
+  await fs.promises.mkdir(CLINICO_DIR, { recursive: true, mode: 0o700 });
+  const sha = crypto.createHash('sha256').update(PAPEL_DEMO).digest('hex');
+  let creados = 0;
+  const registrar = async (dorsal, tipo, estado, { menor = false, asentimiento = null, diasAtras = 20, motivo = null, revoca = null } = {}) => {
+    const j = porDorsal[dorsal];
+    if (!j) return null;
+    let archivoId = null;
+    if (estado === 'firmado') {
+      const nombre = `${crypto.randomUUID()}.pdf`;
+      await fs.promises.writeFile(path.join(CLINICO_DIR, nombre), PAPEL_DEMO, { mode: 0o600 });
+      const { rows: [a] } = await client.query(
+        `INSERT INTO archivos_clinicos (jugador_id, tipo, nombre_archivo, nombre_original, mime, tamano, sha256, descripcion, subido_por)
+         VALUES ($1, 'consentimiento', $2, 'consentimiento-demo.pdf', 'application/pdf', $3, $4, $5, $6) RETURNING id`,
+        [j.id, nombre, PAPEL_DEMO.length, sha, `Consentimiento de demostración: ${tipo}`, salud.id]);
+      archivoId = a.id;
+    }
+    const firmante = estado === 'revocado' ? {} : menor
+      ? { firma_quien: 'acudiente', firmante_nombre: j.acudiente_nombre, firmante_tipo_documento: j.acudiente_tipo_documento, firmante_numero_documento: j.acudiente_numero_documento, firmante_parentesco: j.acudiente_parentesco }
+      : { firma_quien: 'deportista', firmante_nombre: j.nombre, firmante_tipo_documento: j.tipo_documento, firmante_numero_documento: j.numero_documento };
+    const { rows: [c] } = await client.query(
+      `INSERT INTO consentimientos (jugador_id, tipo, estado, fecha, firma_quien, firmante_nombre, firmante_tipo_documento, firmante_numero_documento,
+                                    firmante_parentesco, asentimiento, archivo_id, version_formato, motivo, revoca_id, registrado_por, quien_atiende, registrado_en)
+       VALUES ($1, $2, $3, CURRENT_DATE - $4::int, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, now() - ($4::int || ' days')::interval)
+       RETURNING id`,
+      [j.id, tipo, estado, diasAtras, firmante.firma_quien || null, firmante.firmante_nombre || null, firmante.firmante_tipo_documento || null,
+       firmante.firmante_numero_documento || null, firmante.firmante_parentesco || null, asentimiento, archivoId, VERSION_FORMATO, motivo, revoca, salud.id, qa]);
+    creados++;
+    // La autorización de datos firmada en papel cuenta como la aceptación del aviso (T2.6)
+    if (tipo === 'datos_personales' && estado === 'firmado') {
+      const aviso = avisoDeportista({ menor });
+      await client.query(
+        `INSERT INTO aceptaciones (aviso, version, texto_sha256, via, jugador_id, aceptante_nombre, testigo_id, consentimiento_id, usuario_nombre, usuario_rol)
+         VALUES ('aviso_deportista', $1, $2, 'papel', $3, $4, $5, $6, $7, 'personal_salud')`,
+        [aviso.version, crypto.createHash('sha256').update(textoCanonico(aviso), 'utf8').digest('hex'), j.id, firmante.firmante_nombre, salud.id, c.id, salud.nombre]);
+    }
+    return c.id;
+  };
+  await registrar(2, 'atencion', 'firmado');
+  await registrar(2, 'datos_personales', 'firmado');
+  await registrar(9, 'atencion', 'firmado', { diasAtras: 30 });
+  await registrar(9, 'datos_personales', 'firmado', { diasAtras: 30 });
+  await registrar(9, 'investigacion', 'rechazado', { diasAtras: 30, motivo: 'No desea participar en estudios' });
+  const revocado = await registrar(10, 'atencion', 'firmado', { diasAtras: 40 });
+  if (revocado) await registrar(10, 'atencion', 'revocado', { diasAtras: 5, motivo: 'Prefiere atenderse con su EPS', revoca: revocado });
+  await registrar(15, 'atencion', 'firmado', { diasAtras: 10 });
+  await registrar(DORSAL_MENOR, 'atencion', 'firmado', { menor: true, asentimiento: true });
+  await registrar(DORSAL_MENOR, 'investigacion', 'firmado', { menor: true, asentimiento: false });
+  // #15 aceptó el aviso de privacidad en la tableta del profesional (testigo: la cuenta de salud)
+  if (porDorsal[15]) {
+    const aviso = avisoDeportista();
+    await client.query(
+      `INSERT INTO aceptaciones (aviso, version, texto_sha256, via, jugador_id, aceptante_nombre, testigo_id, usuario_nombre, usuario_rol)
+       VALUES ('aviso_deportista', $1, $2, 'tableta', $3, $4, $5, $6, 'personal_salud')`,
+      [aviso.version, crypto.createHash('sha256').update(textoCanonico(aviso), 'utf8').digest('hex'), porDorsal[15].id, porDorsal[15].nombre, salud.id, salud.nombre]);
+  }
+  return creados;
+}
+
 async function run() {
   const client = await pool.connect();
   try {
@@ -69,7 +151,8 @@ async function run() {
     const { rows: existe } = await client.query('SELECT id FROM equipos WHERE nombre = $1', [EQUIPO]);
     if (existe.length) {
       const completados = await completarIdentificacion(client, existe[0].id);
-      console.log(`ℹ️  El plantel de demostración ya existe; se verificó el head coach de prueba${completados ? ` y se completó la identificación de ${completados} deportistas` : ''}.`);
+      const consentimientos = await completarConsentimientos(client, existe[0].id);
+      console.log(`ℹ️  El plantel de demostración ya existe; se verificó el head coach de prueba${completados ? ` y se completó la identificación de ${completados} deportistas` : ''}${consentimientos ? ` y se agregaron ${consentimientos} consentimientos de demostración` : ''}.`);
       return;
     }
 
@@ -86,8 +169,9 @@ async function run() {
     const ids = {};
     for (const [dorsal, nombre, posicion] of JUGADORES) {
       const { rows: [j] } = await client.query(
-        `INSERT INTO jugadores (nombre, edad, posicion, dorsal, equipo_id, disciplina_id, entrenador_id, genero)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'masculino') RETURNING id`,
+        // v2.9 (T2.6, D11): datos de demostración, sin autorización exigida (autorizacion_previa)
+        `INSERT INTO jugadores (nombre, edad, posicion, dorsal, equipo_id, disciplina_id, entrenador_id, genero, autorizacion_previa)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'masculino', TRUE) RETURNING id`,
         [nombre, 19 + (dorsal % 9), posicion, dorsal, equipo.id, rugby.id, entrenadorId]);
       ids[dorsal] = j.id;
     }
@@ -150,6 +234,7 @@ async function run() {
     }
 
     await completarIdentificacion(client, equipo.id);
+    await completarConsentimientos(client, equipo.id); // v2.9 (T2.9)
 
     // El usuario jugador de prueba queda vinculado al #9
     await client.query(`UPDATE usuarios SET jugador_id = $1 WHERE email = 'jugador@dtdeportivo.com'`, [ids[9]]);
@@ -165,4 +250,6 @@ async function run() {
   }
 }
 
-run().catch(err => { console.error('❌ ', err.message); process.exitCode = 1; });
+// Se ejecuta como script (npm run demo, despliegue); las pruebas importan completarConsentimientos
+if (require.main === module) run().catch(err => { console.error('❌ ', err.message); process.exitCode = 1; });
+module.exports = { completarConsentimientos, EQUIPO };

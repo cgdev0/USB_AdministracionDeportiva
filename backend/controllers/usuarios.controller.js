@@ -2,6 +2,9 @@ const db     = require('../config/db');
 const { hoyLocal } = require('../utils/hoy');
 const { hashClave } = require('../utils/claves');
 const { responderError } = require('../utils/errores');
+// v2.9 (T2.6, D10): declaración de quien registra a un deportista y registro de las cargas masivas
+const { revisarDeclaracion, registrarDeclaracion, registrarCarga, huella } = require('../utils/autorizaciones');
+const { auditar } = require('../utils/auditoria'); // v2.9 (T2.7): gestión de cuentas en la auditoría
 const path = require('path');
 const { pathToFileURL } = require('url');
 
@@ -100,6 +103,13 @@ exports.create = async (req, res) => {
   }
   const prof = await validarProfesionales(req.body, rol);
   if (prof.error) return res.status(prof.status).json({ error: prof.error });
+  // v2.9 (T2.6): si se crea la ficha de un deportista nuevo, quien lo registra declara que lo informó y autorizó.
+  // (Vincular la cuenta a un deportista que ya existe no lo registra de nuevo: él aceptará su aviso al entrar.)
+  let declaracion = null;
+  if (rol === 'jugador' && !jugador_id) {
+    declaracion = await revisarDeclaracion(req.body, 'declaracion_registro');
+    if (!declaracion.ok) return res.status(declaracion.status).json({ error: declaracion.error });
+  }
 
   const cliente = await db.connect();
   try {
@@ -119,6 +129,7 @@ exports.create = async (req, res) => {
         [String(nombre).trim(), nacimiento.valor, genero, ficha.posicion || null, ficha.disciplina_id,
          ficha.equipo_id || null, ficha.entrenador_id || null, ...extra.map(c => identFicha[c])]);
       jugadorId = j.id;
+      await registrarDeclaracion(cliente, req, declaracion, { jugadorId });
     }
     const { rows } = await cliente.query(
       `INSERT INTO usuarios (nombre, email, password_hash, salt, rol, jugador_id, head_coach_id, disciplina_id,
@@ -128,6 +139,8 @@ exports.create = async (req, res) => {
        ['entrenador', 'head_coach'].includes(rol) ? disciplina_id || null : null,
        prof.cambios.profesion ?? null, prof.cambios.vinculo ?? null, prof.cambios.registro_profesional ?? null, prof.cambios.supervisor_id ?? null]
     );
+    await auditar(req, { accion: 'crear', recurso: 'usuario', recurso_id: rows[0].id, detalle: { nombre, email: email.toLowerCase().trim(), rol } }, cliente);
+    if (declaracion) await auditar(req, { accion: 'crear', recurso: 'deportista', recurso_id: jugadorId, detalle: { nombre: String(nombre).trim(), desde: 'cuenta' } }, cliente);
     await cliente.query('COMMIT');
     res.status(201).json({ id: rows[0].id, nombre, email, rol, jugador_id: jugadorId, activo: true, primer_login: true });
   } catch (err) {
@@ -149,7 +162,7 @@ exports.update = async (req, res) => {
   // desde Usuarios borraba su vínculo con el plantel). El deporte asignado solo aplica a entrenador y head coach.
   const viene = (campo) => Object.prototype.hasOwnProperty.call(req.body, campo);
   try {
-    const { rows: [actual] } = await db.query('SELECT jugador_id, head_coach_id, disciplina_id FROM usuarios WHERE id = $1', [req.params.id]);
+    const { rows: [actual] } = await db.query('SELECT jugador_id, head_coach_id, disciplina_id, rol, nombre, email FROM usuarios WHERE id = $1', [req.params.id]);
     if (!actual) return res.status(404).json({ error: 'Usuario no encontrado' });
     const jugadorId = viene('jugador_id') ? req.body.jugador_id || null : actual.jugador_id;
     const headCoachId = viene('head_coach_id') ? req.body.head_coach_id || null : actual.head_coach_id;
@@ -167,6 +180,10 @@ exports.update = async (req, res) => {
       valores
     );
     if (rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    // v2.9 (T2.7): un cambio de rol es una acción propia en la auditoría (cambia lo que la persona puede ver)
+    const cambios = Object.fromEntries([['nombre', actual.nombre, nombre], ['email', actual.email, email?.toLowerCase().trim()], ['rol', actual.rol, rol]]
+      .filter(([, antes, despues]) => despues !== undefined && antes !== despues).map(([c, antes, despues]) => [c, { antes, despues }]));
+    await auditar(req, { accion: cambios.rol ? 'cambiar_rol' : 'editar', recurso: 'usuario', recurso_id: req.params.id, detalle: { nombre: nombre || actual.nombre, cambios } });
     res.json({ message: 'Usuario actualizado correctamente' });
   } catch (err) {
     responderError(res, err);
@@ -179,11 +196,12 @@ exports.resetPassword = async (req, res) => {
   if (!password) return res.status(400).json({ error: 'Nueva contraseña requerida' });
   try {
     const { password_hash: hash, salt } = await hashClave(password);
-    const { rowCount } = await db.query(
-      'UPDATE usuarios SET password_hash=$1, salt=$2, primer_login=true WHERE id=$3',
+    const { rows: [u] } = await db.query(
+      'UPDATE usuarios SET password_hash=$1, salt=$2, primer_login=true WHERE id=$3 RETURNING nombre',
       [hash, salt, req.params.id]
     );
-    if (rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
+    await auditar(req, { accion: 'restablecer_clave', recurso: 'usuario', recurso_id: req.params.id, detalle: { nombre: u.nombre } });
     res.json({ message: 'Contraseña restablecida. El usuario deberá cambiarla en su próximo ingreso.' });
   } catch (err) {
     responderError(res, err);
@@ -196,8 +214,9 @@ exports.remove = async (req, res) => {
     if (String(req.params.id) === String(req.usuario.id)) {
       return res.status(400).json({ error: 'No puedes desactivar tu propia cuenta.' });
     }
-    const { rowCount } = await db.query('UPDATE usuarios SET activo=false WHERE id=$1', [req.params.id]);
-    if (rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const { rows: [u] } = await db.query('UPDATE usuarios SET activo=false WHERE id=$1 RETURNING nombre', [req.params.id]);
+    if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
+    await auditar(req, { accion: 'desactivar', recurso: 'usuario', recurso_id: req.params.id, detalle: { nombre: u.nombre } });
     res.json({ message: 'Usuario desactivado correctamente' });
   } catch (err) {
     responderError(res, err);
@@ -207,8 +226,9 @@ exports.remove = async (req, res) => {
 // PATCH /api/usuarios/:id/activar  (v2.0, DEF-043: antes un usuario desactivado no se podía recuperar)
 exports.activar = async (req, res) => {
   try {
-    const { rowCount } = await db.query('UPDATE usuarios SET activo=true WHERE id=$1', [req.params.id]);
-    if (rowCount === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const { rows: [u] } = await db.query('UPDATE usuarios SET activo=true WHERE id=$1 RETURNING nombre', [req.params.id]);
+    if (!u) return res.status(404).json({ error: 'Usuario no encontrado' });
+    await auditar(req, { accion: 'activar', recurso: 'usuario', recurso_id: req.params.id, detalle: { nombre: u.nombre } });
     res.json({ message: 'Usuario reactivado correctamente' });
   } catch (err) {
     responderError(res, err);
@@ -219,6 +239,9 @@ exports.activar = async (req, res) => {
 exports.createFromCSV = async (req, res) => {
   const { parse } = require('csv-parse/sync');
   if (!req.file) return res.status(400).json({ error: 'Archivo CSV requerido' });
+  // v2.9 (T2.6, D10): quien carga declara que cada persona del archivo fue informada y autorizó
+  const declaracion = await revisarDeclaracion(req.body, 'declaracion_carga');
+  if (!declaracion.ok) return res.status(declaracion.status).json({ error: declaracion.error });
 
   try {
     const records = parse(req.file.buffer.toString('utf8'), {
@@ -229,6 +252,7 @@ exports.createFromCSV = async (req, res) => {
 
     const rolesValidos = ['administrador', 'head_coach', 'entrenador', 'personal_salud', 'jugador'];
     const resultados = { creados: 0, errores: [] };
+    const creados = [];
 
     for (const [i, row] of records.entries()) {
       const { nombre, email, password, rol } = row;
@@ -246,16 +270,32 @@ exports.createFromCSV = async (req, res) => {
       }
       try {
         const { password_hash: hash, salt } = await hashClave(password);
-        await db.query(
+        const { rows: nuevo } = await db.query(
           `INSERT INTO usuarios (nombre, email, password_hash, salt, rol)
            VALUES ($1,$2,$3,$4,$5)
-           ON CONFLICT (email) DO NOTHING`,
+           ON CONFLICT (email) DO NOTHING RETURNING id`,
           [nombre, email.toLowerCase().trim(), hash, salt, rol]
         );
-        resultados.creados++;
+        if (nuevo.length) creados.push(nuevo[0].id);
+        else resultados.errores.push({ fila: i + 2, error: 'El correo ya está registrado: no se creó de nuevo.' });
+        resultados.creados = creados.length;
       } catch (err) {
         resultados.errores.push({ fila: i + 2, error: 'No se pudo crear el usuario: revisa los datos de la fila.' });
       }
+    }
+    // La carga queda registrada con la huella del archivo recibido y su resultado (cada usuario creado aceptará su
+    // aviso al entrar por primera vez, T2.5)
+    const cliente = await db.connect();
+    try {
+      resultados.carga_id = await registrarCarga(cliente, req, declaracion, {
+        tipo: 'usuarios', archivoNombre: req.file.originalname, archivoSha: huella(req.file.buffer.toString('utf8')),
+        filasTotal: records.length, creadas: creados.length, rechazadas: resultados.errores.length,
+        detalle: { creados, errores: resultados.errores },
+      });
+      await auditar(req, { accion: 'importar', recurso: 'carga', recurso_id: resultados.carga_id,
+        detalle: { tipo: 'usuarios', archivo: req.file.originalname, creadas: creados.length, rechazadas: resultados.errores.length } }, cliente);
+    } finally {
+      cliente.release();
     }
     res.json(resultados);
   } catch (err) {

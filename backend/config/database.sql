@@ -811,3 +811,302 @@ BEGIN
       ('valoracion','nota','archivo','control','seguimiento','lesion','historia','antropometria','identificacion','paciente'));
   END IF;
 END $$;
+
+-- -------------------------------------------------------
+-- v2.9 (igual que migrations/018_consentimientos.sql)
+-- -------------------------------------------------------
+--
+-- Cada acto (firma, rechazo o revocación) es un registro aparte que no se modifica ni se borra: el estado de cada
+-- tipo es el de su último registro (sin registros, "pendiente"). Revocar crea un registro nuevo y deja el historial.
+-- Tipos separados: la atención, el tratamiento de datos personales (Ley 1581 de 2012) y el uso en investigación
+-- (Res. 8430 de 1993), que es opcional e independiente: negarlo no afecta la atención.
+
+CREATE TABLE IF NOT EXISTS consentimientos (
+  id                         SERIAL PRIMARY KEY,
+  jugador_id                 INT NOT NULL REFERENCES jugadores(id) ON DELETE RESTRICT,
+  tipo                       VARCHAR(20) NOT NULL,
+  estado                     VARCHAR(12) NOT NULL,
+  fecha                      DATE NOT NULL DEFAULT CURRENT_DATE,  -- de la firma, el rechazo o la revocación
+  firma_quien                VARCHAR(12),                        -- el deportista o su acudiente
+  firmante_nombre            VARCHAR(150),
+  firmante_tipo_documento    VARCHAR(5),
+  firmante_numero_documento  VARCHAR(20),
+  firmante_parentesco        VARCHAR(40),
+  asentimiento               BOOLEAN,                            -- solo menores de edad; vacío si es mayor
+  archivo_id                 INT REFERENCES archivos_clinicos(id) ON DELETE RESTRICT,  -- foto o PDF del papel
+  version_formato            VARCHAR(40),
+  motivo                     VARCHAR(500),                       -- de la revocación (obligatorio) o del rechazo
+  revoca_id                  INT REFERENCES consentimientos(id) ON DELETE RESTRICT,
+  registrado_por             INT REFERENCES usuarios(id) ON DELETE RESTRICT,
+  quien_atiende              JSONB,                              -- copia de los datos de quien lo registró (T0.2)
+  registrado_en              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT chk_consentimientos_tipo CHECK (tipo IN ('atencion','datos_personales','investigacion')),
+  CONSTRAINT chk_consentimientos_estado CHECK (estado IN ('pendiente','firmado','rechazado','revocado')),
+  CONSTRAINT chk_consentimientos_firma_quien CHECK (firma_quien IS NULL OR firma_quien IN ('deportista','acudiente')),
+  CONSTRAINT chk_consentimientos_firmado_con_archivo CHECK (estado <> 'firmado' OR archivo_id IS NOT NULL),
+  CONSTRAINT chk_consentimientos_firmado_con_firmante CHECK (estado <> 'firmado' OR (firma_quien IS NOT NULL AND length(btrim(firmante_nombre)) > 0)),
+  CONSTRAINT chk_consentimientos_revocado CHECK (estado <> 'revocado' OR (revoca_id IS NOT NULL AND length(btrim(motivo)) > 0))
+);
+CREATE INDEX IF NOT EXISTS idx_consentimientos_jugador ON consentimientos(jugador_id, tipo, registrado_en DESC, id DESC);
+
+-- Como el resto de la historia clínica: no se modifican ni se borran (salvo el mantenimiento de la base de pruebas)
+CREATE OR REPLACE FUNCTION fn_proteger_consentimiento() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'Los consentimientos no se modifican ni se borran: para retirarlo, regístralo como revocado.'
+    USING ERRCODE = 'check_violation', CONSTRAINT = 'consentimiento_inalterable';
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_consentimiento ON consentimientos;
+CREATE TRIGGER trg_consentimiento BEFORE UPDATE OR DELETE ON consentimientos
+  FOR EACH ROW EXECUTE FUNCTION fn_proteger_consentimiento();
+
+-- La regla de la T0.4 (no borrar a quien tiene historia clínica) incluye los consentimientos
+CREATE OR REPLACE FUNCTION fn_proteger_jugador_con_historia() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN RETURN OLD; END IF;
+  IF EXISTS (SELECT 1 FROM valoraciones WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM historias_clinicas WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM controles_medicos WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM lesiones WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM antropometria WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM archivos_clinicos WHERE jugador_id = OLD.id)
+     OR EXISTS (SELECT 1 FROM consentimientos WHERE jugador_id = OLD.id) THEN
+    RAISE EXCEPTION 'El deportista % tiene historia clínica: no se puede eliminar. Retíralo; sus registros se conservan.', OLD.id
+      USING ERRCODE = 'check_violation', CONSTRAINT = 'jugador_con_historia_clinica';
+  END IF;
+  RETURN OLD;
+END $$ LANGUAGE plpgsql;
+
+-- La bitácora registra también la consulta y el registro de consentimientos
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_bitacora_recurso'
+                 AND pg_get_constraintdef(oid) LIKE '%consentimiento%') THEN
+    ALTER TABLE bitacora_clinica DROP CONSTRAINT IF EXISTS chk_bitacora_recurso;
+    ALTER TABLE bitacora_clinica ADD CONSTRAINT chk_bitacora_recurso CHECK (recurso IN
+      ('valoracion','nota','archivo','control','seguimiento','lesion','historia','antropometria','identificacion','paciente','consentimiento'));
+  END IF;
+END $$;
+
+-- y la revocación de un consentimiento como una acción propia ("revocó")
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_bitacora_accion'
+                 AND pg_get_constraintdef(oid) LIKE '%revocar%') THEN
+    ALTER TABLE bitacora_clinica DROP CONSTRAINT IF EXISTS chk_bitacora_accion;
+    ALTER TABLE bitacora_clinica ADD CONSTRAINT chk_bitacora_accion CHECK (accion IN
+      ('listar','ver','crear','editar','cerrar','descartar','descargar','verificar','exportar','eliminar','revocar'));
+  END IF;
+END $$;
+
+-- -------------------------------------------------------
+-- v2.9 (igual que migrations/019_aceptaciones.sql)
+-- -------------------------------------------------------
+--
+-- Cada aceptación guarda qué texto se aceptó (aviso, versión y huella SHA-256 del texto exacto), quién y cómo:
+--   cuenta    la persona en su propia cuenta (el personal, su compromiso; el deportista, su aviso de privacidad)
+--   tableta   el deportista en el dispositivo del profesional, que queda como testigo
+--   papel     con la autorización de datos personales firmada (consentimiento de la T2.1)
+--   registro  quien registra a un deportista declara que lo informó y que autorizó
+--   carga     quien carga un archivo con varias personas declara lo mismo para todas
+-- No se modifican ni se borran (como la bitácora y la historia clínica).
+
+CREATE TABLE IF NOT EXISTS aceptaciones (
+  id                SERIAL PRIMARY KEY,
+  aviso             VARCHAR(30) NOT NULL,
+  version           VARCHAR(40) NOT NULL,
+  texto_sha256      CHAR(64) NOT NULL,
+  via               VARCHAR(12) NOT NULL,
+  usuario_id        INT REFERENCES usuarios(id) ON DELETE RESTRICT,     -- quien aceptó o declaró desde su cuenta
+  usuario_nombre    VARCHAR(150),                                      -- copia, por si la cuenta cambia
+  usuario_rol       VARCHAR(30),
+  jugador_id        INT REFERENCES jugadores(id) ON DELETE RESTRICT,    -- el deportista de quien se trata
+  aceptante_nombre  VARCHAR(150),                                      -- quien aceptó en la tableta (o su acudiente)
+  testigo_id        INT REFERENCES usuarios(id) ON DELETE RESTRICT,    -- el profesional presente
+  consentimiento_id INT REFERENCES consentimientos(id) ON DELETE RESTRICT,
+  carga_id          INT,                                               -- la carga masiva (tabla de la T2.6)
+  ip                VARCHAR(64),
+  aceptado_en       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT chk_aceptaciones_aviso CHECK (aviso IN ('compromiso_personal','aviso_deportista','declaracion_registro','declaracion_carga')),
+  CONSTRAINT chk_aceptaciones_via CHECK (via IN ('cuenta','tableta','papel','registro','carga')),
+  CONSTRAINT chk_aceptaciones_sha CHECK (texto_sha256 ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT chk_aceptaciones_datos CHECK (
+       (via = 'cuenta'   AND usuario_id IS NOT NULL)
+    OR (via = 'tableta'  AND jugador_id IS NOT NULL AND testigo_id IS NOT NULL AND length(btrim(aceptante_nombre)) > 0)
+    OR (via = 'papel'    AND jugador_id IS NOT NULL AND consentimiento_id IS NOT NULL)
+    OR (via = 'registro' AND usuario_id IS NOT NULL AND jugador_id IS NOT NULL)
+    OR (via = 'carga'    AND usuario_id IS NOT NULL AND carga_id IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS idx_aceptaciones_usuario ON aceptaciones(usuario_id, aviso, version);
+CREATE INDEX IF NOT EXISTS idx_aceptaciones_jugador ON aceptaciones(jugador_id, aviso, version);
+CREATE INDEX IF NOT EXISTS idx_aceptaciones_fecha ON aceptaciones(aceptado_en DESC);
+
+CREATE OR REPLACE FUNCTION fn_proteger_aceptacion() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'Las aceptaciones no se modifican ni se borran.'
+    USING ERRCODE = 'check_violation', CONSTRAINT = 'aceptacion_inalterable';
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_aceptacion ON aceptaciones;
+CREATE TRIGGER trg_aceptacion BEFORE UPDATE OR DELETE ON aceptaciones
+  FOR EACH ROW EXECUTE FUNCTION fn_proteger_aceptacion();
+
+
+-- -------------------------------------------------------
+-- v2.9 (igual que migrations/020_autorizacion_deportista.sql)
+-- -------------------------------------------------------
+--
+--  - Cada carga masiva (CSV de deportistas o de usuarios) queda registrada: quién, qué archivo (nombre y huella
+--    SHA-256), cuántas filas se crearon, se actualizaron o se rechazaron, y con qué declaración. No se modifica ni se
+--    borra. Las declaraciones de la carga (tabla aceptaciones, via = 'carga') apuntan a ella.
+--  - Los deportistas registrados antes de esta versión son de demostración (D11): quedan marcados con
+--    autorizacion_previa y no se les exige autorización. Los que se registren desde ahora empiezan sin la marca.
+
+CREATE TABLE IF NOT EXISTS cargas_masivas (
+  id                   SERIAL PRIMARY KEY,
+  tipo                 VARCHAR(12) NOT NULL,
+  usuario_id           INT REFERENCES usuarios(id) ON DELETE RESTRICT,
+  usuario_nombre       VARCHAR(150),
+  usuario_rol          VARCHAR(30),
+  archivo_nombre       VARCHAR(200),
+  archivo_sha256       CHAR(64),
+  filas_total          INT NOT NULL DEFAULT 0,
+  creadas              INT NOT NULL DEFAULT 0,
+  actualizadas         INT NOT NULL DEFAULT 0,
+  rechazadas           INT NOT NULL DEFAULT 0,
+  detalle              JSONB NOT NULL DEFAULT '{}'::jsonb,       -- ids creados y errores por fila (sin datos de salud)
+  declaracion_version  VARCHAR(40) NOT NULL,
+  ip                   VARCHAR(64),
+  creado_en            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT chk_cargas_tipo CHECK (tipo IN ('deportistas','usuarios')),
+  CONSTRAINT chk_cargas_sha CHECK (archivo_sha256 IS NULL OR archivo_sha256 ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT chk_cargas_conteos CHECK (filas_total >= 0 AND creadas >= 0 AND actualizadas >= 0 AND rechazadas >= 0)
+);
+CREATE INDEX IF NOT EXISTS idx_cargas_fecha ON cargas_masivas(creado_en DESC);
+
+CREATE OR REPLACE FUNCTION fn_proteger_carga_masiva() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'El registro de las cargas masivas no se modifica ni se borra.'
+    USING ERRCODE = 'check_violation', CONSTRAINT = 'carga_masiva_inalterable';
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_carga_masiva ON cargas_masivas;
+CREATE TRIGGER trg_carga_masiva BEFORE UPDATE OR DELETE ON cargas_masivas
+  FOR EACH ROW EXECUTE FUNCTION fn_proteger_carga_masiva();
+
+-- Las declaraciones de una carga apuntan a ella
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_aceptaciones_carga') THEN
+    ALTER TABLE aceptaciones ADD CONSTRAINT fk_aceptaciones_carga FOREIGN KEY (carga_id) REFERENCES cargas_masivas(id) ON DELETE RESTRICT;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_aceptaciones_carga ON aceptaciones(carga_id);
+
+-- Los deportistas que ya existen quedan como registrados antes de las autorizaciones; los nuevos, no
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'jugadores' AND column_name = 'autorizacion_previa') THEN
+    ALTER TABLE jugadores ADD COLUMN autorizacion_previa BOOLEAN NOT NULL DEFAULT TRUE;
+    ALTER TABLE jugadores ALTER COLUMN autorizacion_previa SET DEFAULT FALSE;
+  END IF;
+END $$;
+
+-- Eliminar a un deportista sin historia clínica (por ejemplo, registrado por error) se lleva sus aceptaciones; nadie
+-- más las puede borrar. Quien tiene historia clínica sigue sin poder eliminarse (T0.4).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'aceptaciones_jugador_id_fkey' AND confdeltype <> 'c') THEN
+    ALTER TABLE aceptaciones DROP CONSTRAINT aceptaciones_jugador_id_fkey;
+    ALTER TABLE aceptaciones ADD CONSTRAINT aceptaciones_jugador_id_fkey FOREIGN KEY (jugador_id) REFERENCES jugadores(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+CREATE OR REPLACE FUNCTION fn_proteger_aceptacion() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
+  -- El borrado en cascada de un deportista eliminado: su fila ya no existe
+  IF TG_OP = 'DELETE' AND OLD.jugador_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM jugadores WHERE id = OLD.jugador_id) THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'Las aceptaciones no se modifican ni se borran.'
+    USING ERRCODE = 'check_violation', CONSTRAINT = 'aceptacion_inalterable';
+END $$ LANGUAGE plpgsql;
+
+-- La aceptación por papel depende de su consentimiento: los consentimientos no se borran (trigger), salvo en la
+-- limpieza de la base de pruebas, y entonces se lleva su aceptación
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'aceptaciones_consentimiento_id_fkey' AND confdeltype <> 'c') THEN
+    ALTER TABLE aceptaciones DROP CONSTRAINT aceptaciones_consentimiento_id_fkey;
+    ALTER TABLE aceptaciones ADD CONSTRAINT aceptaciones_consentimiento_id_fkey FOREIGN KEY (consentimiento_id) REFERENCES consentimientos(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+-- -------------------------------------------------------
+-- v2.9 (igual que migrations/021_auditoria.sql)
+-- -------------------------------------------------------
+--
+--  - auditoria: quién hizo qué con las personas y las cuentas, cuándo y desde dónde (altas, cambios de rol,
+--    desactivaciones, cargas masivas, inicios de sesión fallidos, ajustes, exportaciones). Nunca guarda contenido
+--    clínico (eso tiene su propia bitácora, bitacora_clinica). No se modifica ni se borra.
+--  - ajustes: interruptores del sistema que cambia el administrador; cada cambio queda en la auditoría. El primero es
+--    exigir el consentimiento de atención firmado para iniciar una valoración (D2), apagado hasta que el docente
+--    apruebe los formatos (D12).
+
+CREATE TABLE IF NOT EXISTS auditoria (
+  id              SERIAL PRIMARY KEY,
+  usuario_id      INT REFERENCES usuarios(id) ON DELETE SET NULL,
+  usuario_nombre  VARCHAR(150),
+  usuario_rol     VARCHAR(30),
+  accion          VARCHAR(20) NOT NULL,
+  recurso         VARCHAR(20) NOT NULL,
+  recurso_id      INT,
+  detalle         JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ip              VARCHAR(64),
+  creado_en       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT chk_auditoria_accion CHECK (accion IN ('crear','editar','cambiar_rol','desactivar','activar','restablecer_clave',
+    'eliminar','retirar','reactivar','importar','sesion_fallida','sesion_bloqueada','ajuste','exportar')),
+  CONSTRAINT chk_auditoria_recurso CHECK (recurso IN ('usuario','deportista','carga','sesion','ajuste','auditoria'))
+);
+CREATE INDEX IF NOT EXISTS idx_auditoria_fecha ON auditoria(creado_en DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_recurso ON auditoria(recurso, recurso_id);
+
+-- No se modifica ni se borra. Solo se permite que la cuenta quede en blanco si se elimina el usuario (la copia del
+-- nombre y del rol se conserva).
+CREATE OR REPLACE FUNCTION fn_proteger_auditoria() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('dt.mantenimiento', true) = 'on' THEN
+    IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+    RETURN NEW;
+  END IF;
+  IF TG_OP = 'UPDATE' AND NEW.usuario_id IS NULL AND OLD.usuario_id IS NOT NULL
+     AND (to_jsonb(NEW) - 'usuario_id') = (to_jsonb(OLD) - 'usuario_id') THEN
+    RETURN NEW;
+  END IF;
+  RAISE EXCEPTION 'El registro de auditoría no se modifica ni se borra.'
+    USING ERRCODE = 'check_violation', CONSTRAINT = 'auditoria_inalterable';
+END $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_auditoria ON auditoria;
+CREATE TRIGGER trg_auditoria BEFORE UPDATE OR DELETE ON auditoria
+  FOR EACH ROW EXECUTE FUNCTION fn_proteger_auditoria();
+
+CREATE TABLE IF NOT EXISTS ajustes (
+  clave           VARCHAR(60) PRIMARY KEY,
+  valor           JSONB NOT NULL,
+  actualizado_por INT REFERENCES usuarios(id) ON DELETE SET NULL,
+  actualizado_en  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO ajustes (clave, valor) VALUES ('exigir_consentimiento_atencion', 'false'::jsonb) ON CONFLICT (clave) DO NOTHING;
+

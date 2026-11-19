@@ -45,6 +45,8 @@ test('CP-UI-HC-001 [RF-25][RNF-04] En el celular, el entrenador registra un meno
   await expect(hoja.getByLabel('Teléfono', { exact: true })).toBeVisible();
   expect(await desborde(page)).toBeLessThanOrEqual(0);
 
+  // v2.9 (T2.6): quien registra declara que informó al deportista (o a su acudiente) y que autorizó
+  await hoja.getByLabel(/Declaro que informé al deportista/).check();
   await hoja.getByRole('button', { name: 'Guardar Deportista' }).click();
   await expect(page.getByText('Deportista registrado con éxito')).toBeVisible();
 

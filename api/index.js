@@ -54,11 +54,17 @@ const RUTAS = {
   'archivos-clinicos': 'archivosClinicos', // v2.7 (T0.5): archivos clínicos protegidos
   bitacora: 'bitacora', // v2.7 (T0.6): bitácora de accesos a la historia clínica
   pacientes: 'pacientes', // v2.8 (T1.3): lista de pacientes del personal de salud
+  consentimientos: 'consentimientos', // v2.9 (T2.1): consentimientos firmados, con su historial
+  avisos: 'avisos', // v2.9 (T2.4): avisos de manejo de datos y sus aceptaciones
+  auditoria: 'auditoria', // v2.9 (T2.7): módulo de auditoría del administrador
 };
+// v2.9 (T2.5): nadie trabaja con datos sin aceptar su aviso; la sesión y el aviso mismo quedan libres
+const { exigirAceptacion } = require('../backend/middleware/aceptacion');
+const SIN_ACEPTACION = new Set(['auth', 'avisos']);
 for (const [prefijo, archivo] of Object.entries(RUTAS)) {
   const router = require(`../backend/routes/${archivo}.routes`);
   for (const nombre of ['id', 'jugador_id']) router.param(nombre, validarId);
-  app.use(`/api/${prefijo}`, router);
+  app.use(`/api/${prefijo}`, ...(SIN_ACEPTACION.has(prefijo) ? [] : [exigirAceptacion]), router);
 }
 
 // Health check

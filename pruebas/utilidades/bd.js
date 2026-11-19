@@ -26,6 +26,9 @@ const ENV_PRUEBAS = {
   SEED_CLAVE_INICIAL: CLAVE_PRUEBAS,
   // v2.7 (T0.5): los archivos clínicos de las pruebas van a una carpeta temporal, no al repositorio
   CLINICO_DIR: require('path').join(require('os').tmpdir(), 'dt_deportivo_pruebas_clinico'),
+  // v2.9 (T2.9): el plantel de pruebas empieza sin consentimientos (las pruebas parten de "pendiente"); la carga de
+  // demostración de consentimientos se prueba aparte (CP-CON-010)
+  DEMO_SIN_CONSENTIMIENTOS: '1',
 };
 
 function credenciales(database) {

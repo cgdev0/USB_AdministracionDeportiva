@@ -12,6 +12,7 @@ import { fechaLarga } from '../utils/fechas'
 const ACCION = {
   listar: 'consultó', ver: 'abrió', crear: 'registró', editar: 'modificó', cerrar: 'cerró y firmó',
   descartar: 'descartó', descargar: 'descargó', verificar: 'verificó la integridad de', exportar: 'exportó', eliminar: 'eliminó',
+  revocar: 'revocó', // v2.9 (T2.1)
 }
 const RECURSO = {
   valoracion: ['la valoración', 'las valoraciones'], nota: ['una nota aclaratoria', 'las notas aclaratorias'],
@@ -20,8 +21,9 @@ const RECURSO = {
   historia: ['la historia anterior', 'las historias anteriores'], antropometria: ['la medición antropométrica', 'las mediciones antropométricas'],
   identificacion: ['los datos de identificación', 'los datos de identificación'],
   paciente: ['la ficha clínica', 'la lista de pacientes'],
+  consentimiento: ['el consentimiento', 'los consentimientos'],
 }
-const ACCIONES_FILTRO = [['', 'Todas las acciones'], ['ver', 'Abrió'], ['descargar', 'Descargó'], ['crear', 'Registró'], ['editar', 'Modificó'], ['cerrar', 'Cerró'], ['listar', 'Consultó listas']]
+const ACCIONES_FILTRO = [['', 'Todas las acciones'], ['ver', 'Abrió'], ['descargar', 'Descargó'], ['crear', 'Registró'], ['editar', 'Modificó'], ['cerrar', 'Cerró'], ['revocar', 'Revocó'], ['listar', 'Consultó listas']]
 
 const cuando = (valor) => {
   const f = new Date(valor)
